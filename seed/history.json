@@ -1,0 +1,448 @@
+{
+ "initial": {
+  "date": "2026-11-20",
+  "states": {
+   "E-ROW-A": "removed",
+   "E-ROW-B": "removed",
+   "E-ROW-C": "removed",
+   "E-ROW-D": "removed",
+   "E-ROW-E": "removed",
+   "E-ROW-F": "removed",
+   "E-ROW-G": "removed",
+   "E-ROW-H": "removed",
+   "E-FLOOR-AUD": "covered",
+   "E-FLOOR-STAGE": "levelled",
+   "E-PANELS-E": "installed",
+   "E-PANELS-W": "installed",
+   "E-CEILING": "installed",
+   "E-TRUSS-1": "wired",
+   "E-TRUSS-2": "mounted",
+   "E-EMLIGHT": "installed",
+   "E-CABLETRAY": "checked",
+   "E-STAGE": "boarded",
+   "E-STAGE-STAIRS": "installed",
+   "E-CURTAIN": "started",
+   "E-LECTERN": "installed",
+   "E-WALL-N": "primed",
+   "E-WALL-E": "primed",
+   "E-WALL-W": "prepared",
+   "E-WALL-S": "prepared"
+  },
+  "manual_pct": {
+   "A1010": 100
+  }
+ },
+ "days": [
+  {
+   "date": "2026-11-23",
+   "captures": [
+    {
+     "capture_id": "hist-1123-a",
+     "zone_id": "Z-AUDIENCE",
+     "ts": "2026-11-23T08:10:00Z",
+     "lang": "de",
+     "note": "Montag früh, Saal",
+     "structured": {
+      "labour_present": [
+       {
+        "trade": "Trockenbau",
+        "count": 3
+       },
+       {
+        "trade": "Maler",
+        "count": 2
+       }
+      ],
+      "absences": [],
+      "material_delivered": [],
+      "work_done": [
+       {
+        "element_ids": [
+         "E-PANELS-E",
+         "E-PANELS-W"
+        ],
+        "activity_id": "A1040",
+        "state_proposed": "checked",
+        "evidence": "voice",
+        "quote": "Akustikpaneele links und rechts abgenommen",
+        "t": null
+       },
+       {
+        "element_ids": [
+         "E-ROW-A",
+         "E-ROW-B"
+        ],
+        "activity_id": "A1080",
+        "state_proposed": "substructure",
+        "evidence": "voice",
+        "quote": "Unterkonstruktion Reihe A und B steht",
+        "t": null
+       }
+      ],
+      "special_events": [],
+      "unmatched": []
+     }
+    },
+    {
+     "capture_id": "hist-1123-b",
+     "zone_id": "Z-STAGE",
+     "ts": "2026-11-23T13:40:00Z",
+     "lang": "de",
+     "note": "Bühne nachmittags",
+     "structured": {
+      "labour_present": [
+       {
+        "trade": "Elektro",
+        "count": 2
+       },
+       {
+        "trade": "AV-Technik",
+        "count": 2
+       }
+      ],
+      "absences": [],
+      "material_delivered": [],
+      "work_done": [
+       {
+        "element_ids": [
+         "E-WALL-N"
+        ],
+        "activity_id": "A1070",
+        "state_proposed": "painted",
+        "evidence": "voice",
+        "quote": "Bühnenwand gestrichen",
+        "t": null
+       },
+       {
+        "element_ids": [
+         "E-TRUSS-2"
+        ],
+        "activity_id": "A1050",
+        "state_proposed": "wired",
+        "evidence": "voice",
+        "quote": "Hintere Traverse verkabelt",
+        "t": null
+       },
+       {
+        "element_ids": [
+         "E-SCREEN"
+        ],
+        "activity_id": "A1060",
+        "state_proposed": "mounted",
+        "evidence": "voice",
+        "quote": "Leinwand hängt",
+        "t": null
+       }
+      ],
+      "special_events": [],
+      "unmatched": []
+     }
+    }
+   ]
+  },
+  {
+   "date": "2026-11-24",
+   "captures": [
+    {
+     "capture_id": "hist-1124-a",
+     "zone_id": "Z-AUDIENCE",
+     "ts": "2026-11-24T08:30:00Z",
+     "lang": "de",
+     "note": "Dienstag Saal",
+     "structured": {
+      "labour_present": [
+       {
+        "trade": "Trockenbau",
+        "count": 3
+       },
+       {
+        "trade": "Maler",
+        "count": 2
+       },
+       {
+        "trade": "Bodenleger",
+        "count": 1
+       }
+      ],
+      "absences": [],
+      "material_delivered": [
+       {
+        "name": "Stühle",
+        "qty": 60,
+        "unit": "Stk"
+       }
+      ],
+      "work_done": [
+       {
+        "element_ids": [
+         "E-WALL-E"
+        ],
+        "activity_id": "A1070",
+        "state_proposed": "painted",
+        "evidence": "voice",
+        "quote": "Ostwand fertig gestrichen",
+        "t": null
+       },
+       {
+        "element_ids": [
+         "E-WALL-W",
+         "E-WALL-S"
+        ],
+        "activity_id": "A1070",
+        "state_proposed": "primed",
+        "evidence": "voice",
+        "quote": "West- und Rückwand grundiert",
+        "t": null
+       },
+       {
+        "element_ids": [
+         "E-CEILING"
+        ],
+        "activity_id": "A1040",
+        "state_proposed": "checked",
+        "evidence": "voice",
+        "quote": "Decke abgenommen",
+        "t": null
+       },
+       {
+        "element_ids": [
+         "E-FLOOR-AUD"
+        ],
+        "activity_id": "A1030",
+        "state_proposed": "done",
+        "evidence": "voice",
+        "quote": "Teppich im Saal fertig",
+        "t": null
+       },
+       {
+        "element_ids": [
+         "E-ROW-B"
+        ],
+        "activity_id": "A1080",
+        "state_proposed": "installed",
+        "evidence": "voice",
+        "quote": "Reihe B montiert",
+        "t": null
+       },
+       {
+        "element_ids": [
+         "E-ROW-C"
+        ],
+        "activity_id": "A1080",
+        "state_proposed": "substructure",
+        "evidence": "voice",
+        "quote": "Reihe C Unterkonstruktion",
+        "t": null
+       }
+      ],
+      "special_events": [],
+      "unmatched": []
+     }
+    },
+    {
+     "capture_id": "hist-1124-b",
+     "zone_id": "Z-STAGE",
+     "ts": "2026-11-24T14:05:00Z",
+     "lang": "de",
+     "note": "Bühne",
+     "structured": {
+      "labour_present": [
+       {
+        "trade": "Tischler",
+        "count": 2
+       },
+       {
+        "trade": "Elektro",
+        "count": 2
+       },
+       {
+        "trade": "AV-Technik",
+        "count": 2
+       }
+      ],
+      "absences": [],
+      "material_delivered": [],
+      "work_done": [
+       {
+        "element_ids": [
+         "E-STAGE"
+        ],
+        "activity_id": "A1065",
+        "state_proposed": "finished",
+        "evidence": "voice",
+        "quote": "Bühne fertig",
+        "t": null
+       },
+       {
+        "element_ids": [
+         "E-FLOOR-STAGE"
+        ],
+        "activity_id": "A1030",
+        "state_proposed": "covered",
+        "evidence": "voice",
+        "quote": "Bühnenboden versiegelt",
+        "t": null
+       },
+       {
+        "element_ids": [
+         "E-TRUSS-1"
+        ],
+        "activity_id": "A1050",
+        "state_proposed": "tested",
+        "evidence": "voice",
+        "quote": "Vordere Traverse getestet",
+        "t": null
+       },
+       {
+        "element_ids": [
+         "E-PROJECTOR"
+        ],
+        "activity_id": "A1060",
+        "state_proposed": "mounted",
+        "evidence": "voice",
+        "quote": "Beamer montiert",
+        "t": null
+       }
+      ],
+      "special_events": [],
+      "unmatched": []
+     }
+    }
+   ]
+  },
+  {
+   "date": "2026-11-25",
+   "captures": [
+    {
+     "capture_id": "hist-1125-a",
+     "zone_id": "Z-AUDIENCE",
+     "ts": "2026-11-25T08:20:00Z",
+     "lang": "de",
+     "note": "Mittwoch Saal",
+     "structured": {
+      "labour_present": [
+       {
+        "trade": "Trockenbau",
+        "count": 3
+       },
+       {
+        "trade": "Maler",
+        "count": 2
+       }
+      ],
+      "absences": [],
+      "material_delivered": [],
+      "work_done": [
+       {
+        "element_ids": [
+         "E-WALL-W",
+         "E-WALL-S"
+        ],
+        "activity_id": "A1070",
+        "state_proposed": "painted",
+        "evidence": "voice",
+        "quote": "Westwand und Rückwand gestrichen",
+        "t": null
+       },
+       {
+        "element_ids": [
+         "E-ROW-D",
+         "E-ROW-E"
+        ],
+        "activity_id": "A1080",
+        "state_proposed": "substructure",
+        "evidence": "voice",
+        "quote": "Unterkonstruktion Reihe D und E",
+        "t": null
+       }
+      ],
+      "special_events": [
+       {
+        "type": "delay",
+        "text": "Lieferung Stühle für Reihe F bis H verspätet sich um einen Tag",
+        "severity": "medium"
+       }
+      ],
+      "unmatched": []
+     }
+    },
+    {
+     "capture_id": "hist-1125-b",
+     "zone_id": "Z-STAGE",
+     "ts": "2026-11-25T13:15:00Z",
+     "lang": "de",
+     "note": "Bühne und Technik",
+     "structured": {
+      "labour_present": [
+       {
+        "trade": "AV-Technik",
+        "count": 2
+       },
+       {
+        "trade": "Elektro",
+        "count": 1
+       },
+       {
+        "trade": "Tischler",
+        "count": 1
+       }
+      ],
+      "absences": [],
+      "material_delivered": [],
+      "work_done": [
+       {
+        "element_ids": [
+         "E-SCREEN"
+        ],
+        "activity_id": "A1060",
+        "state_proposed": "connected",
+        "evidence": "voice",
+        "quote": "Leinwand angeschlossen",
+        "t": null
+       },
+       {
+        "element_ids": [
+         "E-SPK-L",
+         "E-SPK-R"
+        ],
+        "activity_id": "A1060",
+        "state_proposed": "mounted",
+        "evidence": "voice",
+        "quote": "Lautsprecher links und rechts hängen",
+        "t": null
+       },
+       {
+        "element_ids": [
+         "E-CURTAIN"
+        ],
+        "activity_id": "A1065",
+        "state_proposed": "installed",
+        "evidence": "voice",
+        "quote": "Vorhang montiert",
+        "t": null
+       },
+       {
+        "element_ids": [
+         "E-EMLIGHT"
+        ],
+        "activity_id": "A1050",
+        "state_proposed": "checked",
+        "evidence": "voice",
+        "quote": "Notbeleuchtung geprüft",
+        "t": null
+       }
+      ],
+      "special_events": [
+       {
+        "type": "defect",
+        "text": "Kratzer im Bühnenboden vorne links",
+        "severity": "low"
+       }
+      ],
+      "unmatched": []
+     }
+    }
+   ]
+  }
+ ]
+}

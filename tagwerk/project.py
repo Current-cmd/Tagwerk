@@ -1,0 +1,504 @@
+"""Project state: seed data, element states, activity roll-up, earned value and forecast.
+
+The Python state is authoritative; the graph is a projection of it (see tagwerk/graph/sync.py).
+State is rebuilt at startup from seed/ + seed/history.json + every stored capture result, all
+through `apply_structured`, so history and live captures follow exactly the same rules.
+"""
+from __future__ import annotations
+
+import csv
+import json
+import math
+from collections import defaultdict
+from dataclasses import dataclass, field
+from datetime import date, timedelta
+from pathlib import Path
+
+from tagwerk.pipeline.loop import STATES, apply_work, weight
+
+SEED_DIR = Path(__file__).resolve().parent.parent / "seed"
+HOURS_PER_DAY = 8
+
+
+# ---------- working days ----------
+
+def is_workday(d: date) -> bool:
+    return d.weekday() < 5
+
+
+def next_workday(d: date) -> date:
+    d += timedelta(days=1)
+    while not is_workday(d):
+        d += timedelta(days=1)
+    return d
+
+
+def workdays(start: date, end: date) -> list[date]:
+    """Working days in [start, end]."""
+    out, d = [], start
+    while d <= end:
+        if is_workday(d):
+            out.append(d)
+        d += timedelta(days=1)
+    return out
+
+
+def workday_diff(a: date, b: date) -> int:
+    """Signed number of working days from a to b (b later -> positive)."""
+    if a == b:
+        return 0
+    if b > a:
+        return len(workdays(a + timedelta(days=1), b))
+    return -len(workdays(b + timedelta(days=1), a))
+
+
+# ---------- helpers ----------
+
+def _read_csv(path: Path) -> list[dict]:
+    with path.open(encoding="utf-8") as fh:
+        return list(csv.DictReader(fh))
+
+
+def _num(v: str | None, default: float = 0.0) -> float:
+    return float(v) if v not in (None, "") else default
+
+
+def states_for(element_type: str) -> list[tuple[str, int]]:
+    return STATES.get(element_type, STATES["default"])
+
+
+def ifc_guid(seed: str) -> str:
+    """Deterministic 22-char IFC GlobalId from a string (uuid5 compressed with the IFC alphabet)."""
+    import uuid
+
+    chars = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz_$"
+    n = uuid.uuid5(uuid.NAMESPACE_URL, f"tagwerk:{seed}").int
+    out = []
+    for _ in range(22):
+        out.append(chars[n % 64])
+        n //= 64
+    return "".join(reversed(out))
+
+
+@dataclass
+class Project:
+    zones: dict[str, dict] = field(default_factory=dict)
+    elements: dict[str, dict] = field(default_factory=dict)
+    activities: dict[str, dict] = field(default_factory=dict)
+    wbs: dict[str, dict] = field(default_factory=dict)
+    boq: dict[str, dict] = field(default_factory=dict)
+    links: list[dict] = field(default_factory=list)
+    trades: dict[str, dict] = field(default_factory=dict)
+    captures: dict[str, dict] = field(default_factory=dict)
+    events: list[dict] = field(default_factory=list)
+    labour: list[dict] = field(default_factory=list)
+    materials: list[dict] = field(default_factory=list)
+    proposals: list[dict] = field(default_factory=list)
+    history_log: list[dict] = field(default_factory=list)  # every state change, for curves
+
+    # ----- loading -----
+
+    @classmethod
+    def from_seed(cls, seed_dir: Path = SEED_DIR) -> Project:
+        p = cls()
+        for r in _read_csv(seed_dir / "zones.csv"):
+            p.zones[r["zone_id"]] = {"id": r["zone_id"], "name_de": r["name_de"], "name_en": r["name_en"],
+                                     "kind": r["kind"]}
+        for r in _read_csv(seed_dir / "elements.csv"):
+            eid = r["element_id"]
+            p.elements[eid] = {
+                "id": eid, "global_id": r["global_id"] or ifc_guid(eid), "ifc_class": r["ifc_class"],
+                "name_de": r["name_de"], "name_en": r["name_en"], "zone": r["zone"], "type": r["type"] or "default",
+                "qty": _num(r["qty"], 1), "unit": r["unit"], "din276": r["din276"],
+                "marker_id": int(r["marker_id"]) if r["marker_id"] else None,
+                "aliases": [a.strip() for a in r["aliases"].split("|") if a.strip()],
+                "geom": [_num(r[k]) for k in ("x", "y", "z", "dx", "dy", "dz")],
+                "pct": 0, "state": None, "updated": None,
+            }
+        for r in _read_csv(seed_dir / "wbs.csv"):
+            p.wbs[r["wbs"]] = {"code": r["wbs"], "name": r["name"]}
+        for r in _read_csv(seed_dir / "trades.csv"):
+            p.trades[r["trade_id"]] = {"id": r["trade_id"], "name": r["name"], "rate_eur_h": _num(r["rate_eur_h"])}
+        for r in _read_csv(seed_dir / "activities.csv"):
+            p.activities[r["activity_id"]] = {
+                "id": r["activity_id"], "wbs": r["wbs"], "name": r["name"], "trade_id": r["trade_id"],
+                "planned_start": date.fromisoformat(r["planned_start"]),
+                "planned_finish": date.fromisoformat(r["planned_finish"]),
+                "crew_planned": _num(r["crew_planned"], 1),
+                "predecessors": [x for x in r["predecessors"].split(";") if x],
+                "manual_pct": None, "actual_start": None, "actual_finish": None,
+            }
+        for r in _read_csv(seed_dir / "boq.csv"):
+            p.boq[r["oz"]] = {"oz": r["oz"], "lot": r["lot"], "short_text": r["short_text"], "qty": _num(r["qty"]),
+                              "unit": r["unit"], "unit_price": _num(r["unit_price"]), "din276": r["din276"]}
+        for r in _read_csv(seed_dir / "mapping.csv"):
+            p.links.append({"oz": r["oz"], "activity_id": r["activity_id"], "element_id": r["element_id"] or None,
+                            "share": _num(r["share"], 1), "from_state": r["from_state"] or None,
+                            "to_state": r["to_state"] or None})
+        p._check()
+        return p
+
+    def _check(self) -> None:
+        for link in self.links:
+            assert link["oz"] in self.boq, f"mapping: unknown OZ {link['oz']}"
+            assert link["activity_id"] in self.activities, f"mapping: unknown activity {link['activity_id']}"
+            if link["element_id"]:
+                el = self.elements.get(link["element_id"])
+                assert el, f"mapping: unknown element {link['element_id']}"
+                names = [s for s, _ in states_for(el["type"])]
+                for k in ("from_state", "to_state"):
+                    assert link[k] is None or link[k] in names, f"mapping: {link[k]} not a state of {el['id']}"
+        for a in self.activities.values():
+            for pred in a["predecessors"]:
+                assert pred in self.activities, f"activity {a['id']}: unknown predecessor {pred}"
+
+    def load_history(self, path: Path | None = None) -> None:
+        path = path or SEED_DIR / "history.json"
+        if not path.exists():
+            return
+        hist = json.loads(path.read_text(encoding="utf-8"))
+        init = hist.get("initial", {})
+        d0 = init.get("date")
+        for eid, state in init.get("states", {}).items():
+            el = self.elements[eid]
+            el["pct"], el["state"], el["updated"] = weight(el["type"], state), state, d0
+            self.history_log.append({"date": d0, "element_id": eid, "state": state, "pct": el["pct"],
+                                     "capture_id": None})
+        for aid, pct in init.get("manual_pct", {}).items():
+            self.activities[aid]["manual_pct"] = float(pct)
+        for day in hist.get("days", []):
+            for c in day["captures"]:
+                meta = {k: c[k] for k in ("capture_id", "zone_id", "ts", "note") if k in c}
+                self.apply_structured(meta, {"capture_id": c["capture_id"], **c["structured"]})
+
+    # ----- applying evidence -----
+
+    def apply_structured(self, meta: dict, structured: dict) -> list[dict]:
+        """Apply one capture's structured result. Returns the list of element changes.
+
+        meta: {capture_id, zone_id, ts (ISO), note?}. Idempotent per capture_id.
+        """
+        cid = meta["capture_id"]
+        if cid in self.captures:
+            return self.captures[cid]["changes"]
+        day = meta["ts"][:10]
+        changes: list[dict] = []
+        for w in structured.get("work_done", []):
+            for eid in w["element_ids"]:
+                el = self.elements.get(eid)
+                if not el:
+                    continue
+                try:
+                    res = apply_work(el, w["state_proposed"], w["evidence"])
+                except KeyError:
+                    changes.append({"element_id": eid, "action": "invalid", "state": w["state_proposed"],
+                                    "quote": w["quote"]})
+                    continue
+                change = {"element_id": eid, "action": res["action"], "state": w["state_proposed"],
+                          "from_pct": el["pct"], "pct": res.get("proposed_pct", res["pct"]), "quote": w["quote"],
+                          "evidence": w["evidence"], "activity_id": w.get("activity_id"), "t": w.get("t")}
+                if res["action"] == "confirmed":
+                    self._set_state(el, w["state_proposed"], res["pct"], day, cid)
+                elif res["action"] == "proposed":
+                    self.proposals.append({"capture_id": cid, "element_id": eid, "state": w["state_proposed"],
+                                           "pct": res["proposed_pct"], "date": day})
+                changes.append(change)
+        for lp in structured.get("labour_present", []):
+            self.labour.append({"date": day, "trade": lp["trade"], "count": lp["count"], "capture_id": cid})
+        for i, ab in enumerate(structured.get("absences", [])):
+            act = self.activity_for_trade(ab["trade"], date.fromisoformat(day))
+            self.events.append({"id": f"{cid}:absence:{i}", "type": "absence", "trade": ab["trade"],
+                                "count": ab["count"], "text": f"{ab['count']}× {ab['trade']} {ab['reason']}",
+                                "severity": "medium", "date": day, "capture_id": cid,
+                                "activity_id": act["id"] if act else None})
+        for i, ev in enumerate(structured.get("special_events", [])):
+            self.events.append({"id": f"{cid}:event:{i}", "type": ev["type"], "text": ev["text"],
+                                "severity": ev["severity"], "date": day, "capture_id": cid, "activity_id": None})
+        for m in structured.get("material_delivered", []):
+            self.materials.append({**m, "date": day, "capture_id": cid})
+        self.captures[cid] = {**meta, "date": day, "changes": changes,
+                              "quotes": [w["quote"] for w in structured.get("work_done", [])],
+                              "structured": structured}
+        return changes
+
+    def manual_confirm(self, element_id: str, state: str, day: str, capture_id: str = "manual") -> dict:
+        """A tap in the site manager view: confirms like voice evidence."""
+        el = self.elements[element_id]
+        res = apply_work(el, state, "voice")
+        if res["action"] == "confirmed":
+            self._set_state(el, state, res["pct"], day, capture_id)
+        return res
+
+    def _set_state(self, el: dict, state: str, pct: int, day: str, cid: str) -> None:
+        el["pct"], el["state"], el["updated"] = pct, state, day
+        self.history_log.append({"date": day, "element_id": el["id"], "state": state, "pct": pct, "capture_id": cid})
+        for link in self.links:
+            if link["element_id"] == el["id"]:
+                a = self.activities[link["activity_id"]]
+                if a["actual_start"] is None or day < a["actual_start"]:
+                    if self._element_contrib(el, link, pct) > 0:
+                        a["actual_start"] = day
+
+    # ----- lookups -----
+
+    def trade_by_name(self, name: str) -> dict | None:
+        n = name.lower()
+        for t in self.trades.values():
+            if t["name"].lower() == n or t["id"].lower() == n:
+                return t
+        return None
+
+    def activity_for_trade(self, trade_name: str, d: date) -> dict | None:
+        t = self.trade_by_name(trade_name)
+        if not t:
+            return None
+        cands = [a for a in self.activities.values() if a["trade_id"] == t["id"]]
+        if not cands:
+            return None
+        # prefer the one whose planned window covers d, else the unfinished one closest to d
+        cover = [a for a in cands if a["planned_start"] <= d <= a["planned_finish"]]
+        pool = cover or [a for a in cands if self.activity_pct(a["id"]) < 100] or cands
+        return min(pool, key=lambda a: abs((a["planned_finish"] - d).days))
+
+    def marker_map(self) -> dict[int, str]:
+        return {el["marker_id"]: eid for eid, el in self.elements.items() if el["marker_id"] is not None}
+
+    def elements_of(self, activity_id: str) -> list[str]:
+        return sorted({lk["element_id"] for lk in self.links if lk["activity_id"] == activity_id and lk["element_id"]})
+
+    def activities_of(self, element_id: str) -> list[str]:
+        return sorted({lk["activity_id"] for lk in self.links if lk["element_id"] == element_id})
+
+    # ----- numbers -----
+
+    def link_value(self, link: dict) -> float:
+        b = self.boq[link["oz"]]
+        return b["qty"] * b["unit_price"] * link["share"]
+
+    def budget(self, activity_id: str) -> float:
+        return round(sum(self.link_value(lk) for lk in self.links if lk["activity_id"] == activity_id), 2)
+
+    def _element_contrib(self, el: dict, link: dict, pct: float | None = None) -> float:
+        pct = el["pct"] if pct is None else pct
+        lo = weight(el["type"], link["from_state"]) if link["from_state"] else 0
+        hi = weight(el["type"], link["to_state"]) if link["to_state"] else 100
+        return max(0.0, min(100.0, (pct - lo) * 100.0 / (hi - lo)))
+
+    def activity_pct(self, activity_id: str) -> float:
+        """BoQ-weighted average of element progress (weight = qty x unit price x share of the linked position)."""
+        a = self.activities[activity_id]
+        links = [lk for lk in self.links if lk["activity_id"] == activity_id and lk["element_id"]]
+        if not links:
+            return float(a["manual_pct"] or 0.0)
+        total = sum(self.link_value(lk) for lk in links)
+        if not total:
+            return 0.0
+        return round(sum(self._element_contrib(self.elements[lk["element_id"]], lk) * self.link_value(lk)
+                         for lk in links) / total, 1)
+
+    def planned_pct(self, activity_id: str, d: date) -> float:
+        """Linear plan over working days, measured at the end of day d."""
+        a = self.activities[activity_id]
+        days = workdays(a["planned_start"], a["planned_finish"]) or [a["planned_start"]]
+        done = len([x for x in days if x <= d])
+        return round(100.0 * done / len(days), 1)
+
+    def absent_on(self, trade_id: str, d: date) -> float:
+        name = self.trades[trade_id]["name"].lower()
+        return sum(e["count"] for e in self.events
+                   if e["type"] == "absence" and e["date"] == d.isoformat() and e["trade"].lower() == name)
+
+    def topo_order(self) -> list[str]:
+        order, seen = [], set()
+
+        def visit(aid: str) -> None:
+            if aid in seen:
+                return
+            seen.add(aid)
+            for pred in self.activities[aid]["predecessors"]:
+                visit(pred)
+            order.append(aid)
+
+        for aid in sorted(self.activities):
+            visit(aid)
+        return order
+
+    def forecast(self, today: date) -> dict[str, dict]:
+        """Projection from today's evidence.
+
+        Rate = 100 % / (planned working days x planned crew) per crew-day. Remaining work is simulated day by
+        day from today with crew = planned crew minus absences reported for that day (absences count for the
+        day they are reported). Successors cannot start before their predecessors' forecast finish
+        (finish-to-start), so a delay passes on through the network.
+        """
+        out: dict[str, dict] = {}
+        for aid in self.topo_order():
+            a = self.activities[aid]
+            pct = self.activity_pct(aid)
+            planned_days = len(workdays(a["planned_start"], a["planned_finish"])) or 1
+            rate = 100.0 / (planned_days * a["crew_planned"])  # % per crew-day
+            pred_finish = max((out[p]["forecast_finish"] for p in a["predecessors"]), default=None)
+            earliest = a["planned_start"]
+            if pred_finish is not None and pred_finish >= earliest:
+                earliest = next_workday(pred_finish)
+            if pct >= 100:
+                finish = date.fromisoformat(self._finish_day(aid)) if self._finish_day(aid) else a["planned_finish"]
+            else:
+                d = max(earliest, today) if pct == 0 else today
+                if not is_workday(d):
+                    d = next_workday(d)
+                remaining, finish, guard = 100.0 - pct, d, 0
+                while remaining > 1e-6 and guard < 400:
+                    crew = max(0.0, a["crew_planned"] - self.absent_on(a["trade_id"], d))
+                    remaining -= rate * crew
+                    finish = d
+                    d = next_workday(d)
+                    guard += 1
+            bac = self.budget(aid)
+            ppct = self.planned_pct(aid, today)
+            out[aid] = {
+                "id": aid, "name": a["name"], "wbs": a["wbs"], "trade": self.trades[a["trade_id"]]["name"],
+                "pct": pct, "planned_pct": ppct,
+                "planned_start": a["planned_start"], "baseline_finish": a["planned_finish"],
+                "forecast_finish": finish,
+                "delay_d": workday_diff(a["planned_finish"], finish),
+                "bac_eur": bac, "pv_eur": round(bac * ppct / 100, 2), "ev_eur": round(bac * pct / 100, 2),
+                "crew_planned": a["crew_planned"], "crew_today": a["crew_planned"] - self.absent_on(a["trade_id"], today),
+                "elements": self.elements_of(aid), "predecessors": a["predecessors"],
+            }
+        return out
+
+    def _finish_day(self, activity_id: str) -> str | None:
+        """Day the activity reached 100 % (last state change of its elements), else None."""
+        els = set(self.elements_of(activity_id))
+        days = [h["date"] for h in self.history_log if h["element_id"] in els and h["date"]]
+        return max(days) if days else None
+
+    def actual_cost(self, upto: date) -> float:
+        """Labour hours x invented trade rates (labelled as such in the UI)."""
+        total = 0.0
+        for lp in self.labour:
+            if lp["date"] <= upto.isoformat():
+                t = self.trade_by_name(lp["trade"])
+                if t:
+                    total += lp["count"] * HOURS_PER_DAY * t["rate_eur_h"]
+        return round(total, 2)
+
+    # ----- outputs -----
+
+    def dashboard(self, today: date) -> dict:
+        """Data for contracts/dashboard.schema.json."""
+        fc = self.forecast(today)
+        acts = sorted(fc.values(), key=lambda r: (-r["delay_d"], r["pct"]))
+        return {
+            "date": today.isoformat(),
+            "activities": [{"id": r["id"], "name": r["name"], "pct": r["pct"],
+                            "baseline_finish": r["baseline_finish"].isoformat(),
+                            "forecast_finish": r["forecast_finish"].isoformat(),
+                            "delay_d": r["delay_d"], "ev_eur": r["ev_eur"]} for r in acts],
+            "events": [{"type": e["type"], "text": e["text"], "severity": e["severity"]}
+                       for e in sorted(self.events, key=lambda e: e["date"], reverse=True)],
+        }
+
+    def overview(self, today: date) -> dict:
+        """Everything the Bauleiter dashboard and the site-manager view need (not a contract)."""
+        fc = self.forecast(today)
+        acts = list(fc.values())
+        pv = sum(r["pv_eur"] for r in acts)
+        ev = sum(r["ev_eur"] for r in acts)
+        bac = sum(r["bac_eur"] for r in acts)
+        project_finish = max(r["forecast_finish"] for r in acts)
+        baseline_finish = max(r["baseline_finish"] for r in acts)
+        iso = today.isoformat()
+
+        # planned / earned curves per working day of the baseline (earned from history_log)
+        start = min(a["planned_start"] for a in self.activities.values())
+        curve = []
+        for d in workdays(start, max(today, baseline_finish)):
+            pv_d = sum(self.budget(a) * self.planned_pct(a, d) / 100 for a in self.activities)
+            ev_d = self._earned_at(d) if d <= today else None
+            curve.append({"date": d.isoformat(), "pv": round(pv_d), "ev": None if ev_d is None else round(ev_d),
+                          "ac": round(self.actual_cost(d)) if d <= today else None})
+
+        labour_today: dict[str, int] = defaultdict(int)
+        for lp in self.labour:
+            if lp["date"] == iso:
+                labour_today[lp["trade"]] += lp["count"]
+        planned_crew: dict[str, float] = defaultdict(float)
+        for a in self.activities.values():
+            if a["planned_start"] <= today <= a["planned_finish"]:
+                planned_crew[self.trades[a["trade_id"]]["name"]] += a["crew_planned"]
+        zone_grid = []
+        for zid, z in self.zones.items():
+            els = [e for e in self.elements.values() if e["zone"] == zid]
+            zone_grid.append({"zone_id": zid, "name": z["name_de"],
+                              "elements": [{"id": e["id"], "name": e["name_de"], "pct": e["pct"],
+                                            "state": e["state"], "type": e["type"],
+                                            "states": [s for s, _ in states_for(e["type"])]} for e in els]})
+        today_caps = [c for c in self.captures.values() if c["date"] == iso]
+        return {
+            "date": iso,
+            "kpi": {
+                "pct_actual": round(100 * ev / bac, 1) if bac else 0, "pct_planned": round(100 * pv / bac, 1) if bac else 0,
+                "spi": round(ev / pv, 2) if pv else None, "ev_eur": round(ev), "pv_eur": round(pv), "bac_eur": round(bac),
+                "ac_eur": round(self.actual_cost(today)), "ac_note": "labour hours x invented trade rates",
+                "forecast_finish": project_finish.isoformat(), "baseline_finish": baseline_finish.isoformat(),
+                "delay_d": workday_diff(baseline_finish, project_finish),
+                "open_defects": len([e for e in self.events if e["type"] == "defect"]),
+            },
+            "activities": [{**r, "planned_start": r["planned_start"].isoformat(),
+                            "baseline_finish": r["baseline_finish"].isoformat(),
+                            "forecast_finish": r["forecast_finish"].isoformat(),
+                            "red": r["delay_d"] > 0,
+                            "cause": self._cause(r, today)} for r in sorted(acts, key=lambda r: (-r["delay_d"], r["pct"]))],
+            "captures": sorted([{"capture_id": c["capture_id"], "zone_id": c["zone_id"], "ts": c["ts"],
+                                 "note": c.get("note"), "quotes": c["quotes"],
+                                 "photos": c.get("photos", []),
+                                 "changes": [ch for ch in c["changes"] if ch["action"] in ("confirmed", "proposed")]}
+                                for c in self.captures.values()], key=lambda c: c["ts"], reverse=True),
+            "today_capture_ids": [c["capture_id"] for c in today_caps],
+            "events": sorted(self.events, key=lambda e: e["date"], reverse=True),
+            "labour": {"present": dict(labour_today), "planned": dict(planned_crew)},
+            "proposals": [p for p in self.proposals if self.elements[p["element_id"]]["pct"] < p["pct"]],
+            "curve": curve,
+            "zones": zone_grid,
+            "weather": next((c.get("weather") for c in sorted(today_caps, key=lambda c: c["ts"], reverse=True)
+                             if c.get("weather")), None),
+        }
+
+    def _earned_at(self, d: date) -> float:
+        """Earned value at the end of day d, replaying history_log."""
+        saved = {eid: (el["pct"], el["state"]) for eid, el in self.elements.items()}
+        try:
+            for el in self.elements.values():
+                el["pct"] = 0
+            for h in self.history_log:
+                if h["date"] and h["date"] <= d.isoformat():
+                    el = self.elements[h["element_id"]]
+                    el["pct"] = max(el["pct"], h["pct"])
+            return sum(self.budget(a) * self.activity_pct(a) / 100 for a in self.activities)
+        finally:
+            for eid, (pct, st) in saved.items():
+                self.elements[eid]["pct"], self.elements[eid]["state"] = pct, st
+
+    def _cause(self, row: dict, today: date) -> str | None:
+        if row["delay_d"] <= 0:
+            return None
+        reasons = []
+        a = self.activities[row["id"]]
+        absent = self.absent_on(a["trade_id"], today)
+        if absent:
+            reasons.append(f"{absent:g} of {a['crew_planned']:g} {row['trade']} absent today")
+        late_preds = [p for p in a["predecessors"] if self.forecast_cache_delay(p, today) > 0]
+        if late_preds:
+            reasons.append("waiting for " + ", ".join(self.activities[p]["name"] for p in late_preds))
+        if row["pct"] < row["planned_pct"]:
+            reasons.append(f"{row['pct']:.0f} % done vs {row['planned_pct']:.0f} % planned")
+        return "; ".join(reasons) or "behind plan"
+
+    def forecast_cache_delay(self, activity_id: str, today: date) -> int:
+        return self.forecast(today)[activity_id]["delay_d"]
+
+
+def ceil_div(a: float, b: float) -> int:
+    return math.ceil(a / b) if b else 0

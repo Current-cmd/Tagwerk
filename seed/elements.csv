@@ -1,0 +1,33 @@
+element_id,global_id,ifc_class,name_de,name_en,zone,x,y,z,dx,dy,dz,qty,unit,din276,marker_id,type,aliases
+E-STAGE,,IfcSlab,Bühne,Stage,Z-STAGE,1.0,0.0,0.0,12.0,4.0,0.8,48,m2,381 verify,1,stage,Bühnenpodest|Podest|stage platform
+E-STAGE-STAIRS,,IfcStair,Bühnentreppe,Stage stairs,Z-STAGE,12.0,4.0,0.0,1.5,1.0,0.8,1,Stk,381 verify,,default,Treppe|Bühnenaufgang|stairs
+E-LECTERN,,IfcFurniture,Rednerpult,Lectern,Z-STAGE,9.0,1.5,0.8,0.7,0.6,1.2,1,Stk,610 verify,5,default,Pult|Redepult|lectern|podium
+E-SCREEN,,IfcFlowTerminal,Projektionsleinwand,Projection screen,Z-STAGE,3.0,0.1,2.0,8.0,0.1,4.5,1,Stk,455 verify,2,av,Leinwand|Screen|projection screen
+E-CURTAIN,,IfcCovering,Bühnenvorhang,Stage curtain,Z-STAGE,1.0,3.8,0.8,12.0,0.1,5.0,60,m2,381 verify,,default,Vorhang|curtain
+E-FLOOR-STAGE,,IfcCovering,Bodenbelag Bühne,Stage floor finish,Z-STAGE,1.0,0.0,0.8,12.0,4.0,0.02,48,m2,352 verify,,floor,Bühnenboden|stage floor
+E-WALL-N,,IfcWall,Wand Nord (Bühnenwand),North wall (stage),Z-STAGE,0.0,0.0,0.0,14.0,0.3,6.0,84,m2,345 verify,,wall,Bühnenwand|Stirnwand|Nordwand|north wall
+E-TRUSS-1,,IfcBeam,Licht-Traverse vorne,Front lighting truss,Z-STAGE,1.0,4.5,5.2,12.0,0.3,0.3,12,m,445 verify,3,lighting,Traverse vorne|vordere Traverse|Traverse 1|front truss|truss
+E-TRUSS-2,,IfcBeam,Licht-Traverse Saal,Hall lighting truss,Z-AUDIENCE,1.0,11.0,5.6,12.0,0.3,0.3,12,m,445 verify,8,lighting,Traverse hinten|hintere Traverse|Traverse 2|rear truss
+E-SPK-L,,IfcFlowTerminal,Lautsprecher links,Speaker left,Z-STAGE,0.5,4.0,3.5,0.5,0.5,0.8,1,Stk,455 verify,,av,Lautsprecher links|Box links|left speaker
+E-SPK-R,,IfcFlowTerminal,Lautsprecher rechts,Speaker right,Z-STAGE,13.0,4.0,3.5,0.5,0.5,0.8,1,Stk,455 verify,,av,Lautsprecher rechts|Box rechts|right speaker
+E-PROJECTOR,,IfcFlowTerminal,Beamer,Projector,Z-TECH,6.5,17.0,4.8,0.6,0.5,0.3,1,Stk,455 verify,6,av,Projektor|Beamer|projector
+E-MIXER,,IfcFlowController,Mischpult,Mixing desk,Z-TECH,6.0,18.5,2.0,1.2,0.8,0.3,1,Stk,455 verify,,av,Mischpult|Tonpult|mixer|mixing desk
+E-CABLETRAY,,IfcCableCarrierSegment,Kabeltrasse,Cable tray,Z-TECH,0.3,4.0,5.0,0.3,16.0,0.1,16,m,444 verify,,default,Kabelkanal|Kabeltrasse|Trasse|cable tray
+E-ROW-A,,IfcFurniture,Stuhlreihe A,Seat row A,Z-AUDIENCE,2.0,6.0,0.0,10.0,0.9,1.0,20,Stk,610 verify,4,seat_row,Reihe A|erste Reihe|row A|first row
+E-ROW-B,,IfcFurniture,Stuhlreihe B,Seat row B,Z-AUDIENCE,2.0,7.0,0.15,10.0,0.9,1.0,20,Stk,610 verify,,seat_row,Reihe B|zweite Reihe|row B
+E-ROW-C,,IfcFurniture,Stuhlreihe C,Seat row C,Z-AUDIENCE,2.0,8.0,0.3,10.0,0.9,1.0,20,Stk,610 verify,,seat_row,Reihe C|dritte Reihe|row C
+E-ROW-D,,IfcFurniture,Stuhlreihe D,Seat row D,Z-AUDIENCE,2.0,9.0,0.45,10.0,0.9,1.0,20,Stk,610 verify,,seat_row,Reihe D|vierte Reihe|row D
+E-ROW-E,,IfcFurniture,Stuhlreihe E,Seat row E,Z-AUDIENCE,2.0,10.0,0.6,10.0,0.9,1.0,20,Stk,610 verify,,seat_row,Reihe E|fünfte Reihe|row E
+E-ROW-F,,IfcFurniture,Stuhlreihe F,Seat row F,Z-AUDIENCE,2.0,11.0,0.75,10.0,0.9,1.0,20,Stk,610 verify,,seat_row,Reihe F|sechste Reihe|row F
+E-ROW-G,,IfcFurniture,Stuhlreihe G,Seat row G,Z-AUDIENCE,2.0,12.0,0.9,10.0,0.9,1.0,20,Stk,610 verify,,seat_row,Reihe G|siebte Reihe|row G
+E-ROW-H,,IfcFurniture,Stuhlreihe H,Seat row H,Z-AUDIENCE,2.0,13.0,1.05,10.0,0.9,1.0,20,Stk,610 verify,,seat_row,Reihe H|achte Reihe|letzte Reihe|row H|last row
+E-FLOOR-AUD,,IfcCovering,Bodenbelag Saal,Hall floor finish,Z-AUDIENCE,0.0,4.0,0.0,14.0,12.0,0.02,168,m2,352 verify,,floor,Saalboden|Bodenbelag|Teppich|floor|carpet
+E-WALL-E,,IfcWall,Wand Ost,East wall,Z-AUDIENCE,13.7,0.0,0.0,0.3,20.0,6.0,120,m2,345 verify,,wall,Ostwand|rechte Wand|east wall|right wall
+E-WALL-W,,IfcWall,Wand West,West wall,Z-AUDIENCE,0.0,0.0,0.0,0.3,20.0,6.0,120,m2,345 verify,,wall,Westwand|linke Wand|west wall|left wall
+E-PANELS-E,,IfcCovering,Akustikpaneele Ost,Acoustic panels east,Z-AUDIENCE,13.6,5.0,1.5,0.1,12.0,3.0,36,m2,345 verify,,default,Akustikpaneele rechts|Paneele Ost|Akustik Ost|acoustic panels east
+E-PANELS-W,,IfcCovering,Akustikpaneele West,Acoustic panels west,Z-AUDIENCE,0.3,5.0,1.5,0.1,12.0,3.0,36,m2,345 verify,,default,Akustikpaneele links|Paneele West|Akustik West|acoustic panels west
+E-CEILING,,IfcCovering,Akustikdecke,Acoustic ceiling,Z-AUDIENCE,0.0,4.0,6.0,14.0,16.0,0.05,224,m2,353 verify,,default,Decke|Deckenpaneele|ceiling
+E-EMLIGHT,,IfcLightFixture,Notbeleuchtung,Emergency lighting,Z-AUDIENCE,0.0,0.0,2.5,14.0,20.0,0.1,8,Stk,445 verify,,lighting,Notlicht|Notleuchten|Fluchtwegleuchten|emergency lights
+E-WALL-S,,IfcWall,Wand Süd (Rückwand),South wall (back),Z-ENTRANCE,0.0,19.7,0.0,14.0,0.3,6.0,84,m2,345 verify,,wall,Rückwand|Südwand|back wall
+E-DOOR-1,,IfcDoor,Tür links,Door left,Z-ENTRANCE,2.0,19.7,0.0,1.2,0.3,2.2,1,Stk,344 verify,7,default,Tür links|linke Tür|Eingangstür|left door
+E-DOOR-2,,IfcDoor,Tür rechts,Door right,Z-ENTRANCE,10.8,19.7,0.0,1.2,0.3,2.2,1,Stk,344 verify,,default,Tür rechts|rechte Tür|Notausgang|right door

@@ -1,0 +1,16 @@
+oz,lot,short_text,qty,unit,unit_price,din276
+01.01.0010,Ausbau,Baustelleneinrichtung,1,psch,1800,390 verify
+01.01.0020,Ausbau,Bestuhlung demontieren und entsorgen,160,Stk,18,610 verify
+01.02.0010,Ausbau,Bodenbelag Saal Nadelvlies verlegen,168,m2,42,352 verify
+01.02.0020,Ausbau,Bühnenboden Hartholz schleifen und versiegeln,48,m2,38,352 verify
+01.03.0010,Ausbau,Akustikpaneele Wand liefern und montieren,72,m2,145,345 verify
+01.03.0020,Ausbau,Akustikdecke Mineralfaser,224,m2,68,353 verify
+01.04.0010,Ausbau,Wandflächen grundieren und streichen,408,m2,14,345 verify
+01.05.0010,Ausbau,Bühne Unterkonstruktion und Beplankung,48,m2,210,381 verify
+01.05.0020,Ausbau,Bühnentreppe und Vorhang,1,psch,4200,381 verify
+01.06.0010,Ausbau,Bestuhlung neu liefern und montieren,160,Stk,265,610 verify
+02.01.0010,TGA,Licht-Traverse inkl. Scheinwerfer,24,m,520,445 verify
+02.01.0020,TGA,Notbeleuchtung,8,Stk,310,445 verify
+02.01.0030,TGA,Kabeltrasse,16,m,45,444 verify
+03.01.0010,AV,Projektionsleinwand und Beamer,1,psch,9800,455 verify
+03.01.0020,AV,Beschallung (Lautsprecher und Mischpult),1,psch,7400,455 verify

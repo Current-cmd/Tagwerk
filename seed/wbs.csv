@@ -1,0 +1,15 @@
+wbs,name
+1,Vorbereitung
+1.1,Baustelle
+1.2,Rückbau
+2,Ausbau
+2.1,Boden
+2.2,Akustik
+2.3,Bühne
+2.4,Maler
+2.5,Bestuhlung
+3,Technik (TGA/AV)
+3.1,Elektro
+3.2,AV
+4,Abschluss
+4.1,Abnahme

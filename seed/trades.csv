@@ -1,0 +1,9 @@
+trade_id,name,rate_eur_h
+T-RUECKBAU,Rückbau,48
+T-BODEN,Bodenleger,55
+T-TROCKENBAU,Trockenbau,58
+T-ELEKTRO,Elektro,62
+T-AV,AV-Technik,70
+T-TISCHLER,Tischler,60
+T-MALER,Maler,50
+T-BAULEITUNG,Bauleitung,85
