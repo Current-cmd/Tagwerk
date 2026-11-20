@@ -1,0 +1,181 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "tagwerk/structured.schema.json",
+  "title": "structured",
+  "type": "object",
+  "properties": {
+    "capture_id": {
+      "type": "string",
+      "minLength": 1,
+      "description": "End-to-end key, idempotent across retries"
+    },
+    "labour_present": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "trade": {
+            "type": "string"
+          },
+          "count": {
+            "type": "integer"
+          }
+        },
+        "required": [
+          "trade",
+          "count"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "absences": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "trade": {
+            "type": "string"
+          },
+          "count": {
+            "type": "integer"
+          },
+          "reason": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "trade",
+          "count",
+          "reason"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "material_delivered": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "qty": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "unit": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "name",
+          "qty",
+          "unit"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "work_done": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "element_ids": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "activity_id": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "state_proposed": {
+            "type": "string"
+          },
+          "evidence": {
+            "enum": [
+              "voice",
+              "vision",
+              "both"
+            ]
+          },
+          "quote": {
+            "type": "string"
+          },
+          "t": {
+            "type": [
+              "number",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "element_ids",
+          "activity_id",
+          "state_proposed",
+          "evidence",
+          "quote",
+          "t"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "special_events": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "enum": [
+              "delay",
+              "defect",
+              "safety",
+              "weather",
+              "other"
+            ]
+          },
+          "text": {
+            "type": "string"
+          },
+          "severity": {
+            "enum": [
+              "low",
+              "medium",
+              "high"
+            ]
+          }
+        },
+        "required": [
+          "type",
+          "text",
+          "severity"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "unmatched": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    }
+  },
+  "required": [
+    "capture_id",
+    "labour_present",
+    "absences",
+    "material_delivered",
+    "work_done",
+    "special_events",
+    "unmatched"
+  ],
+  "additionalProperties": false
+}

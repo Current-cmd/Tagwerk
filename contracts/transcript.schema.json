@@ -1,0 +1,45 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "tagwerk/transcript.schema.json",
+  "title": "transcript",
+  "type": "object",
+  "properties": {
+    "capture_id": {
+      "type": "string",
+      "minLength": 1,
+      "description": "End-to-end key, idempotent across retries"
+    },
+    "lang": {
+      "type": "string"
+    },
+    "segments": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "start": {
+            "type": "number"
+          },
+          "end": {
+            "type": "number"
+          },
+          "text": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "start",
+          "end",
+          "text"
+        ],
+        "additionalProperties": false
+      }
+    }
+  },
+  "required": [
+    "capture_id",
+    "lang",
+    "segments"
+  ],
+  "additionalProperties": false
+}

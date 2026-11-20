@@ -1,0 +1,29 @@
+{
+  "capture_id": "cap-demo-001",
+  "zone_id": "Z-STAGE",
+  "weather": {
+    "tempC": 6.5,
+    "precipMm": 0.0,
+    "windKmh": 11.0,
+    "source": "open-meteo"
+  },
+  "candidates": {
+    "elements": [
+      {
+        "id": "E-ROW-A",
+        "name_de": "Stuhlreihe A",
+        "name_en": "Seat row A",
+        "aliases": [
+          "Reihe A",
+          "row A"
+        ]
+      }
+    ],
+    "activities": [
+      {
+        "id": "A1080",
+        "name": "Bestuhlung neu"
+      }
+    ]
+  }
+}

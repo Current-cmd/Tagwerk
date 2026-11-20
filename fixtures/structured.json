@@ -1,0 +1,37 @@
+{
+  "capture_id": "cap-demo-001",
+  "labour_present": [
+    {
+      "trade": "Trockenbau",
+      "count": 2
+    }
+  ],
+  "absences": [
+    {
+      "trade": "Trockenbau",
+      "count": 2,
+      "reason": "krank"
+    }
+  ],
+  "material_delivered": [],
+  "work_done": [
+    {
+      "element_ids": [
+        "E-ROW-A"
+      ],
+      "activity_id": "A1080",
+      "state_proposed": "installed",
+      "evidence": "both",
+      "quote": "Stuhlreihe A montiert",
+      "t": 2.0
+    }
+  ],
+  "special_events": [
+    {
+      "type": "delay",
+      "text": "Two drywall workers sick",
+      "severity": "medium"
+    }
+  ],
+  "unmatched": []
+}

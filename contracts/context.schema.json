@@ -1,0 +1,115 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "tagwerk/context.schema.json",
+  "title": "context",
+  "type": "object",
+  "properties": {
+    "capture_id": {
+      "type": "string",
+      "minLength": 1,
+      "description": "End-to-end key, idempotent across retries"
+    },
+    "zone_id": {
+      "type": "string"
+    },
+    "weather": {
+      "type": "object",
+      "properties": {
+        "tempC": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "precipMm": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "windKmh": {
+          "type": [
+            "number",
+            "null"
+          ]
+        },
+        "source": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "tempC",
+        "precipMm",
+        "windKmh",
+        "source"
+      ],
+      "additionalProperties": false
+    },
+    "candidates": {
+      "type": "object",
+      "properties": {
+        "elements": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "name_de": {
+                "type": "string"
+              },
+              "name_en": {
+                "type": "string"
+              },
+              "aliases": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              }
+            },
+            "required": [
+              "id",
+              "name_de",
+              "name_en",
+              "aliases"
+            ],
+            "additionalProperties": false
+          }
+        },
+        "activities": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "name": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "name"
+            ],
+            "additionalProperties": false
+          }
+        }
+      },
+      "required": [
+        "elements",
+        "activities"
+      ],
+      "additionalProperties": false
+    }
+  },
+  "required": [
+    "capture_id",
+    "zone_id",
+    "weather",
+    "candidates"
+  ],
+  "additionalProperties": false
+}

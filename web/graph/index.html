@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Tagwerk · Live graph</title>
+<script src="https://unpkg.com/vis-network@9.1.9/standalone/umd/vis-network.min.js"></script>
+<style>
+  html, body { margin: 0; height: 100%; font-family: system-ui, sans-serif; background: #0d1117; color: #e6edf3; }
+  #bar { padding: 8px 14px; display: flex; gap: 16px; align-items: center; }
+  #dot { width: 10px; height: 10px; border-radius: 50%; background: #f85149; display: inline-block; }
+  #net { position: absolute; top: 40px; bottom: 0; left: 0; right: 0; }
+</style>
+</head>
+<body>
+<div id="bar"><span><span id="dot"></span> server</span><span id="step"></span></div>
+<div id="net"></div>
+<script>
+const COLORS = { Capture: '#1f6feb', Observation: '#8b949e', Element: '#6e7681', Activity: '#a371f7',
+                 BoQPosition: '#d29922', Zone: '#3fb950', Event: '#f85149', WeatherReading: '#58a6ff' };
+const STATE_COLOR = { CONFIRMED: '#3fb950', PROPOSES: '#d29922' };
+const nodes = new vis.DataSet(), edges = new vis.DataSet();
+const net = new vis.Network(document.getElementById('net'), { nodes, edges }, {
+  nodes: { shape: 'dot', size: 14, font: { color: '#e6edf3' } },
+  edges: { arrows: 'to', color: '#30363d' },
+  physics: { stabilization: false, barnesHut: { springLength: 120 } },
+});
+const label = (n) => (n.props && (n.props.name_de || n.props.label || n.props.name)) || n.id;
+function upsert(n) {
+  nodes.update({ id: n.id, label: label(n), group: n.label, color: COLORS[n.label] || '#8b949e' });
+}
+// initial snapshot
+fetch('/api/graph').then(r => r.json()).then(g => {
+  g.nodes.forEach(upsert);
+  g.edges.forEach(e => edges.update({ id: e.src + e.rel + e.dst, from: e.src, to: e.dst,
+                                       dashes: e.rel === 'PROPOSES' || e.rel === 'LIKELY_IS' }));
+});
+// live events
+function connect() {
+  const ws = new WebSocket((location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host + '/events');
+  ws.onopen = () => document.getElementById('dot').style.background = '#3fb950';
+  ws.onclose = () => { document.getElementById('dot').style.background = '#f85149'; setTimeout(connect, 2000); };
+  ws.onmessage = (m) => {
+    const ev = JSON.parse(m.data);
+    if (ev.type === 'status') { document.getElementById('step').textContent = ev.id + ': ' + ev.props.step; return; }
+    if (ev.type === 'node') {
+      upsert(ev);
+      const cap = ev.id.includes(':') ? ev.id.split(':')[0] : null;  // observation -> its capture
+      if (cap) edges.update({ id: cap + ev.id, from: cap, to: ev.id });
+    }
+    if (ev.type === 'update' && ev.label === 'Element') {
+      nodes.update({ id: ev.id, label: ev.id + ' · ' + ev.props.state, color: STATE_COLOR[ev.props.via] || '#6e7681' });
+    }
+  };
+}
+connect();
+</script>
+</body>
+</html>

@@ -1,0 +1,60 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tagwerk · Upload</title>
+<style>
+  body { font-family: system-ui, sans-serif; max-width: 520px; margin: 24px auto; padding: 0 16px; color: #1d1d1f; }
+  label { display: block; margin: 14px 0 4px; font-weight: 600; }
+  select, input, textarea, button { width: 100%; font-size: 16px; padding: 10px; box-sizing: border-box; }
+  button { margin-top: 18px; background: #1f6feb; color: #fff; border: 0; border-radius: 8px; }
+  progress { width: 100%; margin-top: 12px; }
+  #status { margin-top: 12px; white-space: pre-wrap; }
+</style>
+</head>
+<body>
+<h1>Tagwerk</h1>
+<form id="f">
+  <label for="zone">Zone</label>
+  <select id="zone" name="zone_id" required></select>
+  <label for="lang">Sprache / Language</label>
+  <select id="lang" name="lang">
+    <option value="auto">Auto</option><option value="de">Deutsch</option><option value="en">English</option>
+  </select>
+  <label for="files">Video / Fotos</label>
+  <input id="files" name="files" type="file" accept="video/*,image/*,audio/*" multiple required>
+  <label for="note">Notiz (optional)</label>
+  <textarea id="note" name="note" rows="2"></textarea>
+  <button type="submit">Hochladen / Upload</button>
+  <progress id="p" value="0" max="100" hidden></progress>
+</form>
+<div id="status"></div>
+<script>
+const zoneSel = document.getElementById('zone');
+fetch('/zones').then(r => r.json()).then(zs => {
+  zs.forEach(z => zoneSel.add(new Option(z.name, z.id)));
+  try { const last = localStorage.getItem('tagwerk.zone'); if (last) zoneSel.value = last; } catch (e) {}
+});
+let captureId = null;  // reused on retry so the server never duplicates a capture
+document.getElementById('f').addEventListener('submit', ev => {
+  ev.preventDefault();
+  const fd = new FormData(ev.target);
+  captureId = captureId || ('cap-' + Math.random().toString(16).slice(2, 12));
+  fd.append('capture_id', captureId);
+  try { localStorage.setItem('tagwerk.zone', zoneSel.value); } catch (e) {}
+  const p = document.getElementById('p'), st = document.getElementById('status');
+  const xhr = new XMLHttpRequest();
+  xhr.open('POST', '/captures');
+  p.hidden = false; p.value = 0; st.textContent = 'Lädt hoch…';
+  xhr.upload.onprogress = e => { if (e.lengthComputable) p.value = 100 * e.loaded / e.total; };
+  xhr.onload = () => {
+    if (xhr.status === 200) { st.textContent = '✓ ' + xhr.responseText; captureId = null; ev.target.reset(); }
+    else st.textContent = 'Fehler ' + xhr.status + ' – nochmal versuchen (gleiche ID)';
+  };
+  xhr.onerror = () => { st.textContent = 'Netzwerkfehler – nochmal versuchen (gleiche ID)'; };
+  xhr.send(fd);
+});
+</script>
+</body>
+</html>

@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<title>Tagwerk · Bauleiter dashboard</title>
+<style>
+  body { font-family: system-ui, sans-serif; margin: 24px; color: #1d1d1f; }
+  table { border-collapse: collapse; width: 100%; max-width: 900px; }
+  th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid #e5e5e5; }
+  .late { color: #c62828; font-weight: 600; }
+</style>
+</head>
+<body>
+<h1>Tagesbericht <span id="date"></span></h1>
+<!-- TODO(feat/dashboard): KPI strip, today's captures, labour, weather, EV curve (ECharts), zone grid -->
+<table>
+  <thead><tr><th>Activity</th><th>% complete</th><th>Baseline finish</th><th>Forecast finish</th><th>Delay (d)</th><th>EV (€)</th></tr></thead>
+  <tbody id="rows"></tbody>
+</table>
+<h2>Events</h2>
+<ul id="events"></ul>
+<script>
+fetch('/api/dashboard').then(r => r.json()).then(d => {
+  document.getElementById('date').textContent = d.date;
+  const rows = document.getElementById('rows');
+  d.activities.forEach(a => {
+    const tr = document.createElement('tr');
+    [a.name, a.pct + ' %', a.baseline_finish, a.forecast_finish, a.delay_d, a.ev_eur.toLocaleString('de-DE')]
+      .forEach((v, i) => { const td = document.createElement('td'); td.textContent = v;
+                           if (i === 4 && a.delay_d > 0) td.className = 'late'; tr.appendChild(td); });
+    rows.appendChild(tr);
+  });
+  const ul = document.getElementById('events');
+  d.events.forEach(e => { const li = document.createElement('li'); li.textContent = `[${e.severity}] ${e.type}: ${e.text}`; ul.appendChild(li); });
+});
+</script>
+</body>
+</html>

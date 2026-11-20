@@ -1,0 +1,80 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "tagwerk/dashboard.schema.json",
+  "title": "dashboard",
+  "type": "object",
+  "properties": {
+    "date": {
+      "type": "string",
+      "format": "date"
+    },
+    "activities": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "pct": {
+            "type": "number"
+          },
+          "baseline_finish": {
+            "type": "string"
+          },
+          "forecast_finish": {
+            "type": "string"
+          },
+          "delay_d": {
+            "type": "number"
+          },
+          "ev_eur": {
+            "type": "number"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "pct",
+          "baseline_finish",
+          "forecast_finish",
+          "delay_d",
+          "ev_eur"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "events": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string"
+          },
+          "text": {
+            "type": "string"
+          },
+          "severity": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "type",
+          "text",
+          "severity"
+        ],
+        "additionalProperties": false
+      }
+    }
+  },
+  "required": [
+    "date",
+    "activities",
+    "events"
+  ],
+  "additionalProperties": false
+}

@@ -1,0 +1,21 @@
+{
+  "date": "2026-11-26",
+  "activities": [
+    {
+      "id": "A1080",
+      "name": "Bestuhlung neu",
+      "pct": 60.0,
+      "baseline_finish": "2026-11-26",
+      "forecast_finish": "2026-11-27",
+      "delay_d": 1,
+      "ev_eur": 8400.0
+    }
+  ],
+  "events": [
+    {
+      "type": "delay",
+      "text": "Two drywall workers sick",
+      "severity": "medium"
+    }
+  ]
+}

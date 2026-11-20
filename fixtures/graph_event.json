@@ -1,0 +1,8 @@
+{
+  "type": "node",
+  "label": "Capture",
+  "id": "cap-demo-001",
+  "props": {
+    "zone_id": "Z-STAGE"
+  }
+}

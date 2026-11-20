@@ -1,0 +1,15 @@
+{
+  "capture_id": "cap-demo-001",
+  "ts_device": "2026-11-26T09:12:00+01:00",
+  "ts_server": "2026-11-26T08:12:03Z",
+  "gps": null,
+  "zone_id": "Z-STAGE",
+  "lang": "de",
+  "media": [
+    {
+      "type": "video",
+      "path": "data/captures/cap-demo-001/walk.mp4"
+    }
+  ],
+  "note": "Bühne und Reihe A"
+}

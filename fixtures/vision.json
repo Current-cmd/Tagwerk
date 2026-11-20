@@ -1,0 +1,59 @@
+{
+  "capture_id": "cap-demo-001",
+  "frames": [
+    {
+      "t": 2.0,
+      "media_path": "frames/0002.jpg",
+      "objects": [
+        {
+          "obj_id": "o1",
+          "label": "chair",
+          "bbox": [
+            120,
+            340,
+            260,
+            520
+          ],
+          "conf": 0.81,
+          "marker_id": null,
+          "source": "coco"
+        },
+        {
+          "obj_id": "o2",
+          "label": "aruco",
+          "bbox": [
+            300,
+            200,
+            360,
+            260
+          ],
+          "conf": 1.0,
+          "marker_id": 7,
+          "source": "marker"
+        },
+        {
+          "obj_id": "o3",
+          "label": "stage",
+          "bbox": [
+            0,
+            100,
+            900,
+            330
+          ],
+          "conf": 0.44,
+          "marker_id": null,
+          "source": "world"
+        }
+      ],
+      "triplets": [
+        {
+          "s": "o1",
+          "rel": "in front of",
+          "o": "o3",
+          "score": 0.62,
+          "source": "model"
+        }
+      ]
+    }
+  ]
+}

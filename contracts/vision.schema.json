@@ -1,0 +1,123 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "tagwerk/vision.schema.json",
+  "title": "vision",
+  "type": "object",
+  "properties": {
+    "capture_id": {
+      "type": "string",
+      "minLength": 1,
+      "description": "End-to-end key, idempotent across retries"
+    },
+    "frames": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "t": {
+            "type": [
+              "number",
+              "null"
+            ]
+          },
+          "media_path": {
+            "type": "string"
+          },
+          "objects": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "obj_id": {
+                  "type": "string"
+                },
+                "label": {
+                  "type": "string"
+                },
+                "bbox": {
+                  "type": "array",
+                  "items": {
+                    "type": "number"
+                  },
+                  "minItems": 4,
+                  "maxItems": 4
+                },
+                "conf": {
+                  "type": "number"
+                },
+                "marker_id": {
+                  "type": [
+                    "integer",
+                    "null"
+                  ]
+                },
+                "source": {
+                  "enum": [
+                    "coco",
+                    "world",
+                    "marker"
+                  ]
+                }
+              },
+              "required": [
+                "obj_id",
+                "label",
+                "bbox",
+                "conf",
+                "marker_id",
+                "source"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "triplets": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "s": {
+                  "type": "string"
+                },
+                "rel": {
+                  "type": "string"
+                },
+                "o": {
+                  "type": "string"
+                },
+                "score": {
+                  "type": "number"
+                },
+                "source": {
+                  "enum": [
+                    "model",
+                    "geometry"
+                  ]
+                }
+              },
+              "required": [
+                "s",
+                "rel",
+                "o",
+                "score",
+                "source"
+              ],
+              "additionalProperties": false
+            }
+          }
+        },
+        "required": [
+          "t",
+          "media_path",
+          "objects",
+          "triplets"
+        ],
+        "additionalProperties": false
+      }
+    }
+  },
+  "required": [
+    "capture_id",
+    "frames"
+  ],
+  "additionalProperties": false
+}

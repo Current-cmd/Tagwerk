@@ -1,0 +1,88 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "tagwerk/capture.schema.json",
+  "title": "capture",
+  "type": "object",
+  "properties": {
+    "capture_id": {
+      "type": "string",
+      "minLength": 1,
+      "description": "End-to-end key, idempotent across retries"
+    },
+    "ts_device": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "ts_server": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "gps": {
+      "type": [
+        "object",
+        "null"
+      ],
+      "properties": {
+        "lat": {
+          "type": "number"
+        },
+        "lon": {
+          "type": "number"
+        },
+        "acc": {
+          "type": [
+            "number",
+            "null"
+          ]
+        }
+      }
+    },
+    "zone_id": {
+      "type": "string"
+    },
+    "lang": {
+      "enum": [
+        "de",
+        "en",
+        "auto"
+      ]
+    },
+    "media": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "enum": [
+              "photo",
+              "audio",
+              "video"
+            ]
+          },
+          "path": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "type",
+          "path"
+        ],
+        "additionalProperties": false
+      }
+    },
+    "note": {
+      "type": [
+        "string",
+        "null"
+      ]
+    }
+  },
+  "required": [
+    "capture_id",
+    "ts_server",
+    "zone_id",
+    "lang",
+    "media"
+  ],
+  "additionalProperties": false
+}

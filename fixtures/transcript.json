@@ -1,0 +1,16 @@
+{
+  "capture_id": "cap-demo-001",
+  "lang": "de",
+  "segments": [
+    {
+      "start": 0.0,
+      "end": 4.2,
+      "text": "Stuhlreihe A montiert."
+    },
+    {
+      "start": 4.2,
+      "end": 7.0,
+      "text": "Zwei Mann vom Trockenbau krank."
+    }
+  ]
+}

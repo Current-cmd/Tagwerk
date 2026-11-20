@@ -1,0 +1,3 @@
+# Keep the Pascal-compatible PyTorch build. Use with:
+#   uv pip install -e ".[gpu]" -c constraints-cu126.txt --extra-index-url https://download.pytorch.org/whl/cu126
+torch==2.14.1

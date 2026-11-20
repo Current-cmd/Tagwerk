@@ -1,0 +1,32 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "tagwerk/graph_event.schema.json",
+  "title": "graph_event",
+  "type": "object",
+  "properties": {
+    "type": {
+      "enum": [
+        "node",
+        "edge",
+        "update",
+        "status"
+      ]
+    },
+    "label": {
+      "type": "string"
+    },
+    "id": {
+      "type": "string"
+    },
+    "props": {
+      "type": "object"
+    }
+  },
+  "required": [
+    "type",
+    "label",
+    "id",
+    "props"
+  ],
+  "additionalProperties": false
+}

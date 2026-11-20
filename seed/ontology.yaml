@@ -1,0 +1,66 @@
+# Tagwerk ontology (skeleton). Target format: Neo4j Ontology Graph Specification
+# (https://neo4j.com/docs/ontology-graph-spec/) — align keys with its JSON Schema before validating.
+# Terms reuse BOT (https://w3id.org/bot), DiCon (https://w3id.org/digitalconstruction),
+# GAEB DA XML field names and DIN 276 cost groups. English labels; German in name_de / aliases.
+
+nodeTypes:
+  Project:        {key: id, sameAs: dicon:Project, properties: {name: string, client: string}}
+  Site:           {key: id, sameAs: bot:Site, properties: {name: string, lat: float, lon: float}}
+  Building:       {key: id, sameAs: bot:Building, properties: {name: string}}
+  Storey:         {key: id, sameAs: bot:Storey, properties: {name: string, elevation: float}}
+  Zone:           {key: id, sameAs: bot:Zone, properties: {name: string, kind: string}}
+  Element:
+    key: id                       # IFC GlobalId when a model exists
+    sameAs: bot:Element
+    properties: {name_de: string, name_en: string, type: string, ifc_class: string, din276: string,
+                 qty: float, unit: string, pct: integer, state: string, aliases: "string[]"}
+  Marker:         {key: id, properties: {dictionary: string, code: integer}}
+  BoQPosition:    {key: id, sameAs: "gaeb:Item", properties: {oz: string, short_text: string, qty: float,
+                   unit: string, unit_price: float, din276: string}}
+  Activity:       {key: id, sameAs: dicon:Activity, properties: {p6_object_id: string, name: string,
+                   planned_start: date, planned_finish: date, pct: float, forecast_finish: date}}
+  WBS:            {key: id, properties: {code: string, name: string}}
+  Trade:          {key: id, sameAs: dicon:Organization, properties: {name: string, rate_eur_h: float}}
+  Actor:          {key: id, sameAs: dicon:Agent, properties: {name: string, role: "SiteManager|Labour|Bauleiter"}}
+  Capture:        {key: id, properties: {ts: datetime, zone_id: string}}
+  Observation:    {key: id, properties: {label: string, conf: float, bbox: "float[]", frame_t: float}}
+  Proposal:       {key: id, properties: {state: string, conf: float}}
+  Note:           {key: id, properties: {text: string, lang: string}}
+  WeatherReading: {key: id, properties: {tempC: float, precipMm: float, windKmh: float, source: string}}
+  Event:          {key: id, properties: {type: "delay|defect|safety|weather|absence|other", text: string,
+                   severity: string, trade: string, count: integer, date: date}}
+  DailyReport:    {key: id, properties: {date: date, summary: string, approved: boolean}}
+
+relationshipTypes:
+  # spatial (BOT)
+  HAS_SITE: {from: Project, to: Site}
+  HAS_BUILDING: {from: Site, to: Building}
+  HAS_STOREY: {from: Building, to: Storey}
+  HAS_SPACE: {from: Storey, to: Zone}
+  CONTAINS_ELEMENT: {from: Zone, to: Element}
+  ADJACENT_ELEMENT: {from: Element, to: Element}
+  # contract and schedule (ICDD-style linksets)
+  SCHEDULED_AS: {from: BoQPosition, to: Activity, properties: {share: float}}
+  QUANTIFIES: {from: BoQPosition, to: Element, properties: {share: float}}
+  BUILDS: {from: Activity, to: Element}
+  IN_WBS: {from: Activity, to: WBS}
+  PRECEDES: {from: Activity, to: Activity, properties: {type: string, lag_d: float}}
+  # actors
+  RESPONSIBLE_FOR: {from: Actor, to: Activity}       # site manager
+  MEMBER_OF: {from: Actor, to: Trade}                # labour
+  ASSIGNED_TO: {from: Actor, to: Activity}
+  RECEIVES: {from: Actor, to: DailyReport}           # Bauleiter
+  AFFECTS: {from: Event, to: Activity}               # e.g. absence
+  # evidence
+  CAPTURED: {from: Actor, to: Capture}
+  IN_ZONE: {from: Capture, to: Zone}
+  HAS_NOTE: {from: Capture, to: Note}
+  UNDER: {from: Capture, to: WeatherReading}
+  DETECTED: {from: Capture, to: Observation}
+  REL: {from: Observation, to: Observation, properties: {predicate: string, score: float}}
+  LIKELY_IS: {from: Observation, to: Element, properties: {conf: float}}
+  TAGS: {from: Marker, to: Element}
+  PROPOSES: {from: Capture, to: Element, properties: {state: string, quote: string}}
+  CONFIRMED: {from: Capture, to: Element, properties: {state: string, quote: string}}
+  RAISED: {from: Capture, to: Event}
+  SUMMARISES: {from: DailyReport, to: Capture}
