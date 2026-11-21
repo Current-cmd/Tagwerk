@@ -208,3 +208,110 @@ def test_replays_curated_order_and_fallback_filter(client):
     assert [e["id"] for e in r] == ["a-first", "b-second", "c-empty"]  # dt-, replay-, scan-, cap-ui- are hidden
     labels = {e["id"]: e["label"] for e in r}
     assert labels["a-first"] == "Erste Notiz" and len(labels["b-second"]) <= 61 and labels["c-empty"] == "c-empty"
+
+
+# ---------------------------------------------------------------- video view: kept media, /media fallback, timed replay
+
+SEG_TEXT = "Stuhlreihe A ist montiert, zwei Mann vom Trockenbau sind heute krank, die hintere Traverse ist verkabelt"
+
+
+def _cached_demo(cid="cap-vid", with_media=True):
+    import json
+
+    from tagwerk.config import get_settings
+
+    d = get_settings().cache_dir / cid
+    (d / "media").mkdir(parents=True, exist_ok=True)
+    w = lambda n, o: (d / n).write_text(json.dumps(o, ensure_ascii=False), encoding="utf-8")  # noqa: E731
+    w("speech.json", {"capture_id": cid, "lang": "de", "segments": [{"start": 0.0, "end": 6.6, "text": SEG_TEXT}]})
+    w("vision.json", {"capture_id": cid, "frames": []})
+    w("structured.json", {"capture_id": cid, "labour_present": [], "absences": [], "material_delivered": [], "unmatched": [],
+                          "special_events": [], "work_done": [
+                              {"element_ids": ["E-ROW-A"], "activity_id": None, "state_proposed": "installed",
+                               "evidence": "voice", "quote": "Stuhlreihe A ist montiert", "t": 2.0}]})
+    w("capture.json", {"capture_id": cid, "zone_id": "Z-AUDIENCE", "note": "typed words", "ts": "2026-11-26T09:00:00Z"})
+    if with_media:
+        (d / "media" / "demo.mp4").write_bytes(b"\x00\x00\x00 ftypmp42")
+        (d / "media" / "a.jpg").write_bytes(b"\xff\xd8\xff")
+    (get_settings().cache_dir / "secret.txt").write_text("nope", encoding="utf-8")
+    return d
+
+
+def test_media_served_from_cache_when_uploads_are_gone_and_traversal_blocked(client):
+    _cached_demo()
+    assert client.get("/media/cap-vid/demo.mp4").status_code == 200
+    for bad in ("../secret.txt", "..%2fsecret.txt", "%2e%2e/%2e%2e/secret.txt", "../../secret.txt"):
+        assert client.get(f"/media/cap-vid/{bad}").status_code == 404, bad
+    assert client.get("/media/cap-vid/missing.mp4").status_code == 404
+    assert client.get("/media/../secret.txt").status_code == 404 and client.get("/media/%2e%2e/secret.txt").status_code == 404
+
+
+def test_replays_entry_has_video_photos_note_and_segments(client):
+    from tagwerk.state import get_project
+
+    get_project().meta["demo_replays"] = []  # fall back to "every cached capture"
+    _cached_demo()
+    e = next(x for x in client.get("/api/replays").json() if x["id"] == "cap-vid")
+    assert e["video"] == "/media/cap-vid/demo.mp4" and e["photos"] == ["/media/cap-vid/a.jpg"]
+    assert e["note"] == "typed words" and e["zone_id"] == "Z-AUDIENCE" and e["ts"] == "2026-11-26T09:00:00Z"
+    assert e["segments"] == [{"start": 0.0, "end": 6.6, "text": SEG_TEXT}]
+    _cached_demo("cap-novid", with_media=False)
+    n = next(x for x in client.get("/api/replays").json() if x["id"] == "cap-novid")
+    assert n["video"] is None and n["photos"] == []
+
+
+def test_estimate_t_places_a_quote_inside_its_segment():
+    from tagwerk.pipeline.runner import estimate_t
+
+    tr = {"segments": [{"start": 0.0, "end": 6.6, "text": SEG_TEXT}]}
+    assert estimate_t("Stuhlreihe A ist montiert", tr) == 0.0
+    assert 3.5 < estimate_t("die hintere Traverse ist verkabelt", tr) < 4.5
+    assert estimate_t("nicht gesagt", tr) == 0.0 and estimate_t("x", {"segments": []}) == 0.0
+
+
+def test_sync_replay_publishes_each_change_at_its_time(client, monkeypatch):
+    import tagwerk.pipeline.runner as runner
+
+    _cached_demo()
+    clock = {"t": 1000.0}
+    monkeypatch.setattr(runner, "_clock", lambda: clock["t"])
+
+    async def fake_sleep(s):
+        clock["t"] += s
+
+    monkeypatch.setattr(runner, "_sleep", fake_sleep)
+    runner.REPLAY_PAUSE_S = 0
+    stamps = []
+    real = runner.broker.publish
+
+    async def spy(ev):
+        if ev.get("type") == "edge" and ev.get("label") == "CONFIRMED":
+            stamps.append(clock["t"] - 1000.0)
+        await real(ev)
+
+    monkeypatch.setattr(runner.broker, "publish", spy)
+    r = client.post("/captures", data={"capture_id": "cap-timed", "replay_of": "cap-vid", "sync": "1"})
+    assert r.status_code == 200 and r.json()["status"] == "processed", r.text
+    assert stamps and min(stamps) >= 2.0  # the work item says t=2.0 (video time == time since the POST)
+    stamps.clear()
+    clock["t"] = 1000.0
+    r = client.post("/captures", data={"capture_id": "cap-plain", "replay_of": "cap-vid"})
+    assert r.status_code == 200 and (not stamps or max(stamps) < 1.0)  # without sync nothing waits
+
+
+def test_processed_capture_keeps_its_video_with_the_cache(client, monkeypatch):
+    from tagwerk.config import get_settings
+    from tagwerk.pipeline import speech, vision
+
+    monkeypatch.setattr(speech, "transcribe", lambda cap, derived: {"capture_id": cap["capture_id"], "lang": "de",
+                                                                     "segments": []})
+    monkeypatch.setattr(vision, "analyse", lambda cap, derived: {"capture_id": cap["capture_id"], "frames": []})
+    r = client.post("/captures", data={"zone_id": "Z-AUDIENCE", "capture_id": "cap-keep", "note": "Kratzer an der Bühne"},
+                    files=[("files", ("walk.mp4", b"\x00" * 64, "video/mp4")), ("files", ("a.jpg", b"\xff\xd8", "image/jpeg"))])
+    assert r.status_code == 200, r.text
+    kept = sorted(p.name for p in (get_settings().cache_dir / "cap-keep" / "media").iterdir())
+    assert kept == ["a.jpg", "walk.mp4"]  # index prefixes stripped
+    assert client.get("/media/cap-keep/walk.mp4").status_code == 200
+    import json
+
+    assert json.loads((get_settings().cache_dir / "cap-keep" / "capture.json").read_text())["note"] == "Kratzer an der Bühne"

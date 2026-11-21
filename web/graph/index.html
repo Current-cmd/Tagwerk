@@ -27,9 +27,9 @@
   #replay button { background: #1f6feb; color: #fff; border: 0; border-radius: 6px; padding: 5px 10px; font-size: 13px; cursor: pointer; white-space: nowrap; }
   #replay button:disabled { background: var(--line); color: var(--muted); cursor: default; }
   a { color: #58a6ff; font-size: 14px; text-decoration: none; white-space: nowrap; }
-  #heads { position: absolute; top: 56px; left: 0; right: 0; height: 30px; pointer-events: none; }
+  #heads { position: absolute; top: 56px; left: var(--vw, 0px); right: 0; height: 30px; pointer-events: none; }
   #heads div { position: absolute; transform: translateX(-50%); font-size: 13px; font-weight: 600; letter-spacing: .6px; text-transform: uppercase; color: var(--muted); white-space: nowrap; top: 8px; }
-  #net { position: absolute; top: 86px; bottom: var(--strip); left: 0; right: 0; }
+  #net { position: absolute; top: 86px; bottom: var(--strip); left: var(--vw, 0px); right: 0; }
   #strip { position: absolute; left: 0; right: 0; bottom: 0; height: var(--strip); box-sizing: border-box; border-top: 1px solid #21262d;
            background: var(--panel); padding: 14px 24px; display: flex; gap: 24px; align-items: center; }
   #strip .k { font-size: 12px; text-transform: uppercase; letter-spacing: .8px; color: var(--muted); margin-bottom: 6px; }
@@ -41,6 +41,28 @@
   #seen { width: 420px; flex: none; }
   #seentext { font-size: 17px; color: var(--ink); line-height: 1.4; }
   #seentext .m { color: var(--muted); }
+  #vidtoggle { white-space: nowrap; }
+  #replay select { max-width: 170px; }
+  @media (max-width: 1900px) { #legend { display: none; } }
+  body.vp #heads div { font-size: 10px; letter-spacing: .2px; }
+  #vid { position: absolute; top: 56px; bottom: var(--strip); left: 0; width: var(--vw, 0px); box-sizing: border-box; border-right: 1px solid #21262d; background: var(--panel); overflow: hidden; display: flex; flex-direction: column; padding: 10px 12px; z-index: 3; }
+  #vid[hidden] { display: none; }
+  #vid .vh { display: flex; align-items: center; justify-content: space-between; gap: 8px; font-size: 13px; color: var(--muted); margin-bottom: 8px; }
+  #vid .vh button, #vidtoggle { background: transparent; color: var(--muted); border: 1px solid var(--line); border-radius: 6px; padding: 2px 8px; cursor: pointer; font-size: 13px; }
+  #vidwrap { position: relative; }
+  #vidv[hidden], #notecard[hidden], #vidplay[hidden] { display: none; }
+  #vidv { width: 100%; max-height: 34vh; background: #000; border-radius: 8px; display: block; }
+  #vidplay { position: absolute; inset: 0; margin: auto; width: 150px; height: 44px; background: #1f6feb; color: #fff; border: 0; border-radius: 8px; font-size: 15px; cursor: pointer; }
+  #notecard { background: #0d1117; border: 1px solid var(--line); border-radius: 8px; padding: 12px 14px; font-size: 18px; line-height: 1.4; }
+  #capline { margin: 10px 0; font-size: 19px; line-height: 1.35; min-height: 52px; }
+  #capline.idle { color: var(--muted); font-size: 15px; }
+  #capline mark { background: var(--green); color: #0d1117; border-radius: 4px; padding: 0 3px; }
+  #vid h3 { margin: 6px 0; font-size: 12px; text-transform: uppercase; letter-spacing: .8px; color: var(--muted); font-weight: 600; }
+  #found { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 6px; flex: 1; min-height: 60px; overflow-y: auto; }
+  #notecard { flex: none; max-height: 30vh; overflow-y: auto; }
+  #found li { font-size: 16px; padding: 6px 10px; border-left: 4px solid var(--green); background: #0d1117; border-radius: 6px; animation: in .3s ease-out; }
+  #found li.p { border-left-color: var(--amber); } #found li.e { border-left-color: var(--red); }
+  #found li small { color: var(--muted); margin-right: 8px; font-variant-numeric: tabular-nums; }
   #toast { position: absolute; top: 100px; right: 24px; display: flex; flex-direction: column; gap: 8px; align-items: flex-end; pointer-events: none; }
   #toast div { background: var(--panel); border: 1px solid var(--line); border-left: 4px solid var(--green); border-radius: 8px; padding: 10px 14px; font-size: 17px;
                box-shadow: 0 6px 24px #0008; animation: in .3s ease-out; }
@@ -60,9 +82,18 @@
     <span><i style="background:var(--purple);box-shadow:0 0 0 2px var(--red)"></i>verspätet</span>
     <span><i style="background:#1f6feb"></i>Aufnahme</span>
   </span>
+  <button id="vidtoggle" type="button" hidden title="Video ein-/ausblenden">🎬 Video</button>
   <span id="replay" hidden><select id="replaysel" title="Gespeicherte Aufnahme wiederholen"></select><button id="replaygo" type="button">▶ Abspielen</button></span>
   <label><input type="checkbox" id="details"> Details</label>
   <a href="/dashboard">Dashboard →</a>
+</div>
+<div id="vid" hidden>
+  <div class="vh"><span id="vidtitle"></span><button id="vidclose" type="button" title="Video ausblenden">✕</button></div>
+  <div id="vidwrap"><video id="vidv" playsinline controls preload="auto" hidden></video><button id="vidplay" type="button" hidden>▶ Klick zum Abspielen</button></div>
+  <div id="notecard" hidden></div>
+  <div id="capline" class="idle">–</div>
+  <h3>Erfasst</h3>
+  <ul id="found"></ul>
 </div>
 <div id="heads"></div>
 <div id="net"></div>
@@ -640,24 +671,118 @@ fetch('/health').then(r => r.json()).then(h => { TODAY = h.data_date; }).catch((
   .then(() => snapshot()).then(connect);
 </script>
 <script>
-// ---------------------------------------------------------------- replay picker (cached captures, no GPU needed)
-(async () => {
-  const box = document.getElementById('replay'), sel = document.getElementById('replaysel'), go = document.getElementById('replaygo');
+// ---------------------------------------------------------------- video view + replay picker
+// Left panel: the capture's video (or its typed note), live captions and the running list of what was captured.
+// Replay: the video starts with the POST (sync=1); the server publishes every change at its second of the video.
+(() => {
+  const $ = id => document.getElementById(id);
+  const box = $('vid'), vid = $('vidv'), playBtn = $('vidplay'), note = $('notecard'), cap = $('capline'), found = $('found'),
+        toggle = $('vidtoggle');
+  let session = null, ticker = null, hasContent = false;
+  const mmss = s => (s == null || isNaN(s)) ? '–' : `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(Math.floor(s % 60)).padStart(2, '0')}`;
+  const relayout = () => setTimeout(() => { try { net.redraw(); } catch (e) {} window.dispatchEvent(new Event('resize')); }, 60);
+  function show(on) {
+    box.hidden = !on; document.body.classList.toggle('vp', on);
+    document.documentElement.style.setProperty('--vw', on ? Math.max(360, Math.round(window.innerWidth * 0.38)) + 'px' : '0px');
+    toggle.hidden = !hasContent;
+    relayout();
+  }
+  toggle.onclick = () => show(box.hidden);
+  $('vidclose').onclick = () => show(false);
+  window.addEventListener('resize', () => { if (!box.hidden) document.documentElement.style.setProperty('--vw', Math.max(360, Math.round(window.innerWidth * 0.38)) + 'px'); });
+
+  const clock = () => session ? (session.video ? vid.currentTime : (performance.now() - session.start) / 1000) : 0;
+  function addFound(text, cls = '', t = clock()) {
+    const li = document.createElement('li'); if (cls) li.className = cls;
+    const s = document.createElement('small'); s.textContent = mmss(t); li.append(s, document.createTextNode(text));
+    found.append(li); found.scrollTop = found.scrollHeight;
+  }
+  function caption() {
+    if (!session) return;
+    const t = clock(), segs = session.segs || [];
+    const seg = segs.find(g => t >= g.start && t <= g.end + 0.4);
+    if (!seg) { if (!segs.length) { cap.className = 'idle'; cap.textContent = session.note ? '' : 'Keine Sprache erkannt.'; } return; }
+    cap.className = '';
+    let h = esc(seg.text);
+    session.quotes.forEach(q => { const eq = esc(String(q || '')); if (eq && h.includes(eq) && !h.includes('<mark>' + eq)) h = h.replace(eq, '<mark>' + eq + '</mark>'); });
+    cap.innerHTML = h;
+  }
+  function begin(s, entry) {
+    session = { quotes: [], segs: [], note: null, ...s };
+    found.replaceChildren(); cap.className = 'idle'; cap.textContent = '–'; playBtn.hidden = true;
+    $('vidtitle').textContent = entry.label || entry.id;
+    clearInterval(ticker); ticker = setInterval(caption, 200);
+    hasContent = true; show(true);
+  }
+  function showVideo(url) {
+    vid.hidden = false; note.hidden = true; vid.muted = false; vid.src = url; vid.currentTime = 0;
+  }
+  function showNote(text) { vid.pause(); vid.hidden = true; note.hidden = false; note.textContent = text; }
+  function playVideo() {
+    const p = vid.play();
+    if (p && p.catch) p.catch(() => { vid.muted = true; vid.play().catch(() => { playBtn.hidden = false; }); });
+  }
+  playBtn.onclick = () => { playBtn.hidden = true; vid.muted = false; vid.play().catch(() => {}); };
+
+  // ---- replay picker
+  const sel = $('replaysel'), go = $('replaygo'), rbox = $('replay');
   let list = [];
-  try { list = await (await fetch('/api/replays')).json(); } catch (e) { return; }
-  if (!Array.isArray(list) || !list.length) return;  // nothing cached: the control stays hidden
-  list.forEach(r => sel.add(new Option(r.label || r.id, r.id)));
-  box.hidden = false;
-  go.addEventListener('click', async () => {
+  async function startReplay() {
+    const entry = list.find(r => r.id === sel.value); if (!entry) return;
     go.disabled = sel.disabled = true; go.textContent = 'läuft…';
+    const cid = `replay-ui-${Date.now()}`;
+    begin({ cid, start: performance.now(), video: !!entry.video, segs: entry.segments || [], note: entry.note }, entry);
+    if (entry.video) {  // start the server clock when the picture really moves (loading takes a moment)
+      showVideo(entry.video);
+      const started = new Promise(res => { vid.addEventListener('playing', res, { once: true }); setTimeout(res, 4000); });
+      playVideo(); await started;
+    } else showNote(entry.note || entry.label || entry.id);
     try {
-      const fd = new FormData(); fd.append('replay_of', sel.value);
+      const fd = new FormData(); fd.append('replay_of', entry.id); fd.append('sync', '1'); fd.append('capture_id', cid);
       const r = await fetch('/captures', { method: 'POST', body: fd });
       const body = r.ok ? await r.json() : null;
       toast(r.ok ? `fertig: ${(body.changes || []).length} Änderungen` : `Fehler ${r.status}`, r.ok ? '' : 'e');
     } catch (e) { toast('Fehler: keine Verbindung', 'e'); }
     go.disabled = sel.disabled = false; go.textContent = '▶ Abspielen';
-  });
+  }
+  go.addEventListener('click', startReplay);
+  fetch('/api/replays').then(r => r.json()).then(l => {
+    if (!Array.isArray(l) || !l.length) return;
+    list = l; l.forEach(r => sel.add(new Option(r.label || r.id, r.id))); rbox.hidden = false;
+  }).catch(() => {});
+
+  // ---- what arrives over the websocket
+  async function liveCapture(cid) {  // a new upload finished: show its video and what was captured
+    let r; try { r = await (await fetch(`/captures/${cid}`)).json(); } catch (e) { return; }
+    const v = ((r.capture || {}).media || []).find(m => m.type === 'video');
+    if (!v) return;
+    begin({ cid, start: performance.now(), video: true, segs: (r.transcript || {}).segments || [] }, { id: cid, label: `Aufnahme ${cid}` });
+    showVideo(`/media/${cid}/${v.path.split('/').pop()}`);
+    (r.changes || []).filter(c => ['confirmed', 'proposed', 'unchanged'].includes(c.action)).forEach(c => {
+      session.quotes.push(c.quote);
+      addFound(`${all.nodes.get(c.element_id)?.props?.name_de || c.element_id} → ${de(c.state)}${c.action === 'proposed' ? '?' : ''}`,
+               c.action === 'proposed' ? 'p' : '', c.t);
+    });
+    const st = r.structured || {};
+    (st.absences || []).forEach(a => addFound(`🤒 ${a.count}× ${a.trade} ${a.reason}`, 'e', null));
+    (st.special_events || []).forEach(e => addFound(`${EV_ICON[e.type] || '•'} ${e.text}`, 'e', null));
+  }
+  const orig = onEvent;
+  onEvent = ev => {
+    orig(ev);
+    try {
+      const p = ev.props || {};
+      if (session && ev.type === 'edge' && p.src === session.cid && (ev.label === 'CONFIRMED' || ev.label === 'PROPOSES')) {
+        session.quotes.push(p.quote);
+        addFound(`${all.nodes.get(p.dst)?.props?.name_de || p.dst} → ${de(p.state)}${ev.label === 'PROPOSES' ? '?' : ''}`, ev.label === 'PROPOSES' ? 'p' : '');
+        caption();
+      } else if (session && ev.type === 'node' && ev.label === 'Event' && p.capture === session.cid) {
+        addFound(`${EV_ICON[p.type] || '•'} ${p.name || p.text || ''}`, 'e');
+      } else if (ev.type === 'status' && p.step === 'done' && live && !(session && session.cid === ev.id) && !String(ev.id).startsWith('manual-')) {
+        liveCapture(ev.id);
+      }
+    } catch (e) { console.error('video hook', e); }
+  };
 })();
 </script>
 </body>
