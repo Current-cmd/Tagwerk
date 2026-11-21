@@ -208,6 +208,9 @@ class Project:
                                      "capture_id": None, "initial": True})
         for aid, pct in init.get("manual_pct", {}).items():
             self.activities[aid]["manual_pct"] = float(pct)
+        for aid, act in self.activities.items():  # snapshot states have no date: started on plan (as in _finish_dates)
+            if act["actual_start"] is None and init.get("states") and self.activity_pct(aid) > 0:
+                act["actual_start"] = act["planned_start"].isoformat()
         for day in hist.get("days", []):
             for c in day["captures"]:
                 if upto is not None and c["ts"][:10] > upto:

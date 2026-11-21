@@ -173,3 +173,18 @@ def test_same_defect_on_another_day_is_kept(p):
     p.apply_structured(*_cap("d6", events=[ev]))
     p.apply_structured(*_cap("d7", events=[ev], day="2026-11-27"))
     assert len([e for e in p.events if e["type"] == "defect" and "scheur" in e["text"].lower()]) == 2
+
+
+def test_finished_activity_uses_its_actual_dates():
+    """A1020 was finished in the initial snapshot (on plan, 10.-11.11.); a later capture raising its seat rows must not
+    move its start to 23.11. (start after finish)."""
+    from datetime import date
+
+    from tagwerk.project import SEED_DIR, Project
+
+    p = Project.from_seed(SEED_DIR)
+    p.load_history()
+    fc = p.forecast(date(2026, 11, 26))
+    assert fc["A1020"]["pct"] == 100
+    assert (fc["A1020"]["forecast_start"], fc["A1020"]["forecast_finish"]) == (date(2026, 11, 10), date(2026, 11, 11))
+    assert all(r["forecast_start"] <= r["forecast_finish"] for r in fc.values())
