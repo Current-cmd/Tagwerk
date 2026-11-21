@@ -60,7 +60,7 @@ export const actionDe = (s: string) => ACTION_DE[s] ?? s
 const EVIDENCE_DE: Record<string, string> = { voice: 'Sprache', vision: 'Bild', both: 'Sprache + Bild', manual: 'manuell', note: 'Notiz' }
 export const evidenceDe = (s: string | null | undefined) => (s ? EVIDENCE_DE[s] ?? s : '')
 
-const KIND_DE: Record<string, string> = { video: 'Video', photo: 'Foto', voice: 'Sprachnotiz', note: 'Notiz', manual: 'manuell' }
+const KIND_DE: Record<string, string> = { video: 'Video', photo: 'Foto', voice: 'Sprachnotiz', note: 'Notiz', manual: 'manuell', plan: 'Terminplan' }
 export const kindDe = (s: string) => KIND_DE[s] ?? s
 
 const EVENT_DE: Record<string, string> = {

@@ -34,6 +34,436 @@
  },
  "days": [
   {
+   "date": "2026-11-09",
+   "source": "plan",
+   "captures": [
+    {
+     "capture_id": "plan-2026-11-09",
+     "zone_id": "Z-STAGE",
+     "ts": "2026-11-09T07:00:00Z",
+     "lang": "de",
+     "note": "Soll-Stand aus dem Terminplan (keine Aufnahme)",
+     "structured": {
+      "labour_present": [
+       {
+        "trade": "Bauleitung",
+        "count": 1
+       }
+      ],
+      "absences": [],
+      "material_delivered": [],
+      "work_done": [],
+      "special_events": [],
+      "unmatched": []
+     }
+    }
+   ]
+  },
+  {
+   "date": "2026-11-10",
+   "source": "plan",
+   "captures": [
+    {
+     "capture_id": "plan-2026-11-10",
+     "zone_id": "Z-AUDIENCE",
+     "ts": "2026-11-10T07:00:00Z",
+     "lang": "de",
+     "note": "Soll-Stand aus dem Terminplan (keine Aufnahme)",
+     "structured": {
+      "labour_present": [
+       {
+        "trade": "Rückbau",
+        "count": 3
+       }
+      ],
+      "absences": [],
+      "material_delivered": [],
+      "work_done": [
+       {
+        "element_ids": [
+         "E-ROW-A",
+         "E-ROW-B",
+         "E-ROW-C",
+         "E-ROW-D",
+         "E-ROW-E",
+         "E-ROW-F",
+         "E-ROW-G",
+         "E-ROW-H"
+        ],
+        "activity_id": "A1020",
+        "state_proposed": "removed",
+        "evidence": "voice",
+        "quote": "Terminplan: Rückbau Bestuhlung ausgebaut",
+        "t": null
+       }
+      ],
+      "special_events": [],
+      "unmatched": []
+     }
+    }
+   ]
+  },
+  {
+   "date": "2026-11-11",
+   "source": "plan",
+   "captures": [
+    {
+     "capture_id": "plan-2026-11-11",
+     "zone_id": "Z-STAGE",
+     "ts": "2026-11-11T07:00:00Z",
+     "lang": "de",
+     "note": "Soll-Stand aus dem Terminplan (keine Aufnahme)",
+     "structured": {
+      "labour_present": [
+       {
+        "trade": "Rückbau",
+        "count": 3
+       }
+      ],
+      "absences": [],
+      "material_delivered": [],
+      "work_done": [],
+      "special_events": [],
+      "unmatched": []
+     }
+    }
+   ]
+  },
+  {
+   "date": "2026-11-12",
+   "source": "plan",
+   "captures": [
+    {
+     "capture_id": "plan-2026-11-12",
+     "zone_id": "Z-AUDIENCE",
+     "ts": "2026-11-12T07:00:00Z",
+     "lang": "de",
+     "note": "Soll-Stand aus dem Terminplan (keine Aufnahme)",
+     "structured": {
+      "labour_present": [
+       {
+        "trade": "Bodenleger",
+        "count": 2
+       },
+       {
+        "trade": "Trockenbau",
+        "count": 3
+       }
+      ],
+      "absences": [],
+      "material_delivered": [],
+      "work_done": [
+       {
+        "element_ids": [
+         "E-FLOOR-STAGE",
+         "E-FLOOR-AUD"
+        ],
+        "activity_id": "A1030",
+        "state_proposed": "stripped",
+        "evidence": "voice",
+        "quote": "Terminplan: Bodenbelag entfernt",
+        "t": null
+       },
+       {
+        "element_ids": [
+         "E-PANELS-E",
+         "E-PANELS-W",
+         "E-CEILING"
+        ],
+        "activity_id": "A1040",
+        "state_proposed": "started",
+        "evidence": "voice",
+        "quote": "Terminplan: Akustikpaneele und Decke begonnen",
+        "t": null
+       }
+      ],
+      "special_events": [],
+      "unmatched": []
+     }
+    }
+   ]
+  },
+  {
+   "date": "2026-11-13",
+   "source": "plan",
+   "captures": [
+    {
+     "capture_id": "plan-2026-11-13",
+     "zone_id": "Z-STAGE",
+     "ts": "2026-11-13T07:00:00Z",
+     "lang": "de",
+     "note": "Soll-Stand aus dem Terminplan (keine Aufnahme)",
+     "structured": {
+      "labour_present": [
+       {
+        "trade": "Bodenleger",
+        "count": 2
+       },
+       {
+        "trade": "Trockenbau",
+        "count": 3
+       }
+      ],
+      "absences": [],
+      "material_delivered": [],
+      "work_done": [],
+      "special_events": [],
+      "unmatched": []
+     }
+    }
+   ]
+  },
+  {
+   "date": "2026-11-16",
+   "source": "plan",
+   "captures": [
+    {
+     "capture_id": "plan-2026-11-16",
+     "zone_id": "Z-STAGE",
+     "ts": "2026-11-16T07:00:00Z",
+     "lang": "de",
+     "note": "Soll-Stand aus dem Terminplan (keine Aufnahme)",
+     "structured": {
+      "labour_present": [
+       {
+        "trade": "Bodenleger",
+        "count": 2
+       },
+       {
+        "trade": "Elektro",
+        "count": 2
+       },
+       {
+        "trade": "Tischler",
+        "count": 2
+       },
+       {
+        "trade": "Trockenbau",
+        "count": 3
+       }
+      ],
+      "absences": [],
+      "material_delivered": [],
+      "work_done": [
+       {
+        "element_ids": [
+         "E-TRUSS-1",
+         "E-TRUSS-2",
+         "E-EMLIGHT"
+        ],
+        "activity_id": "A1050",
+        "state_proposed": "mounted",
+        "evidence": "voice",
+        "quote": "Terminplan: Elektro und Licht-Traverse montiert",
+        "t": null
+       },
+       {
+        "element_ids": [
+         "E-CABLETRAY"
+        ],
+        "activity_id": "A1050",
+        "state_proposed": "started",
+        "evidence": "voice",
+        "quote": "Terminplan: Elektro und Licht-Traverse begonnen",
+        "t": null
+       },
+       {
+        "element_ids": [
+         "E-STAGE"
+        ],
+        "activity_id": "A1065",
+        "state_proposed": "framed",
+        "evidence": "voice",
+        "quote": "Terminplan: Bühne Unterkonstruktion",
+        "t": null
+       },
+       {
+        "element_ids": [
+         "E-STAGE-STAIRS",
+         "E-LECTERN",
+         "E-CURTAIN"
+        ],
+        "activity_id": "A1065",
+        "state_proposed": "started",
+        "evidence": "voice",
+        "quote": "Terminplan: Bühne begonnen",
+        "t": null
+       }
+      ],
+      "special_events": [],
+      "unmatched": []
+     }
+    }
+   ]
+  },
+  {
+   "date": "2026-11-17",
+   "source": "plan",
+   "captures": [
+    {
+     "capture_id": "plan-2026-11-17",
+     "zone_id": "Z-STAGE",
+     "ts": "2026-11-17T07:00:00Z",
+     "lang": "de",
+     "note": "Soll-Stand aus dem Terminplan (keine Aufnahme)",
+     "structured": {
+      "labour_present": [
+       {
+        "trade": "Bodenleger",
+        "count": 2
+       },
+       {
+        "trade": "Elektro",
+        "count": 2
+       },
+       {
+        "trade": "Tischler",
+        "count": 2
+       },
+       {
+        "trade": "Trockenbau",
+        "count": 3
+       }
+      ],
+      "absences": [],
+      "material_delivered": [],
+      "work_done": [
+       {
+        "element_ids": [
+         "E-FLOOR-STAGE",
+         "E-FLOOR-AUD"
+        ],
+        "activity_id": "A1030",
+        "state_proposed": "done",
+        "evidence": "voice",
+        "quote": "Terminplan: Bodenbelag fertig",
+        "t": null
+       }
+      ],
+      "special_events": [],
+      "unmatched": []
+     }
+    }
+   ]
+  },
+  {
+   "date": "2026-11-18",
+   "source": "plan",
+   "captures": [
+    {
+     "capture_id": "plan-2026-11-18",
+     "zone_id": "Z-AUDIENCE",
+     "ts": "2026-11-18T07:00:00Z",
+     "lang": "de",
+     "note": "Soll-Stand aus dem Terminplan (keine Aufnahme)",
+     "structured": {
+      "labour_present": [
+       {
+        "trade": "Elektro",
+        "count": 2
+       },
+       {
+        "trade": "Tischler",
+        "count": 2
+       },
+       {
+        "trade": "Trockenbau",
+        "count": 3
+       }
+      ],
+      "absences": [],
+      "material_delivered": [],
+      "work_done": [
+       {
+        "element_ids": [
+         "E-PANELS-E",
+         "E-PANELS-W",
+         "E-CEILING"
+        ],
+        "activity_id": "A1040",
+        "state_proposed": "checked",
+        "evidence": "voice",
+        "quote": "Terminplan: Akustikpaneele und Decke abgenommen",
+        "t": null
+       }
+      ],
+      "special_events": [],
+      "unmatched": []
+     }
+    }
+   ]
+  },
+  {
+   "date": "2026-11-19",
+   "source": "plan",
+   "captures": [
+    {
+     "capture_id": "plan-2026-11-19",
+     "zone_id": "Z-AUDIENCE",
+     "ts": "2026-11-19T07:00:00Z",
+     "lang": "de",
+     "note": "Soll-Stand aus dem Terminplan (keine Aufnahme)",
+     "structured": {
+      "labour_present": [
+       {
+        "trade": "Elektro",
+        "count": 2
+       },
+       {
+        "trade": "Maler",
+        "count": 2
+       },
+       {
+        "trade": "Tischler",
+        "count": 2
+       }
+      ],
+      "absences": [],
+      "material_delivered": [],
+      "work_done": [
+       {
+        "element_ids": [
+         "E-CABLETRAY"
+        ],
+        "activity_id": "A1050",
+        "state_proposed": "checked",
+        "evidence": "voice",
+        "quote": "Terminplan: Elektro und Licht-Traverse abgenommen",
+        "t": null
+       },
+       {
+        "element_ids": [
+         "E-TRUSS-1",
+         "E-TRUSS-2",
+         "E-EMLIGHT"
+        ],
+        "activity_id": "A1050",
+        "state_proposed": "tested",
+        "evidence": "voice",
+        "quote": "Terminplan: Elektro und Licht-Traverse geprüft",
+        "t": null
+       },
+       {
+        "element_ids": [
+         "E-WALL-N",
+         "E-WALL-E",
+         "E-WALL-W",
+         "E-WALL-S"
+        ],
+        "activity_id": "A1070",
+        "state_proposed": "prepared",
+        "evidence": "voice",
+        "quote": "Terminplan: Malerarbeiten vorbereitet",
+        "t": null
+       }
+      ],
+      "special_events": [],
+      "unmatched": []
+     }
+    }
+   ]
+  },
+  {
    "date": "2026-11-23",
    "captures": [
     {

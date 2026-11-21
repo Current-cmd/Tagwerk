@@ -111,6 +111,7 @@ class Project:
     materials: list[dict] = field(default_factory=list)
     proposals: list[dict] = field(default_factory=list)
     history_log: list[dict] = field(default_factory=list)  # every state change, for curves
+    plan_dates: list[str] = field(default_factory=list)  # history days built from the schedule (tagwerk.plan_history)
     meta: dict = field(default_factory=dict)  # seed/<project>/project.json: id, name, data_date, lat, lon
     _by_act: dict[str, list[dict]] = field(default_factory=dict, repr=False)
     _by_el: dict[str, list[dict]] = field(default_factory=dict, repr=False)
@@ -200,7 +201,12 @@ class Project:
         hist = json.loads(path.read_text(encoding="utf-8"))
         init = hist.get("initial", {})
         d0 = init.get("date")
-        if upto is not None and d0 and d0 > upto:
+        days = hist.get("days", [])
+        self.plan_dates = sorted(day["date"] for day in days if day.get("source") == "plan")
+        if upto is not None and d0 and d0 > upto:  # before the first snapshot: only the schedule-built days
+            for day in days:
+                if day.get("source") == "plan" and day["date"] <= upto:
+                    self._apply_history_day(day)
             return
         for eid, state in init.get("states", {}).items():
             el = self.elements[eid]
@@ -212,12 +218,17 @@ class Project:
         for aid, act in self.activities.items():  # snapshot states have no date: started on plan (as in _finish_dates)
             if act["actual_start"] is None and init.get("states") and self.activity_pct(aid) > 0:
                 act["actual_start"] = act["planned_start"].isoformat()
-        for day in hist.get("days", []):
-            for c in day["captures"]:
-                if upto is not None and c["ts"][:10] > upto:
-                    continue
-                meta = {k: c[k] for k in ("capture_id", "zone_id", "ts", "note") if k in c}
-                self.apply_structured(meta, {"capture_id": c["capture_id"], **c["structured"]})
+        for day in days:
+            if day.get("source") == "plan" and d0 and day["date"] < d0:
+                continue  # recorded progress wins over the schedule
+            self._apply_history_day(day, upto)
+
+    def _apply_history_day(self, day: dict, upto: str | None = None) -> None:
+        for c in day["captures"]:
+            if upto is not None and c["ts"][:10] > upto:
+                continue
+            meta = {k: c[k] for k in ("capture_id", "zone_id", "ts", "note") if k in c}
+            self.apply_structured(meta, {"capture_id": c["capture_id"], **c["structured"]})
 
     # ----- applying evidence -----
 

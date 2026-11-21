@@ -861,6 +861,1559 @@
  },
  "days": [
   {
+   "date": "2015-02-20",
+   "source": "plan",
+   "captures": [
+    {
+     "capture_id": "plan-2015-02-20",
+     "zone_id": "Z-FUND",
+     "ts": "2015-02-20T07:00:00Z",
+     "lang": "de",
+     "note": "Soll-Stand aus dem Terminplan (keine Aufnahme)",
+     "structured": {
+      "labour_present": [
+       {
+        "trade": "Grondwerk",
+        "count": 4
+       }
+      ],
+      "absences": [],
+      "material_delivered": [],
+      "work_done": [],
+      "special_events": [],
+      "unmatched": []
+     }
+    }
+   ]
+  },
+  {
+   "date": "2015-02-27",
+   "source": "plan",
+   "captures": [
+    {
+     "capture_id": "plan-2015-02-27",
+     "zone_id": "Z-FUND",
+     "ts": "2015-02-27T07:00:00Z",
+     "lang": "de",
+     "note": "Soll-Stand aus dem Terminplan (keine Aufnahme)",
+     "structured": {
+      "labour_present": [
+       {
+        "trade": "Montage",
+        "count": 2
+       }
+      ],
+      "absences": [],
+      "material_delivered": [],
+      "work_done": [
+       {
+        "element_ids": [
+         "SP-DD46B1BA"
+        ],
+        "activity_id": "ST00060",
+        "state_proposed": "installed",
+        "evidence": "voice",
+        "quote": "Terminplan: Stellen bruggetjes montiert",
+        "t": null
+       }
+      ],
+      "special_events": [],
+      "unmatched": []
+     }
+    }
+   ]
+  },
+  {
+   "date": "2015-03-06",
+   "source": "plan",
+   "captures": [
+    {
+     "capture_id": "plan-2015-03-06",
+     "zone_id": "Z-FUND",
+     "ts": "2015-03-06T07:00:00Z",
+     "lang": "de",
+     "note": "Soll-Stand aus dem Terminplan (keine Aufnahme)",
+     "structured": {
+      "labour_present": [
+       {
+        "trade": "Betonwerker",
+        "count": 2
+       }
+      ],
+      "absences": [],
+      "material_delivered": [],
+      "work_done": [
+       {
+        "element_ids": [
+         "SP-0EB184E0",
+         "SP-161A9943",
+         "SP-2F9BFE7E",
+         "SP-37AFC68F",
+         "SP-3D317621",
+         "SP-49935285",
+         "SP-51E41E0F",
+         "SP-58C7C77D",
+         "SP-594A1514",
+         "SP-63533AEC",
+         "SP-7C48E746",
+         "SP-8C7F5CC1",
+         "SP-94409704",
+         "SP-9C7BEFC7",
+         "SP-9EA2E84A",
+         "SP-ACFA6A2E",
+         "SP-F970A63C"
+        ],
+        "activity_id": "ST00130",
+        "state_proposed": "installed",
+        "evidence": "voice",
+        "quote": "Terminplan: Bekisten liftwanden montiert",
+        "t": null
+       }
+      ],
+      "special_events": [],
+      "unmatched": []
+     }
+    }
+   ]
+  },
+  {
+   "date": "2015-03-13",
+   "source": "plan",
+   "captures": [
+    {
+     "capture_id": "plan-2015-03-13",
+     "zone_id": "Z-FUND",
+     "ts": "2015-03-13T07:00:00Z",
+     "lang": "de",
+     "note": "Soll-Stand aus dem Terminplan (keine Aufnahme)",
+     "structured": {
+      "labour_present": [
+       {
+        "trade": "Betonwerker",
+        "count": 2
+       }
+      ],
+      "absences": [],
+      "material_delivered": [],
+      "work_done": [
+       {
+        "element_ids": [
+         "SP-004A5632",
+         "SP-030D491B",
+         "SP-0C36156C",
+         "SP-111A08D4",
+         "SP-1169A602",
+         "SP-252EB960",
+         "SP-3949CBDF",
+         "SP-4A2B3D74",
+         "SP-55048273",
+         "SP-600D20DB",
+         "SP-63A924BB",
+         "SP-64109441",
+         "SP-6CEE971A",
+         "SP-7249C765",
+         "SP-85B7195B",
+         "SP-8D85BE90",
+         "SP-941D36EF",
+         "SP-9EDDCEC9",
+         "SP-B2C7512B",
+         "SP-B6E5444C",
+         "SP-C9CD81F1",
+         "SP-CBEDF6B1",
+         "SP-CE363996",
+         "SP-D48C1283",
+         "SP-D5AA5851",
+         "SP-DA4EC50D",
+         "SP-DE8201FC",
+         "SP-DFC6FC87",
+         "SP-E47BB9B2",
+         "SP-F3E081DE",
+         "SP-F5FD27C2",
+         "SP-FAAE016E"
+        ],
+        "activity_id": "ST00200",
+        "state_proposed": "started",
+        "evidence": "voice",
+        "quote": "Terminplan: Stellen funderingkist incl. poeren begonnen",
+        "t": null
+       }
+      ],
+      "special_events": [],
+      "unmatched": []
+     }
+    }
+   ]
+  },
+  {
+   "date": "2015-03-20",
+   "source": "plan",
+   "captures": [
+    {
+     "capture_id": "plan-2015-03-20",
+     "zone_id": "Z-FUND",
+     "ts": "2015-03-20T07:00:00Z",
+     "lang": "de",
+     "note": "Soll-Stand aus dem Terminplan (keine Aufnahme)",
+     "structured": {
+      "labour_present": [
+       {
+        "trade": "Betonwerker",
+        "count": 4
+       }
+      ],
+      "absences": [],
+      "material_delivered": [],
+      "work_done": [
+       {
+        "element_ids": [
+         "SP-004A5632",
+         "SP-030D491B",
+         "SP-0C36156C",
+         "SP-111A08D4",
+         "SP-1169A602",
+         "SP-252EB960",
+         "SP-3949CBDF",
+         "SP-4A2B3D74",
+         "SP-55048273",
+         "SP-600D20DB",
+         "SP-63A924BB",
+         "SP-64109441",
+         "SP-6CEE971A",
+         "SP-7249C765",
+         "SP-85B7195B",
+         "SP-8D85BE90",
+         "SP-941D36EF",
+         "SP-9EDDCEC9",
+         "SP-B2C7512B",
+         "SP-B6E5444C",
+         "SP-C9CD81F1",
+         "SP-CBEDF6B1",
+         "SP-CE363996",
+         "SP-D48C1283",
+         "SP-D5AA5851",
+         "SP-DA4EC50D",
+         "SP-DE8201FC",
+         "SP-DFC6FC87",
+         "SP-E47BB9B2",
+         "SP-F3E081DE",
+         "SP-F5FD27C2",
+         "SP-FAAE016E"
+        ],
+        "activity_id": "ST00200",
+        "state_proposed": "installed",
+        "evidence": "voice",
+        "quote": "Terminplan: Stellen funderingkist incl. poeren montiert",
+        "t": null
+       }
+      ],
+      "special_events": [],
+      "unmatched": []
+     }
+    }
+   ]
+  },
+  {
+   "date": "2015-03-27",
+   "source": "plan",
+   "captures": [
+    {
+     "capture_id": "plan-2015-03-27",
+     "zone_id": "Z-FUND",
+     "ts": "2015-03-27T07:00:00Z",
+     "lang": "de",
+     "note": "Soll-Stand aus dem Terminplan (keine Aufnahme)",
+     "structured": {
+      "labour_present": [
+       {
+        "trade": "Betonwerker",
+        "count": 2
+       }
+      ],
+      "absences": [],
+      "material_delivered": [],
+      "work_done": [
+       {
+        "element_ids": [
+         "SP-00C76B9D",
+         "SP-24837996",
+         "SP-2743F79C",
+         "SP-2D0FCCEC",
+         "SP-2D5F8E3F",
+         "SP-3003E7C5",
+         "SP-3158FB52",
+         "SP-365FF6D8",
+         "SP-405BB86B",
+         "SP-4A6CCBA4",
+         "SP-515DE8D5",
+         "SP-5825ED04",
+         "SP-6626C8A7",
+         "SP-710A97B9",
+         "SP-720C4510",
+         "SP-7494D760",
+         "SP-814E89F2",
+         "SP-84C40414",
+         "SP-85001C77",
+         "SP-8FEAB726",
+         "SP-9367F7EB",
+         "SP-940FB38F",
+         "SP-96F584D0",
+         "SP-985C63A6",
+         "SP-9A54BEB8",
+         "SP-9C5D123F",
+         "SP-A2A02A54",
+         "SP-A69960C0",
+         "SP-A903F69F",
+         "SP-A95A5151",
+         "SP-C7F99012",
+         "SP-D6CE5B5C",
+         "SP-DED0AB92",
+         "SP-E8B3AA68",
+         "SP-E90D95ED",
+         "SP-ECA88BE2",
+         "SP-F23513C8",
+         "SP-F532C2D4",
+         "SP-FC544678"
+        ],
+        "activity_id": "ST00250",
+        "state_proposed": "started",
+        "evidence": "voice",
+        "quote": "Terminplan: Opstorten fundering begonnen",
+        "t": null
+       }
+      ],
+      "special_events": [],
+      "unmatched": []
+     }
+    }
+   ]
+  },
+  {
+   "date": "2015-04-03",
+   "source": "plan",
+   "captures": [
+    {
+     "capture_id": "plan-2015-04-03",
+     "zone_id": "Z-FUND",
+     "ts": "2015-04-03T07:00:00Z",
+     "lang": "de",
+     "note": "Soll-Stand aus dem Terminplan (keine Aufnahme)",
+     "structured": {
+      "labour_present": [
+       {
+        "trade": "Betonwerker",
+        "count": 2
+       }
+      ],
+      "absences": [],
+      "material_delivered": [],
+      "work_done": [
+       {
+        "element_ids": [
+         "SP-00C76B9D",
+         "SP-24837996",
+         "SP-2743F79C",
+         "SP-2D0FCCEC",
+         "SP-2D5F8E3F",
+         "SP-3003E7C5",
+         "SP-3158FB52",
+         "SP-365FF6D8",
+         "SP-405BB86B",
+         "SP-4A6CCBA4",
+         "SP-515DE8D5",
+         "SP-5825ED04",
+         "SP-6626C8A7",
+         "SP-710A97B9",
+         "SP-720C4510",
+         "SP-7494D760",
+         "SP-814E89F2",
+         "SP-84C40414",
+         "SP-85001C77",
+         "SP-8FEAB726",
+         "SP-9367F7EB",
+         "SP-940FB38F",
+         "SP-96F584D0",
+         "SP-985C63A6",
+         "SP-9A54BEB8",
+         "SP-9C5D123F",
+         "SP-A2A02A54",
+         "SP-A69960C0",
+         "SP-A903F69F",
+         "SP-A95A5151",
+         "SP-C7F99012",
+         "SP-D6CE5B5C",
+         "SP-DED0AB92",
+         "SP-E8B3AA68",
+         "SP-E90D95ED",
+         "SP-ECA88BE2",
+         "SP-F23513C8",
+         "SP-F532C2D4",
+         "SP-FC544678"
+        ],
+        "activity_id": "ST00250",
+        "state_proposed": "installed",
+        "evidence": "voice",
+        "quote": "Terminplan: Opstorten fundering montiert",
+        "t": null
+       }
+      ],
+      "special_events": [],
+      "unmatched": []
+     }
+    }
+   ]
+  },
+  {
+   "date": "2015-04-10",
+   "source": "plan",
+   "captures": [
+    {
+     "capture_id": "plan-2015-04-10",
+     "zone_id": "Z-FUND",
+     "ts": "2015-04-10T07:00:00Z",
+     "lang": "de",
+     "note": "Soll-Stand aus dem Terminplan (keine Aufnahme)",
+     "structured": {
+      "labour_present": [
+       {
+        "trade": "Grondwerk",
+        "count": 2
+       },
+       {
+        "trade": "Metselaar",
+        "count": 2
+       }
+      ],
+      "absences": [],
+      "material_delivered": [],
+      "work_done": [
+       {
+        "element_ids": [
+         "SP-01C60F73",
+         "SP-02CD3C7A",
+         "SP-063F828D",
+         "SP-0731370A",
+         "SP-09756431",
+         "SP-114A5FC9",
+         "SP-120C849B",
+         "SP-1439837D",
+         "SP-18EAC880",
+         "SP-199782B1",
+         "SP-22ABF0E8",
+         "SP-24AFA864",
+         "SP-2D098F43",
+         "SP-2F7C3F86",
+         "SP-30E6DB38",
+         "SP-3236484C",
+         "SP-3314D764",
+         "SP-46D1E625",
+         "SP-56C2388E",
+         "SP-5CC3C25E",
+         "SP-65ED7501",
+         "SP-694356A2",
+         "SP-6DFC4D5B",
+         "SP-71636191",
+         "SP-718FD247",
+         "SP-7D428D58",
+         "SP-84F8A321",
+         "SP-85056CD9",
+         "SP-877A21D3",
+         "SP-8D1373BD",
+         "SP-9436CB1E",
+         "SP-9491DBCA",
+         "SP-95884CFC",
+         "SP-96606409",
+         "SP-9A0D11D9",
+         "SP-A7E01CF8",
+         "SP-AD933F12",
+         "SP-B396C559",
+         "SP-C06777EB",
+         "SP-C900EE28",
+         "SP-D0B9F4EE",
+         "SP-D15C648B",
+         "SP-D4557388",
+         "SP-E3742ED3",
+         "SP-E62B70EE",
+         "SP-EE125514",
+         "SP-EF1153A0",
+         "SP-F13CC184",
+         "SP-F170A4B6",
+         "SP-F5C072B7"
+        ],
+        "activity_id": "ST00310",
+        "state_proposed": "installed",
+        "evidence": "voice",
+        "quote": "Terminplan: Stelwerk metselwerk onder peil montiert",
+        "t": null
+       }
+      ],
+      "special_events": [],
+      "unmatched": []
+     }
+    }
+   ]
+  },
+  {
+   "date": "2015-04-17",
+   "source": "plan",
+   "captures": [
+    {
+     "capture_id": "plan-2015-04-17",
+     "zone_id": "Z-BG",
+     "ts": "2015-04-17T07:00:00Z",
+     "lang": "de",
+     "note": "Soll-Stand aus dem Terminplan (keine Aufnahme)",
+     "structured": {
+      "labour_present": [
+       {
+        "trade": "Grondwerk",
+        "count": 2
+       }
+      ],
+      "absences": [],
+      "material_delivered": [],
+      "work_done": [
+       {
+        "element_ids": [
+         "SP-03DFE161",
+         "SP-0873803D",
+         "SP-091F0FD2",
+         "SP-0DE07DA1",
+         "SP-0FB05DB3",
+         "SP-108C19AD",
+         "SP-21D69901",
+         "SP-306F6666",
+         "SP-450B08CB",
+         "SP-4643D459",
+         "SP-4B44D781",
+         "SP-4E780189",
+         "SP-52BD7379",
+         "SP-53563BAE",
+         "SP-62CF170B",
+         "SP-63404365",
+         "SP-63A8B97B",
+         "SP-67016B15",
+         "SP-68F4F0AF",
+         "SP-6BB197DF",
+         "SP-713CD1A4",
+         "SP-73712C6C",
+         "SP-76DCC599",
+         "SP-76F9252D",
+         "SP-789619B2",
+         "SP-79CF6AD7",
+         "SP-8DCA25EA",
+         "SP-8E507926",
+         "SP-95C8D3A9",
+         "SP-99C6A85C",
+         "SP-9C066A87",
+         "SP-A34FAEBC",
+         "SP-A4CA521A",
+         "SP-A7828D26",
+         "SP-A8C460C3",
+         "SP-ACCC6BD6",
+         "SP-ADA6A2EF",
+         "SP-AE559284",
+         "SP-B40C06A5",
+         "SP-BB568CB7",
+         "SP-BBAF2225",
+         "SP-C479F8F6",
+         "SP-C972D2F8",
+         "SP-D43FD74A",
+         "SP-DEAB4A64",
+         "SP-E61B8257",
+         "SP-E6DF37C8",
+         "SP-E8D4446C",
+         "SP-F1FC091A",
+         "SP-FE46D69D",
+         "SP-FFAB67E8"
+        ],
+        "activity_id": "ST00350",
+        "state_proposed": "installed",
+        "evidence": "voice",
+        "quote": "Terminplan: Kanaalplaatvloer leggen (lev. week 16) montiert",
+        "t": null
+       },
+       {
+        "element_ids": [
+         "SP-0305A803",
+         "SP-075B725F",
+         "SP-09C7EF4C",
+         "SP-11739199",
+         "SP-15E44D8E",
+         "SP-1A40C33F",
+         "SP-2DEF78AE",
+         "SP-3F1506D5",
+         "SP-4FD59781",
+         "SP-5DC74280",
+         "SP-5E966265",
+         "SP-70FB4AEB",
+         "SP-7D0C63D1",
+         "SP-8B938182",
+         "SP-8D9A3704",
+         "SP-A330C6B1",
+         "SP-A5FA8341",
+         "SP-A74697F1",
+         "SP-B525B9C7",
+         "SP-C0849922",
+         "SP-C76F2144",
+         "SP-C778C0A8",
+         "SP-CDCBC50C",
+         "SP-D958BDE8",
+         "SP-E92F0EAD",
+         "SP-EE9F80DF",
+         "SP-F3337B9F"
+        ],
+        "activity_id": "ST00370",
+        "state_proposed": "installed",
+        "evidence": "voice",
+        "quote": "Terminplan: Afstorten kanaalplaat montiert",
+        "t": null
+       }
+      ],
+      "special_events": [],
+      "unmatched": []
+     }
+    }
+   ]
+  },
+  {
+   "date": "2015-04-24",
+   "source": "plan",
+   "captures": [
+    {
+     "capture_id": "plan-2015-04-24",
+     "zone_id": "Z-BG",
+     "ts": "2015-04-24T07:00:00Z",
+     "lang": "de",
+     "note": "Soll-Stand aus dem Terminplan (keine Aufnahme)",
+     "structured": {
+      "labour_present": [
+       {
+        "trade": "Metselaar",
+        "count": 2
+       }
+      ],
+      "absences": [],
+      "material_delivered": [],
+      "work_done": [
+       {
+        "element_ids": [
+         "SP-0392E810",
+         "SP-121D5DFA",
+         "SP-6816D365",
+         "SP-9EDC31B8",
+         "SP-B10EB8C9"
+        ],
+        "activity_id": "ST00420",
+        "state_proposed": "installed",
+        "evidence": "voice",
+        "quote": "Terminplan: Plaatsen stalen kolommen montiert",
+        "t": null
+       },
+       {
+        "element_ids": [
+         "SP-135A0934",
+         "SP-1E3A665A",
+         "SP-2E0CFE45",
+         "SP-34B55DC6",
+         "SP-3799B0C8",
+         "SP-3FC7097E",
+         "SP-4C7507B6",
+         "SP-5F9A6082",
+         "SP-679AFF94",
+         "SP-6A4D2BD0",
+         "SP-7092A968",
+         "SP-71D77992",
+         "SP-71FCECCD",
+         "SP-819DB260",
+         "SP-8F3ADFB9",
+         "SP-986507ED",
+         "SP-A3556F82",
+         "SP-A564BC77",
+         "SP-B0D534FA",
+         "SP-B0F1B9D3",
+         "SP-B27FEDFA",
+         "SP-C6F65569",
+         "SP-D1B78677",
+         "SP-EE169A02"
+        ],
+        "activity_id": "ST00460",
+        "state_proposed": "installed",
+        "evidence": "voice",
+        "quote": "Terminplan: Stelwerk kalkzandsteen montiert",
+        "t": null
+       }
+      ],
+      "special_events": [],
+      "unmatched": []
+     }
+    }
+   ]
+  },
+  {
+   "date": "2015-05-01",
+   "source": "plan",
+   "captures": [
+    {
+     "capture_id": "plan-2015-05-01",
+     "zone_id": "Z-1",
+     "ts": "2015-05-01T07:00:00Z",
+     "lang": "de",
+     "note": "Soll-Stand aus dem Terminplan (keine Aufnahme)",
+     "structured": {
+      "labour_present": [
+       {
+        "trade": "Montage",
+        "count": 4
+       }
+      ],
+      "absences": [],
+      "material_delivered": [],
+      "work_done": [
+       {
+        "element_ids": [
+         "SP-088E148C",
+         "SP-1A59B971",
+         "SP-1B106083",
+         "SP-493826B0",
+         "SP-584B62C5",
+         "SP-67335CDE",
+         "SP-676BB0D9",
+         "SP-6EB1C087",
+         "SP-74E4B745",
+         "SP-7CFBD214",
+         "SP-83FA1EA5",
+         "SP-881EFF94",
+         "SP-9DB27DCD",
+         "SP-A456335B",
+         "SP-A4AC3BF7",
+         "SP-ABAC97AD",
+         "SP-B42C49DF",
+         "SP-B6F854AE",
+         "SP-CB93375F",
+         "SP-D5AF753D",
+         "SP-E2A6BFB7",
+         "SP-E57576CD",
+         "SP-F21A8588"
+        ],
+        "activity_id": "ST00540",
+        "state_proposed": "started",
+        "evidence": "voice",
+        "quote": "Terminplan: Opstellen begonnen",
+        "t": null
+       }
+      ],
+      "special_events": [],
+      "unmatched": []
+     }
+    }
+   ]
+  },
+  {
+   "date": "2015-05-08",
+   "source": "plan",
+   "captures": [
+    {
+     "capture_id": "plan-2015-05-08",
+     "zone_id": "Z-1",
+     "ts": "2015-05-08T07:00:00Z",
+     "lang": "de",
+     "note": "Soll-Stand aus dem Terminplan (keine Aufnahme)",
+     "structured": {
+      "labour_present": [
+       {
+        "trade": "Betonwerker",
+        "count": 2
+       },
+       {
+        "trade": "Installateur",
+        "count": 2
+       }
+      ],
+      "absences": [],
+      "material_delivered": [],
+      "work_done": [
+       {
+        "element_ids": [
+         "SP-088E148C",
+         "SP-1A59B971",
+         "SP-1B106083",
+         "SP-493826B0",
+         "SP-584B62C5",
+         "SP-67335CDE",
+         "SP-676BB0D9",
+         "SP-6EB1C087",
+         "SP-74E4B745",
+         "SP-7CFBD214",
+         "SP-83FA1EA5",
+         "SP-881EFF94",
+         "SP-9DB27DCD",
+         "SP-A456335B",
+         "SP-A4AC3BF7",
+         "SP-ABAC97AD",
+         "SP-B42C49DF",
+         "SP-B6F854AE",
+         "SP-CB93375F",
+         "SP-D5AF753D",
+         "SP-E2A6BFB7",
+         "SP-E57576CD",
+         "SP-F21A8588"
+        ],
+        "activity_id": "ST00540",
+        "state_proposed": "installed",
+        "evidence": "voice",
+        "quote": "Terminplan: Opstellen montiert",
+        "t": null
+       }
+      ],
+      "special_events": [],
+      "unmatched": []
+     }
+    }
+   ]
+  },
+  {
+   "date": "2015-05-15",
+   "source": "plan",
+   "captures": [
+    {
+     "capture_id": "plan-2015-05-15",
+     "zone_id": "Z-1",
+     "ts": "2015-05-15T07:00:00Z",
+     "lang": "de",
+     "note": "Soll-Stand aus dem Terminplan (keine Aufnahme)",
+     "structured": {
+      "labour_present": [],
+      "absences": [],
+      "material_delivered": [],
+      "work_done": [
+       {
+        "element_ids": [
+         "SP-311E5098",
+         "SP-37A9A01D",
+         "SP-43BD44EE",
+         "SP-CE06FADE"
+        ],
+        "activity_id": "ST00630",
+        "state_proposed": "installed",
+        "evidence": "voice",
+        "quote": "Terminplan: Stalen balken montiert",
+        "t": null
+       }
+      ],
+      "special_events": [],
+      "unmatched": []
+     }
+    }
+   ]
+  },
+  {
+   "date": "2015-05-22",
+   "source": "plan",
+   "captures": [
+    {
+     "capture_id": "plan-2015-05-22",
+     "zone_id": "Z-1",
+     "ts": "2015-05-22T07:00:00Z",
+     "lang": "de",
+     "note": "Soll-Stand aus dem Terminplan (keine Aufnahme)",
+     "structured": {
+      "labour_present": [
+       {
+        "trade": "Metselaar",
+        "count": 2
+       }
+      ],
+      "absences": [],
+      "material_delivered": [],
+      "work_done": [
+       {
+        "element_ids": [
+         "SP-0121D507",
+         "SP-1B0E5567",
+         "SP-25FD3F4C",
+         "SP-29084528",
+         "SP-5FE7D7C9",
+         "SP-773943E5",
+         "SP-87FE26C6",
+         "SP-D79EEF6B",
+         "SP-FF6AF0AC"
+        ],
+        "activity_id": "ST00430",
+        "state_proposed": "installed",
+        "evidence": "voice",
+        "quote": "Terminplan: Prefab trappen en bordes montiert",
+        "t": null
+       },
+       {
+        "element_ids": [
+         "SP-05652714",
+         "SP-06648585",
+         "SP-0812814A",
+         "SP-09A778E9",
+         "SP-0CD1D502",
+         "SP-14EC3585",
+         "SP-1D6A9DDD",
+         "SP-1FA4E791",
+         "SP-201EDFF9",
+         "SP-2310DE28",
+         "SP-2565F4CE",
+         "SP-25BA356F",
+         "SP-26D4671A",
+         "SP-2DC4E85E",
+         "SP-41A30BB6",
+         "SP-41B364F0",
+         "SP-5227731C",
+         "SP-599F734F",
+         "SP-5E0B8575",
+         "SP-61A32C3E",
+         "SP-649D9F19",
+         "SP-68EBF122",
+         "SP-6914ADCB",
+         "SP-6B5DE720",
+         "SP-6D897B4E",
+         "SP-6FF32B30",
+         "SP-70B3BDBC",
+         "SP-7A7CDEFF",
+         "SP-85EF1C2D",
+         "SP-8AFC7E1E",
+         "SP-915BCEA7",
+         "SP-A7A3D222",
+         "SP-A9FADA5B",
+         "SP-B4B0B02A",
+         "SP-B7B524EC",
+         "SP-BC566170",
+         "SP-C080EB69",
+         "SP-C6636769",
+         "SP-CC334D5E",
+         "SP-D8B3A10E",
+         "SP-D911B4AF",
+         "SP-D98DF6E3",
+         "SP-D9EE6A96",
+         "SP-DB706BAB",
+         "SP-DE2FD2BD",
+         "SP-DF669572",
+         "SP-E139403F",
+         "SP-E3D6EBB7",
+         "SP-FB9A715F",
+         "SP-FCD0EEA3"
+        ],
+        "activity_id": "ST00470",
+        "state_proposed": "installed",
+        "evidence": "voice",
+        "quote": "Terminplan: Stelwerk kalkzandsteen montiert",
+        "t": null
+       }
+      ],
+      "special_events": [],
+      "unmatched": []
+     }
+    }
+   ]
+  },
+  {
+   "date": "2015-05-29",
+   "source": "plan",
+   "captures": [
+    {
+     "capture_id": "plan-2015-05-29",
+     "zone_id": "Z-2",
+     "ts": "2015-05-29T07:00:00Z",
+     "lang": "de",
+     "note": "Soll-Stand aus dem Terminplan (keine Aufnahme)",
+     "structured": {
+      "labour_present": [
+       {
+        "trade": "Montage",
+        "count": 2
+       }
+      ],
+      "absences": [],
+      "material_delivered": [],
+      "work_done": [
+       {
+        "element_ids": [
+         "SP-B92ACA69"
+        ],
+        "activity_id": "ST00500",
+        "state_proposed": "installed",
+        "evidence": "voice",
+        "quote": "Terminplan: Lijmwerk kalkzandsteen elementen montiert",
+        "t": null
+       },
+       {
+        "element_ids": [
+         "SP-068A53FB",
+         "SP-0A836C4D",
+         "SP-10365576",
+         "SP-1A397DAA",
+         "SP-200B3D74",
+         "SP-3282DBA7",
+         "SP-42DF0FCB",
+         "SP-4A138AF6",
+         "SP-54E6BA71",
+         "SP-A0ACA554",
+         "SP-DDCFCD63",
+         "SP-EE6978D5",
+         "SP-FC08A573"
+        ],
+        "activity_id": "ST00540",
+        "state_proposed": "started",
+        "evidence": "voice",
+        "quote": "Terminplan: Opstellen begonnen",
+        "t": null
+       }
+      ],
+      "special_events": [],
+      "unmatched": []
+     }
+    }
+   ]
+  },
+  {
+   "date": "2015-06-05",
+   "source": "plan",
+   "captures": [
+    {
+     "capture_id": "plan-2015-06-05",
+     "zone_id": "Z-2",
+     "ts": "2015-06-05T07:00:00Z",
+     "lang": "de",
+     "note": "Soll-Stand aus dem Terminplan (keine Aufnahme)",
+     "structured": {
+      "labour_present": [
+       {
+        "trade": "Betonwerker",
+        "count": 2
+       },
+       {
+        "trade": "Installateur",
+        "count": 2
+       }
+      ],
+      "absences": [],
+      "material_delivered": [],
+      "work_done": [
+       {
+        "element_ids": [
+         "SP-068A53FB",
+         "SP-0A836C4D",
+         "SP-10365576",
+         "SP-1A397DAA",
+         "SP-200B3D74",
+         "SP-3282DBA7",
+         "SP-42DF0FCB",
+         "SP-4A138AF6",
+         "SP-54E6BA71",
+         "SP-A0ACA554",
+         "SP-DDCFCD63",
+         "SP-EE6978D5",
+         "SP-FC08A573"
+        ],
+        "activity_id": "ST00540",
+        "state_proposed": "installed",
+        "evidence": "voice",
+        "quote": "Terminplan: Opstellen montiert",
+        "t": null
+       }
+      ],
+      "special_events": [],
+      "unmatched": []
+     }
+    }
+   ]
+  },
+  {
+   "date": "2015-06-12",
+   "source": "plan",
+   "captures": [
+    {
+     "capture_id": "plan-2015-06-12",
+     "zone_id": "Z-FUND",
+     "ts": "2015-06-12T07:00:00Z",
+     "lang": "de",
+     "note": "Soll-Stand aus dem Terminplan (keine Aufnahme)",
+     "structured": {
+      "labour_present": [
+       {
+        "trade": "Betonwerker",
+        "count": 2
+       }
+      ],
+      "absences": [],
+      "material_delivered": [],
+      "work_done": [],
+      "special_events": [],
+      "unmatched": []
+     }
+    }
+   ]
+  },
+  {
+   "date": "2015-06-19",
+   "source": "plan",
+   "captures": [
+    {
+     "capture_id": "plan-2015-06-19",
+     "zone_id": "Z-BG",
+     "ts": "2015-06-19T07:00:00Z",
+     "lang": "de",
+     "note": "Soll-Stand aus dem Terminplan (keine Aufnahme)",
+     "structured": {
+      "labour_present": [
+       {
+        "trade": "Metselaar",
+        "count": 4
+       },
+       {
+        "trade": "Timmerman",
+        "count": 2
+       }
+      ],
+      "absences": [],
+      "material_delivered": [],
+      "work_done": [
+       {
+        "element_ids": [
+         "SP-2D8C0529",
+         "SP-52C137BD",
+         "SP-ACD6B405",
+         "SP-B17A4A28",
+         "SP-BD58176E"
+        ],
+        "activity_id": "ST00440",
+        "state_proposed": "installed",
+        "evidence": "voice",
+        "quote": "Terminplan: Prefab trappen en bordes montiert",
+        "t": null
+       },
+       {
+        "element_ids": [
+         "SP-10790892",
+         "SP-1F9E77B7",
+         "SP-33A97441",
+         "SP-36A71A45",
+         "SP-3AF058B1",
+         "SP-3DCA2248",
+         "SP-3F733448",
+         "SP-622B03D3",
+         "SP-6807D9D9",
+         "SP-77C15ACF",
+         "SP-88EA502D",
+         "SP-90A0901A",
+         "SP-9E2D019A",
+         "SP-A4BB0136",
+         "SP-A4F8AFDA",
+         "SP-BE43356C",
+         "SP-E257055C"
+        ],
+        "activity_id": "ST00480",
+        "state_proposed": "installed",
+        "evidence": "voice",
+        "quote": "Terminplan: Stelwerk kalkzandsteen montiert",
+        "t": null
+       },
+       {
+        "element_ids": [
+         "SP-30012114",
+         "SP-E19FA951"
+        ],
+        "activity_id": "ST00510",
+        "state_proposed": "started",
+        "evidence": "voice",
+        "quote": "Terminplan: Lijmwerk kalkzandsteen elementen begonnen",
+        "t": null
+       },
+       {
+        "element_ids": [
+         "SP-12B6F796",
+         "SP-592CB7BC",
+         "SP-5D9BB3A2",
+         "SP-6E85CCBB",
+         "SP-7837103B",
+         "SP-83BA020A",
+         "SP-849FF961",
+         "SP-9379CBF5",
+         "SP-98389DEF",
+         "SP-A561F8FC",
+         "SP-BED209F2",
+         "SP-C698EDE6",
+         "SP-D2978EA2",
+         "SP-D5319C1A",
+         "SP-DBB3E4B4"
+        ],
+        "activity_id": "ST00740",
+        "state_proposed": "installed",
+        "evidence": "voice",
+        "quote": "Terminplan: Stort montiert",
+        "t": null
+       },
+       {
+        "element_ids": [
+         "SP-01119E8D",
+         "SP-021B5004",
+         "SP-031E8127",
+         "SP-043BDD45",
+         "SP-04552BEE",
+         "SP-0560A6F4",
+         "SP-07528A4A",
+         "SP-097CDFD5",
+         "SP-0A151190",
+         "SP-0AE78539",
+         "SP-0BE99DA6",
+         "SP-0C491703",
+         "SP-107BF1A1",
+         "SP-10F762FD",
+         "SP-12DEA4D8",
+         "SP-16D46E62",
+         "SP-17D8A69E",
+         "SP-18A1D7DD",
+         "SP-1A4017A3",
+         "SP-1B2AEFA3",
+         "SP-1B8E267F",
+         "SP-1F03A314",
+         "SP-2097B4F0",
+         "SP-21171B6D",
+         "SP-2562196A",
+         "SP-256E3F6A",
+         "SP-260016F9",
+         "SP-272BB429",
+         "SP-27E45C03",
+         "SP-27FB23CB",
+         "SP-288EC341",
+         "SP-28C2386E",
+         "SP-2B36AAF7",
+         "SP-2D07ED7D",
+         "SP-31CEAF5A",
+         "SP-329ED58C",
+         "SP-32ACC9B7",
+         "SP-37F14BBC",
+         "SP-3C4394CB",
+         "SP-3C51C909",
+         "SP-3CD311C8",
+         "SP-3EFDF944",
+         "SP-406621F7",
+         "SP-42AE2DFE",
+         "SP-42C43D68",
+         "SP-4A342B7F",
+         "SP-5445BE44",
+         "SP-568BA334",
+         "SP-56AF94F1",
+         "SP-575ECEB4",
+         "SP-58F71FBF",
+         "SP-59F4595D",
+         "SP-5BE664A1",
+         "SP-5CCA46EA",
+         "SP-5EB6EA80",
+         "SP-5FFF501C",
+         "SP-62338FE8",
+         "SP-64346DB1",
+         "SP-65A9EA4D",
+         "SP-65C30BEA",
+         "SP-66EA776E",
+         "SP-68EF57B7",
+         "SP-69FBCC07",
+         "SP-6B2EDF53",
+         "SP-6B64B0C5",
+         "SP-6B816527",
+         "SP-6CD9505C",
+         "SP-6D224869",
+         "SP-6F99E1D9",
+         "SP-707472F2",
+         "SP-70D1C320",
+         "SP-729B98DE",
+         "SP-72B40DFF",
+         "SP-732CD140",
+         "SP-743A6FBB",
+         "SP-751662EC",
+         "SP-76FB53FE",
+         "SP-779A042F",
+         "SP-77C8A652",
+         "SP-78C1DD27",
+         "SP-79B35DE3",
+         "SP-7AB0F59B",
+         "SP-7B10A5AB",
+         "SP-7B1D6986",
+         "SP-7BED3227",
+         "SP-7E2D189B",
+         "SP-7FE57CBB",
+         "SP-809ADDEF",
+         "SP-80D2C794",
+         "SP-822CC423",
+         "SP-827A5604",
+         "SP-83837A26",
+         "SP-86137D6A",
+         "SP-87BE482A",
+         "SP-8BC5D5AA",
+         "SP-8C2ADF22",
+         "SP-8D9C75C8",
+         "SP-8DA2A155",
+         "SP-908FB60D",
+         "SP-9151C8FE",
+         "SP-92523899",
+         "SP-92AA8EC6",
+         "SP-93DDEF7B",
+         "SP-95A7B0F0",
+         "SP-962B4B37",
+         "SP-96DE589C",
+         "SP-96EC9FF7",
+         "SP-9890E399",
+         "SP-995ED0A7",
+         "SP-9A704A4A",
+         "SP-9B18FFE0",
+         "SP-9E0C55F5",
+         "SP-A0E93772",
+         "SP-A1336B72",
+         "SP-A19E76E5",
+         "SP-A26E000F",
+         "SP-A2AC7A92",
+         "SP-A2EEBF45",
+         "SP-A66884B6",
+         "SP-AA018306",
+         "SP-AA2A3DC6",
+         "SP-ABFE1C05",
+         "SP-AD5A1916",
+         "SP-BCC1E764",
+         "SP-BE733983",
+         "SP-BFB732F6",
+         "SP-C1439A1B",
+         "SP-C3B1B797",
+         "SP-C3CF2CD3",
+         "SP-CAF6B7C6",
+         "SP-CCC07DA6",
+         "SP-CD8B7373",
+         "SP-CF052724",
+         "SP-CF2355AE",
+         "SP-D0BC027D",
+         "SP-D2016EE6",
+         "SP-D2A74F88",
+         "SP-D3A0DEF8",
+         "SP-D499259F",
+         "SP-D9C8A4F8",
+         "SP-DD184B29",
+         "SP-DE223A52",
+         "SP-E178E681",
+         "SP-E1B9CA7E",
+         "SP-E2672EAD",
+         "SP-E4519F89",
+         "SP-E4F75042",
+         "SP-E73FF2A1",
+         "SP-E8D9C1F6",
+         "SP-E8E84056",
+         "SP-E902475C",
+         "SP-EA42451E",
+         "SP-EB1FFD07",
+         "SP-EB437623",
+         "SP-EBC754F2",
+         "SP-F01184D5",
+         "SP-F1F78065",
+         "SP-F2D25CDA",
+         "SP-F382AC86",
+         "SP-F6C7B505",
+         "SP-F7CF9829",
+         "SP-FD8BB211",
+         "SP-FE3D7890",
+         "SP-FE54A536",
+         "SP-FF2E1A27"
+        ],
+        "activity_id": "ST00940",
+        "state_proposed": "started",
+        "evidence": "voice",
+        "quote": "Terminplan: Stelwerk buitengevel begonnen",
+        "t": null
+       },
+       {
+        "element_ids": [
+         "SP-0109C1A3",
+         "SP-0153702A",
+         "SP-01ADE2AB",
+         "SP-027CFDC8",
+         "SP-03BD03F7",
+         "SP-03FE699B",
+         "SP-042982DB",
+         "SP-05B7A5B9",
+         "SP-0A63CBE1",
+         "SP-0B2549E6",
+         "SP-0B26B3BE",
+         "SP-0CEC5A1B",
+         "SP-0F9ADFF4",
+         "SP-0FB58C8B",
+         "SP-1072F7B5",
+         "SP-13F5A24A",
+         "SP-166035CB",
+         "SP-1672BF73",
+         "SP-1674C050",
+         "SP-167C6C94",
+         "SP-17EC0381",
+         "SP-180F6BD1",
+         "SP-1A2565B4",
+         "SP-1E9BF7FE",
+         "SP-1E9C4101",
+         "SP-20D21025",
+         "SP-20DCDBC5",
+         "SP-21084212",
+         "SP-210BD5D4",
+         "SP-2246C338",
+         "SP-225A8DB5",
+         "SP-235E509D",
+         "SP-26B09C4E",
+         "SP-27006757",
+         "SP-2829CC8F",
+         "SP-287A8B1D",
+         "SP-2953A4AD",
+         "SP-2E1B0947",
+         "SP-2EBD090A",
+         "SP-30DDB97A",
+         "SP-3510F164",
+         "SP-3562FCF8",
+         "SP-3A2A465B",
+         "SP-3BBDB790",
+         "SP-3D32E5A0",
+         "SP-3E4F2057",
+         "SP-3F311F4F",
+         "SP-3F94C552",
+         "SP-408C6DA9",
+         "SP-40D5A39B",
+         "SP-4742B6FE",
+         "SP-49B120A8",
+         "SP-4DC267A4",
+         "SP-4DD910A7",
+         "SP-4F40AC14",
+         "SP-4FD2290E",
+         "SP-50633C23",
+         "SP-5227AF25",
+         "SP-53BFFCE1",
+         "SP-544B1540",
+         "SP-558D9786",
+         "SP-57FD8B02",
+         "SP-581B7C13",
+         "SP-5B4DF3C5",
+         "SP-6048733B",
+         "SP-644FF6AE",
+         "SP-65DF2ACE",
+         "SP-6726E7A0",
+         "SP-67C78A1D",
+         "SP-67E570EA",
+         "SP-68FE3C07",
+         "SP-6A5EE95C",
+         "SP-6B136868",
+         "SP-6B356639",
+         "SP-6DC00213",
+         "SP-6E0DCF8F",
+         "SP-6EDE3471",
+         "SP-6F3ADCEB",
+         "SP-71E8C6B3",
+         "SP-722658C1",
+         "SP-7279E12F",
+         "SP-72D64475",
+         "SP-752B2769",
+         "SP-75309C1D",
+         "SP-75A558A4",
+         "SP-760C9AB6",
+         "SP-77F3E214",
+         "SP-7BB50ABA",
+         "SP-7F1FF2BD",
+         "SP-801E61FF",
+         "SP-86B16487",
+         "SP-87947B93",
+         "SP-87E39C04",
+         "SP-8851F36A",
+         "SP-8A5D0EEA",
+         "SP-8ADF4855",
+         "SP-8BA38BDF",
+         "SP-8C180CF4",
+         "SP-8CA38EED",
+         "SP-8D9153B1",
+         "SP-8F4DB83B",
+         "SP-8F9617EB",
+         "SP-90347E01",
+         "SP-90A4FAF2",
+         "SP-928064A0",
+         "SP-929E7DD2",
+         "SP-92A422A4",
+         "SP-946BD9B1",
+         "SP-948FD5D4",
+         "SP-98164C72",
+         "SP-98A18B5E",
+         "SP-98DC4CF2",
+         "SP-9DAF7CFC",
+         "SP-9F940650",
+         "SP-9FAEDE6A",
+         "SP-A07883FB",
+         "SP-A2047CC3",
+         "SP-A2870847",
+         "SP-A47EBC2A",
+         "SP-A51993FC",
+         "SP-A54C1439",
+         "SP-A7C7A752",
+         "SP-A9C00C23",
+         "SP-A9DC6465",
+         "SP-AB7F5516",
+         "SP-ABA2C6DE",
+         "SP-AE785853",
+         "SP-AF4A24F7",
+         "SP-AF6FDCA8",
+         "SP-B1D67362",
+         "SP-B33E2397",
+         "SP-B4E31E33",
+         "SP-B5B05444",
+         "SP-B7C664EC",
+         "SP-B7F7A67D",
+         "SP-B94B0F32",
+         "SP-BB343690",
+         "SP-BE79C27C",
+         "SP-BFC82B5B",
+         "SP-BFD32B77",
+         "SP-C14EB7FD",
+         "SP-C19A792B",
+         "SP-C526C75D",
+         "SP-C5834E4D",
+         "SP-C7AA35F6",
+         "SP-C8842E3F",
+         "SP-C9574C67",
+         "SP-CE85305A",
+         "SP-CE857BB1",
+         "SP-D22B6D6F",
+         "SP-D22F239E",
+         "SP-D26E16BB",
+         "SP-D2B9316E",
+         "SP-D30E0996",
+         "SP-D4596C08",
+         "SP-D7332C3F",
+         "SP-D7486733",
+         "SP-D8EEC981",
+         "SP-DA4F1C2F",
+         "SP-DF9AE63B",
+         "SP-E37F17D4",
+         "SP-E654B677",
+         "SP-E76EADE0",
+         "SP-E999168B",
+         "SP-E9E1F6E5",
+         "SP-EBBE261C",
+         "SP-EC52FD7A",
+         "SP-EF905549",
+         "SP-F0A985E5",
+         "SP-F24DD662",
+         "SP-F46DECCA",
+         "SP-F6E55A56",
+         "SP-F7C806A5",
+         "SP-FB27C98A",
+         "SP-FB8EF023",
+         "SP-FDDF93A6"
+        ],
+        "activity_id": "ST00970",
+        "state_proposed": "started",
+        "evidence": "voice",
+        "quote": "Terminplan: Plaatsen kozijnen begonnen",
+        "t": null
+       }
+      ],
+      "special_events": [],
+      "unmatched": []
+     }
+    }
+   ]
+  },
+  {
    "date": "2015-07-03",
    "captures": [
     {

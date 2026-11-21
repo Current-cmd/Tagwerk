@@ -22,7 +22,8 @@ log = logging.getLogger(__name__)
 VIDEO_EXT = (".mp4", ".mov", ".webm", ".m4v")
 PHOTO_EXT = (".jpg", ".jpeg", ".png", ".webp")
 AUDIO_EXT = (".m4a", ".mp3", ".wav", ".ogg", ".aac", ".opus")
-KIND_DE = {"video": "Video", "photo": "Foto", "audio": "Sprachnotiz", "note": "Notiz", "manual": "Manuell"}
+KIND_DE = {"video": "Video", "photo": "Foto", "audio": "Sprachnotiz", "note": "Notiz", "manual": "Manuell",
+           "plan": "Terminplan"}
 # weather constraints (contract): precip >= 5 mm, wind >= 50 km/h, temp <= 0 °C
 RAIN_MM, WIND_KMH, FROST_C = 5.0, 50.0, 0.0
 
@@ -209,7 +210,8 @@ def _bim(p: Project) -> bool:
 def first_info() -> str | None:
     """First day with any evidence: the history snapshot or the first capture (before it the app shows the plan)."""
     p = get_project()
-    dates = [h["date"] for h in p.history_log if h.get("date")] + [c["date"] for c in p.captures.values()]
+    dates = ([h["date"] for h in p.history_log if h.get("date")] + [c["date"] for c in p.captures.values()]
+             + list(p.plan_dates))  # schedule-built days count as information (labelled "Terminplan")
     return min(dates) if dates else None
 
 
@@ -228,7 +230,7 @@ def _recording(p: Project, c: dict) -> dict:
     cid, s = c["capture_id"], c.get("structured", {})
     video, photos, audio = _media(cid)
     kind = ("video" if video else "audio" if audio else "photo" if photos else
-            "manual" if cid.startswith("manual-") else "note")
+            "manual" if cid.startswith("manual-") else "plan" if cid.startswith("plan-") else "note")
 
     def el_name(eid: str) -> str:
         return p.elements[eid]["name_de"] if eid in p.elements else eid
@@ -279,6 +281,8 @@ def days() -> dict:
     rec: dict[str, int] = {}
     for c in p.captures.values():
         rec[c["date"]] = rec.get(c["date"], 0) + 1
+    for iso in p.plan_dates:  # schedule-built days are skipped in the full load (recorded progress wins)
+        rec[iso] = rec.get(iso, 0) + (0 if f"plan-{iso}" in p.captures else 1)
     evs: dict[str, int] = {}
     for e in p.events + _weather_events(p):
         evs[e["date"]] = evs.get(e["date"], 0) + 1
@@ -411,7 +415,7 @@ def taskgraph(d: date) -> dict:
         cid = c["capture_id"]
         video, photos, audio = _media(cid)
         kind = ("video" if video else "audio" if audio else "photo" if photos else
-                "manual" if cid.startswith("manual-") else "note")
+                "manual" if cid.startswith("manual-") else "plan" if cid.startswith("plan-") else "note")
         nodes[cid] = {"id": cid, "type": "recording", "label": f"{c['ts'][11:16]} {KIND_DE[kind]}", "date": c["date"]}
         edge(cid, c["zone_id"], "IN_ZONE")
         quotes: dict[str, str] = {}

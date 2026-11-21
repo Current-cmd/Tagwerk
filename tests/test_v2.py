@@ -256,7 +256,7 @@ def test_taskgraph_links_recordings_to_their_events_and_proposals(client):
 
 def test_no_information_day_makes_no_judgement(client):
     """Before the first snapshot nothing is known: no SPI, no delays, forecast = baseline (not '0 % done, late')."""
-    d = client.get("/api/v2/day", params={"date": "2026-11-12"}).json()
+    d = client.get("/api/v2/day", params={"date": "2026-11-06"}).json()  # before the project start (09.11.)
     assert d["info"]["has_data"] is False
     assert d["kpi"]["spi"] is None and d["kpi"]["delay_d"] == 0 and d["kpi"]["forecast_finish"] == d["kpi"]["baseline_finish"]
     assert all(a["delay_d"] == 0 and a["cause"] is None for a in d["activities"])

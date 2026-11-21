@@ -113,18 +113,18 @@ def test_scan3d_carries_the_kept_video(tmp_path, monkeypatch):
 
 
 def test_days_before_any_information_show_the_plan(tmp_path, monkeypatch):
-    """Before the first snapshot/capture there is no evidence: the day says so and the model shows the baseline plan."""
+    """Before the project start nothing is known: the day says so and the model shows the (empty) baseline plan.
+    From the start on, the schedule-built history (plan-* days, tagwerk.plan_history) carries the states."""
     with _client(tmp_path, monkeypatch) as c:
-        day = c.get("/api/v2/day", params={"date": "2026-11-12"}).json()
-        assert day["info"] == {"has_data": False, "first": "2026-11-20"}
-        assert c.get("/api/v2/day", params={"date": "2026-11-24"}).json()["info"]["has_data"] is True
+        day = c.get("/api/v2/day", params={"date": "2026-11-06"}).json()
+        assert day["info"] == {"has_data": False, "first": "2026-11-09"}
+        assert c.get("/api/v2/day", params={"date": "2026-11-12"}).json()["info"]["has_data"] is True
+        assert c.get("/api/v2/bim", params={"date": "2026-11-06"}).json()["mode"] == "plan"
         b = c.get("/api/v2/bim", params={"date": "2026-11-12"}).json()
-        assert b["mode"] == "plan"
+        assert b["mode"] == "actual"
         # seat rows: A1020 (Rückbau, planned 10.-11.11.) finished by plan, A1080 (new seats) still to come -> begun
-        begun = [e for e in b["elements"] if e["pct"] > 0]
-        assert begun and all(e["planned"] for e in begun)
-        assert {e["element_id"] for e in begun} >= {"E-ROW-A", "E-ROW-H"}
-        assert c.get("/api/v2/bim", params={"date": "2026-11-24"}).json()["mode"] == "actual"
+        begun = {e["element_id"] for e in b["elements"] if e["pct"] > 0 and not e["done"]}
+        assert begun >= {"E-ROW-A", "E-ROW-H"}
         assert c.get("/api/v2/bim", params={"date": "2026-11-30"}).json()["mode"] == "forecast"
 
 
@@ -135,7 +135,7 @@ def test_schependomlaan_whole_lifecycle(tmp_path, monkeypatch):
         for d in ("2015-03-02", "2015-05-04", "2015-06-26", "2015-07-24", "2015-09-01", "2015-10-16"):
             b = c.get("/api/v2/bim", params={"date": d}).json()
             counts.append((b["mode"], sum(e["done"] for e in b["elements"])))
-        assert [m for m, _ in counts] == ["plan", "plan", "actual", "actual", "forecast", "forecast"]
+        assert [m for m, _ in counts] == ["actual", "actual", "actual", "actual", "forecast", "forecast"]  # plan-* weeks
         assert [n for _, n in counts] == sorted(n for _, n in counts)  # the building grows from start to finish
         assert counts[0][1] < counts[2][1] and counts[-1][1] > counts[3][1]
 
