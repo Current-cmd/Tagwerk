@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { AlertTriangle, ArrowLeft, Box, EyeOff, Loader2, MessageSquareQuote, Route as RouteIcon, Tag, FlipVertical2 } from 'lucide-react'
+import { AlertTriangle, ArrowLeft, Box, EyeOff, Layers, Loader2, MessageSquareQuote, Route as RouteIcon, Tag, FlipVertical2, Video } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -8,7 +8,7 @@ import { Separator } from '@/components/ui/separator'
 import { Toggle } from '@/components/ui/toggle'
 import { fetchScan3d } from '@/lib/api'
 import { num } from '@/lib/format'
-import type { Scan3D, ScanMention, ScanObject } from '@/lib/types'
+import type { Scan3D, ScanMention, ScanObject, ScanSection } from '@/lib/types'
 import { cn } from '@/lib/utils'
 import { SceneView } from './SceneView'
 
@@ -38,12 +38,19 @@ export function ScanView({ cid, onBack }: { cid: string; onBack: () => void }) {
   const [showPath, setShowPath] = useState(true)
   const [showLabels, setShowLabels] = useState(true)
   const [flipY, setFlipY] = useState(true)
+  const [sectionId, setSectionId] = useState(0)
+  const [follow, setFollow] = useState(true) // the section follows the video time
 
   useEffect(() => {
     let live = true
     setState({ loading: true, scan: null, demo: false })
     setSelected(null)
-    fetchScan3d(cid).then(r => { if (live) setState({ loading: false, scan: r.data, demo: r.demo, error: r.error }) })
+    setSectionId(0)
+    fetchScan3d(cid).then(r => {
+      if (!live) return
+      setState({ loading: false, scan: r.data, demo: r.demo, error: r.error })
+      setFlipY(!r.data?.gravity_aligned) // levelled scans already have +y up; raw SfM points down
+    })
     return () => { live = false }
   }, [cid])
 
@@ -54,6 +61,23 @@ export function ScanView({ cid, onBack }: { cid: string; onBack: () => void }) {
     return [...m.entries()].sort((a, b) => a[0].localeCompare(b[0], 'de'))
   }, [scan])
   const sel = scan?.objects.find(o => o.id === selected) ?? null
+  const sections: ScanSection[] = useMemo(() => scan?.sections?.length ? scan.sections : [], [scan])
+  const view = useMemo<Scan3D | null>(() => { // the scene shows one section: its points, cameras and objects
+    if (!scan || !sections.length) return scan
+    const s = sections.find(x => x.id === sectionId) ?? sections[0]
+    return { ...scan, points: s.points, cameras: s.cameras, objects: scan.objects.filter(o => (o.section ?? 0) === s.id) }
+  }, [scan, sections, sectionId])
+  const choose = (id: string | null) => { // select an object, switching to its section
+    const o = id ? scan?.objects.find(x => x.id === id) : null
+    if (o && sections.length && (o.section ?? 0) !== sectionId) { setSectionId(o.section ?? 0); setFollow(false) }
+    setSelected(id)
+  }
+  const onVideoTime = (t: number) => {
+    setVt(t)
+    if (!follow || !sections.length) return
+    const s = sections.filter(x => t >= x.t_start - 0.5 && t <= x.t_end + 0.5).sort((a, b) => b.frames_registered - a.frames_registered)[0]
+    if (s && s.id !== sectionId) setSectionId(s.id)
+  }
   const videoRef = useRef<HTMLVideoElement>(null)
   const seekTo = useRef<number | null>(null) // set by a "Gesagt" click: seek there instead of the first sighting
   useEffect(() => { // jump the walkthrough video to where the selected object was first seen (or was named)
@@ -83,7 +107,7 @@ export function ScanView({ cid, onBack }: { cid: string; onBack: () => void }) {
       const v = videoRef.current
       if (v) { v.currentTime = seekTo.current; seekTo.current = null; v.play().catch(() => {}) }
     }
-    setSelected(id)
+    choose(id)
   }
   const seekOnly = (t: number | null) => {
     const v = videoRef.current
@@ -99,7 +123,9 @@ export function ScanView({ cid, onBack }: { cid: string; onBack: () => void }) {
         {state.demo && <Badge className="bg-amber-500 text-white">Demo-Daten</Badge>}
         {scan && (
           <span className="text-xs text-muted-foreground tabular-nums">
-            {scan.frames_registered ?? '–'} / {scan.frames_used ?? '–'} Bilder registriert · {scan.points.length.toLocaleString('de-DE')} Punkte · {scan.objects.length} Objekte
+            {scan.frames_registered ?? '–'} / {scan.frames_used ?? '–'} Bilder registriert
+            {sections.length > 1 && ` in ${sections.length} Abschnitten`} · {(view ?? scan).points.length.toLocaleString('de-DE')} Punkte · {scan.objects.length} Objekte
+            {scan.gravity_aligned && ' · Boden waagrecht, Maße ≈ m'}
             {scan.seconds != null && ` · ${num(scan.seconds, 0)} s Rechenzeit`}
           </span>
         )}
@@ -112,6 +138,24 @@ export function ScanView({ cid, onBack }: { cid: string; onBack: () => void }) {
         )}
       </div>
 
+      {scan?.ok && sections.length > 1 && (
+        <div className="flex items-center gap-2" data-testid="scan-sections">
+          <span className="flex shrink-0 items-center gap-1 text-xs font-medium text-muted-foreground"><Layers className="size-3.5" /> Abschnitte</span>
+          <div className="flex min-w-0 flex-1 gap-1 overflow-x-auto pb-0.5">
+            {[...sections].sort((a, b) => a.t_start - b.t_start).map(s => (
+              <button key={s.id} type="button" onClick={() => { setSectionId(s.id); setFollow(false); setSelected(null) }}
+                title={`${s.frames_registered} Bilder · ${s.points.length.toLocaleString('de-DE')} Punkte · ${s.objects} Objekte`}
+                className={cn('shrink-0 rounded-full border px-2.5 py-0.5 text-xs tabular-nums hover:bg-muted',
+                  s.id === sectionId && 'border-cyan-500 bg-cyan-50 font-medium text-cyan-900',
+                  vt != null && vt >= s.t_start && vt <= s.t_end && s.id !== sectionId && 'border-cyan-300')}>
+                {mmss(s.t_start)}–{mmss(s.t_end)} <span className="text-muted-foreground">· {s.frames_registered} B.</span>
+              </button>
+            ))}
+          </div>
+          <Toggle size="sm" variant="outline" pressed={follow} onPressedChange={setFollow} aria-label="Video folgen" title="Abschnitt passend zur Videozeit wählen"><Video /> Video folgen</Toggle>
+        </div>
+      )}
+
       <div className="flex min-h-0 flex-1 gap-3">
         <Card className="relative min-w-0 flex-1 overflow-hidden py-0">
           {state.loading ? (
@@ -122,7 +166,7 @@ export function ScanView({ cid, onBack }: { cid: string; onBack: () => void }) {
             </div>
           ) : scan.ok ? (
             <>
-              <SceneView scan={scan} colorOf={cOf} selected={selected} onSelect={setSelected} showPath={showPath} showLabels={showLabels} flipY={flipY} talking={talking} />
+              <SceneView scan={view!} colorOf={cOf} selected={selected} onSelect={choose} showPath={showPath} showLabels={showLabels} flipY={flipY} talking={talking} />
               {nowSaid && (
                 <div className="pointer-events-none absolute top-3 left-1/2 max-w-[80%] -translate-x-1/2 rounded-full bg-amber-500/95 px-3 py-1 text-sm font-medium text-white shadow" data-testid="scan-talking">
                   <MessageSquareQuote className="mr-1 inline size-4" /> „{nowSaid.phrase}“ → {nowSaid.name_de}
@@ -152,7 +196,7 @@ export function ScanView({ cid, onBack }: { cid: string; onBack: () => void }) {
         <Card className="flex w-[330px] shrink-0 flex-col gap-0 overflow-hidden py-0">
           {scan?.video && (
             <video ref={videoRef} src={scan.video} controls playsInline muted preload="metadata"
-              onTimeUpdate={e => setVt(e.currentTarget.currentTime)} onSeeked={e => setVt(e.currentTarget.currentTime)}
+              onTimeUpdate={e => onVideoTime(e.currentTarget.currentTime)} onSeeked={e => onVideoTime(e.currentTarget.currentTime)}
               className="aspect-video w-full shrink-0 bg-black" data-testid="scan-video" />
           )}
           <CardHeader className="border-b py-3">
@@ -160,7 +204,7 @@ export function ScanView({ cid, onBack }: { cid: string; onBack: () => void }) {
           </CardHeader>
           <ScrollArea className="min-h-0 flex-1">
             <div className="flex flex-col gap-3 p-3" data-testid="scan-objects">
-              {sel && <ObjectDetail o={sel} objects={scan!.objects} color={sel.mentioned ? SAID : colorOf(sel.category_de)} onSelect={setSelected} />}
+              {sel && <ObjectDetail o={sel} objects={scan!.objects} color={sel.mentioned ? SAID : colorOf(sel.category_de)} onSelect={choose} />}
               {(mentions.length > 0 || unseen.length > 0) && (
                 <div data-testid="scan-said">
                   <div className="mb-1 flex items-center gap-2 text-[11px] font-medium tracking-wide text-amber-700 uppercase">
@@ -220,7 +264,7 @@ export function ScanView({ cid, onBack }: { cid: string; onBack: () => void }) {
                       <li key={o.id}>
                         <button
                           type="button"
-                          onClick={() => setSelected(o.id === selected ? null : o.id)}
+                          onClick={() => choose(o.id === selected ? null : o.id)}
                           className={cn('flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm hover:bg-muted', o.id === selected && 'bg-muted font-medium')}
                         >
                           <span className="flex-1 truncate">{o.name_de}</span>

@@ -237,6 +237,7 @@ export interface ScanObject {
   bbox_in_thumb: [number, number, number, number] | null
   element_id: string | null
   relations: ScanRelation[]
+  section?: number // index into Scan3D.sections (absent on older scans: 0)
   // what the speaker named (tagwerk.pipeline.mentions); absent on older APIs
   mentioned?: boolean
   mention_times?: number[]
@@ -292,6 +293,19 @@ export interface Scan3D {
   video?: string | null // kept walkthrough video (/media/<cid>/<file>)
   mentions?: ScanMention[]
   unseen_mentions?: ScanUnseenMention[]
+  // long walks: every reconstructed piece (largest first); top-level points/cameras = sections[0]
+  sections?: ScanSection[]
+  gravity_aligned?: boolean // +y is up, floor at y = 0, ~metres
+}
+
+export interface ScanSection {
+  id: number
+  t_start: number
+  t_end: number
+  frames_registered: number
+  points: [number, number, number, number, number, number][]
+  cameras: ScanCamera[]
+  objects: number
 }
 
 // GET /api/v2/report?date=D

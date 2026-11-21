@@ -197,6 +197,19 @@ Also `GET /export/report.html?date=D` (print-ready, German, A4) for a PDF via th
 - Speech: audio quieter than -32 dB mean is levelled (ffmpeg highpass + dynaudnorm) before Whisper; at -36 dB the VAD
   dropped nearly every sentence.
 
+### Sections and gravity (added 2026-11-21)
+A long walk breaks into several reconstructions at doors, fast turns and blur. All of them are kept:
+- `sections: [{id, t_start, t_end, frames_registered, points, cameras, objects}]`, largest first; top-level `points` /
+  `cameras` = `sections[0]` (older readers), `frames_registered` = sum, every object has `section`; ids stay unique.
+- Each section is levelled: up = cameras' mean up vector refined by a RANSAC floor plane (a walking phone is pitched),
+  +y up, floor at y = 0, camera path centred, scale so the camera stands 1.5 m above the floor
+  (`gravity_aligned: true`, `units: "≈ m (Kamerahöhe 1,5 m angenommen)"`). A single camera far off both neighbours is
+  dropped, a lasting pose jump starts a new section (>= 4 frames, >= 30 points, at most 12).
+- Detection runs on <= 60 keyframes spread over the sections. Sections are not joined to each other (no shared frames).
+- `/app#/scan/<cid>`: "Abschnitte" chips (time range, frames), "Video folgen" picks the section of the current video
+  second; choosing an object or a "Gesagt" entry switches to its section; levelled scans start with "Hochachse" off.
+- Venue walk offline: 12 sections over 97 of 121 s (276 frames); floor flat at 0, ceiling ~3.2 m, cameras 1.50 ± 0.02 m.
+
 ### "Gesagt": what the speaker named (added 2026-11-21, `tagwerk/pipeline/mentions.py`)
 `GET /api/v2/scan3d/{cid}` links the cached transcript (`cache/<cid>/speech.json`) to the objects at read time (older
 and replayed captures get it too):
