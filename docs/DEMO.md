@@ -141,6 +141,14 @@ to watch the building grow; click an element for its state, zone and activity, "
 The model files are `seed/projects/schependomlaan/bim.{json,bin}`, made by
 `python scripts/ifc_to_bim.py "<datasets>/schependomlaan/Design model IFC/IFC Schependomlaan.ifc" seed/projects/schependomlaan`.
 
+## Whole lifecycle on the slider
+Before the first recorded day the history is built from the baseline schedule ("Terminplan" recordings, `plan-<date>`):
+Hörsaal every working day 09.-19.11.2026, Schependomlaan every Friday 19.02.-19.06.2015; then the recorded snapshots /
+captures, after the data date the forecast. Recorded progress always wins (today's KPIs are unchanged). Before the
+project start the app says "Keine Informationen zu diesem Zeitpunkt". Rebuild after schedule changes:
+`python scripts/build_plan_history.py seed --every day` and
+`python scripts/build_plan_history.py seed/projects/schependomlaan --every week`.
+
 ## Auth and flags on the laptop
 The laptop `.env` sets `TAGWERK_DEV=1` (no API token, the demo works as before) and `ALLOW_PROJECT_CREATE=1` (/scan
 may create projects). For a token: set `API_TOKEN=<long random>`, remove `TAGWERK_DEV`, restart, and open each page
