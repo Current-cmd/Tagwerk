@@ -316,6 +316,10 @@ def day(d: date) -> dict:
     if is_future:  # plan only: actuals stay at today, the plan moves on
         kpi["pct_planned"] = _future_planned_pct(p, d)
         kpi["spi"] = None
+    first = first_info()
+    no_info = not first or iso < first  # nothing recorded yet: no judgement (not "0 % done, late")
+    if no_info:
+        kpi.update(spi=None, delay_d=0, forecast_finish=kpi["baseline_finish"])
 
     caps = sorted((c for c in p.captures.values() if c["date"] == iso), key=lambda c: c["ts"], reverse=True)
     recordings = [_recording(p, c) for c in caps]
@@ -335,9 +339,10 @@ def day(d: date) -> dict:
             "zones": [p.zones[z]["name_de"] for z in zones[aid]],
             "gaeb": [{"oz": oz, "text": p.boq[oz]["short_text"]} for oz in gaeb[aid]],
             "planned_start": r["planned_start"].isoformat(), "baseline_finish": r["baseline_finish"].isoformat(),
-            "forecast_start": r["forecast_start"].isoformat(), "forecast_finish": r["forecast_finish"].isoformat(),
-            "pct": r["pct"], "planned_pct": planned, "delay_d": r["delay_d"], "tracked": r["tracked"],
-            "done": r["pct"] >= 100, "cause": _cause(p, r, eff, fc),
+            "forecast_start": (r["planned_start"] if no_info else r["forecast_start"]).isoformat(),
+            "forecast_finish": (r["baseline_finish"] if no_info else r["forecast_finish"]).isoformat(),
+            "pct": r["pct"], "planned_pct": planned, "delay_d": 0 if no_info else r["delay_d"], "tracked": r["tracked"],
+            "done": r["pct"] >= 100, "cause": None if no_info else _cause(p, r, eff, fc),
             "recordings": [{"capture_id": cid, "date": ts[:10], "time": ts[11:16]} for ts, cid in linked],
             "last_recording": linked[-1][0][:10] if linked else None,
             "predecessors": list(r["predecessors"]),
@@ -355,7 +360,6 @@ def day(d: date) -> dict:
 
     events = [_event(e) for e in p.events if e["date"] <= eff_iso] + _weather_events(p, eff_iso)
     events.sort(key=lambda e: (e["date"], e["id"]), reverse=True)
-    first = first_info()
     return {"date": iso, "today": t.isoformat(), "is_future": is_future,
             "info": {"has_data": bool(first) and iso >= first, "first": first},
             "project": {"name": p.meta.get("name"), "bim": _bim(p)}, "kpi": kpi,

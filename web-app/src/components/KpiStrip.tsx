@@ -19,12 +19,12 @@ function Kpi({ label, children, sub, tone }: { label: string; children: ReactNod
 export function KpiStrip({ day }: { day: DayResponse }) {
   const k = day.kpi
   const w = day.weather
-  const behind = k.pct_actual + 0.05 < k.pct_planned
+  const behind = !(day.info && !day.info.has_data) && k.pct_actual + 0.05 < k.pct_planned
   const WIcon = !w ? CloudSun : (w.tempC ?? 9) <= 0 ? Snowflake : (w.precipMm ?? 0) >= 1 ? CloudRain : (w.windKmh ?? 0) >= 40 ? Wind : CloudSun
   return (
     <div className="flex gap-2.5" data-testid="kpi-strip">
       <Kpi label="Fortschritt Ist / Soll" tone={behind ? 'bad' : undefined} sub={<Bar actual={k.pct_actual} planned={k.pct_planned} />}>
-        {num(k.pct_actual)} %<span className="text-sm font-normal text-muted-foreground">/ {num(k.pct_planned)} %</span>
+        {day.info && !day.info.has_data ? '–' : `${num(k.pct_actual)} %`}<span className="text-sm font-normal text-muted-foreground">/ {num(k.pct_planned)} %</span>
       </Kpi>
       <Kpi label="SPI" tone={k.spi == null ? undefined : k.spi < 0.95 ? 'bad' : k.spi >= 1 ? 'good' : undefined} sub="Termintreue (Ist ÷ Soll)">
         {k.spi == null ? '–' : num(k.spi, 2)}

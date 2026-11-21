@@ -252,3 +252,12 @@ def test_taskgraph_links_recordings_to_their_events_and_proposals(client):
     g25 = client.get("/api/v2/taskgraph", params={"date": "2026-11-25"}).json()
     ev = next(n["id"] for n in g25["nodes"] if n["type"] == "event" and n["id"].startswith("hist-1125"))
     assert (ev.split(":")[0], ev) in {(e["src"], e["dst"]) for e in g25["edges"] if e["type"] == "RAISED"}
+
+
+def test_no_information_day_makes_no_judgement(client):
+    """Before the first snapshot nothing is known: no SPI, no delays, forecast = baseline (not '0 % done, late')."""
+    d = client.get("/api/v2/day", params={"date": "2026-11-12"}).json()
+    assert d["info"]["has_data"] is False
+    assert d["kpi"]["spi"] is None and d["kpi"]["delay_d"] == 0 and d["kpi"]["forecast_finish"] == d["kpi"]["baseline_finish"]
+    assert all(a["delay_d"] == 0 and a["cause"] is None for a in d["activities"])
+    assert all(a["forecast_finish"] == a["baseline_finish"] for a in d["activities"])
