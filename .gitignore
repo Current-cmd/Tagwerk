@@ -14,3 +14,4 @@ models/
 *.las
 neo4j/
 .DS_Store
+cache/

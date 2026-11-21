@@ -15,6 +15,7 @@ class Settings(BaseSettings):
     hf_token: str = ""
     gpu_worker_url: str = ""
     data_dir: Path = Path("./data")
+    cache_dir: Path = Path("./cache")
     data_date: str = "2026-11-26"
     site_lat: float = 48.137
     site_lon: float = 11.575

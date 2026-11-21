@@ -70,11 +70,13 @@ def transcribe(capture: dict, derived: dict) -> dict:
         available = True
     except ImportError:
         available = False
-    if not available or not _has_audio(derived):
+    if not available:  # CPU-only machine without whisper: fixture keeps the chain testable
         out = stub("transcript", capture["capture_id"])
         if lang != "auto":
             out["lang"] = lang
         return out
+    if not _has_audio(derived):  # photo-only capture: nothing was said
+        return {"capture_id": capture["capture_id"], "lang": lang if lang != "auto" else "de", "segments": []}
 
     segments, info = _model().transcribe(
         _load_wav(derived["audio"]),

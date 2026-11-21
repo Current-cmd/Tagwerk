@@ -23,7 +23,6 @@ from tagwerk.contracts import schema
 from tagwerk.pipeline.loop import STATES
 
 log = logging.getLogger(__name__)
-CACHE_DIR = Path(__file__).resolve().parents[2] / "cache"
 
 # ---------------------------------------------------------------- vocabulary
 
@@ -328,7 +327,7 @@ def claude_structure(capture: dict, transcript: dict, vision: dict, context: dic
 # ---------------------------------------------------------------- entry point
 
 def cache_path(capture_id: str, name: str) -> Path:
-    return CACHE_DIR / capture_id / f"{name}.json"
+    return Path(get_settings().cache_dir) / capture_id / f"{name}.json"
 
 
 def structure(capture: dict, transcript: dict, vision: dict, context: dict, project=None) -> dict:

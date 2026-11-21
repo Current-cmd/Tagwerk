@@ -58,14 +58,17 @@ def collect_frames(capture: dict, derived: dict, limit: int = MAX_FRAMES) -> lis
     frames_dir = Path(derived.get("frames_dir") or "")
     if derived.get("frames_dir") and frames_dir.is_dir():
         for p in sorted(frames_dir.glob("*.jpg")):
-            try:
+            if p.stem.isdigit():
                 t = float(int(p.stem) - 1)
-            except ValueError:
-                t = None
+            elif p.stem.startswith("photo_"):
+                t = None  # normalize already copied the photo here
+            else:
+                continue
             items.append({"t": t, "path": str(p), "media_path": f"{frames_dir.name}/{p.name}"})
-    for m in capture.get("media", []):
-        if m.get("type") == "photo":
-            items.append({"t": None, "path": m["path"], "media_path": m["path"]})
+    if "photos" not in derived:  # normalize did not handle photos: read them from the capture
+        for m in capture.get("media", []):
+            if m.get("type") == "photo":
+                items.append({"t": None, "path": m["path"], "media_path": m["path"]})
     if len(items) > limit:
         idx = np.linspace(0, len(items) - 1, limit).round().astype(int)
         items = [items[i] for i in sorted(set(idx))]

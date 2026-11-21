@@ -1,44 +1,73 @@
-"""Tagwerk API: uploads, processing, websocket events, graph snapshot, dashboard data, .ics export.
+"""Tagwerk API: uploads, processing, websocket events, graph snapshot, dashboard data, exports.
 
-    uvicorn tagwerk.api.app:app --reload --port 8000
+    uvicorn tagwerk.api.app:app --host 0.0.0.0 --port 8000
 """
+import asyncio
+import logging
+import mimetypes
 import uuid
+from contextlib import asynccontextmanager
 from datetime import UTC, datetime
 from pathlib import Path
 
 from fastapi import FastAPI, File, Form, HTTPException, UploadFile, WebSocket, WebSocketDisconnect
-from fastapi.responses import FileResponse, PlainTextResponse
+from fastapi.responses import FileResponse, PlainTextResponse, Response
+from pydantic import BaseModel
 
 from tagwerk.config import get_settings
-from tagwerk.contracts import fixture
+from tagwerk.contracts import validate
 from tagwerk.events import broker
 from tagwerk.graph.store import get_store
-from tagwerk.pipeline.export import captures_to_ics
+from tagwerk.graph.sync import sync_capture, sync_seed
+from tagwerk.pipeline.export import captures_to_ics, gaeb_xml, p6_xml
 from tagwerk.pipeline.runner import run_capture
+from tagwerk.state import get_project, save_result, today
 
+log = logging.getLogger(__name__)
 WEB = Path(__file__).resolve().parents[2] / "web"
-app = FastAPI(title="Tagwerk")
-_captures: dict[str, dict] = {}
+_results: dict[str, dict] = {}
+_lock = asyncio.Lock()  # one capture at a time: the GPU and the state are shared
 
-# Placeholder zones until seed/ is loaded into the graph (TODO(feat/seed): read Zone nodes).
-ZONES = [
-    {"id": "Z-STAGE", "name": "Bühne / Stage"},
-    {"id": "Z-AUDIENCE", "name": "Zuschauerraum / Audience"},
-    {"id": "Z-TECH", "name": "Technik / Tech booth"},
-    {"id": "Z-ENTRANCE", "name": "Eingang / Entrance"},
-]
+
+def _sync_all() -> None:
+    store, project = get_store(), get_project()
+    sync_seed(store, project)
+    for cid in project.captures:
+        sync_capture(store, project, cid)
+
+
+@asynccontextmanager
+async def lifespan(_app: FastAPI):
+    try:
+        await asyncio.to_thread(_sync_all)
+    except Exception as exc:  # the API must come up even if the graph write fails
+        log.warning("initial graph sync failed: %s", exc)
+    yield
+
+
+app = FastAPI(title="Tagwerk", lifespan=lifespan)
 
 
 @app.get("/health")
 def health() -> dict:
     s = get_settings()
     return {"status": "ok", "graph": type(get_store()).__name__, "gpu_worker": s.gpu_worker_url or "in-process",
-            "replay_mode": s.replay_mode}
+            "replay_mode": s.replay_mode, "structuring": "claude" if s.anthropic_api_key else "rules",
+            "data_date": s.data_date}
 
 
 @app.get("/zones")
 def zones() -> list[dict]:
-    return ZONES
+    return [{"id": z["id"], "name": f"{z['name_de']} / {z['name_en']}"} for z in get_project().zones.values()]
+
+
+def _kind(upload: UploadFile) -> str:
+    ctype = upload.content_type or mimetypes.guess_type(upload.filename or "")[0] or ""
+    if ctype.startswith("video"):
+        return "video"
+    if ctype.startswith("audio"):
+        return "audio"
+    return "photo"
 
 
 @app.post("/captures")
@@ -46,13 +75,15 @@ async def create_capture(
     zone_id: str = Form(...),
     lang: str = Form("auto"),
     note: str | None = Form(None),
-    capture_id: str | None = Form(None),  # client may resend the same id on retry
+    capture_id: str | None = Form(None),  # client resends the same id on retry
+    ts: str | None = Form(None),  # optional server-time override (history/replay)
     files: list[UploadFile] = File(default=[]),
 ) -> dict:
-    if zone_id not in {z["id"] for z in ZONES}:
+    project = get_project()
+    if zone_id not in project.zones:
         raise HTTPException(400, f"unknown zone {zone_id}")
     cid = capture_id or f"cap-{uuid.uuid4().hex[:10]}"
-    if cid in _captures:  # idempotent retry
+    if cid in project.captures:  # idempotent retry
         return {"capture_id": cid, "status": "exists"}
     folder = Path(get_settings().data_dir) / "captures" / cid
     folder.mkdir(parents=True, exist_ok=True)
@@ -60,30 +91,75 @@ async def create_capture(
     for f in files:
         dest = folder / Path(f.filename or "upload.bin").name
         dest.write_bytes(await f.read())
-        ctype = f.content_type or ""
-        kind = "video" if ctype.startswith("video") else "audio" if ctype.startswith("audio") else "photo"
-        media.append({"type": kind, "path": str(dest)})
-    capture = {
-        "capture_id": cid,
-        "ts_device": None,
-        "ts_server": datetime.now(UTC).isoformat().replace("+00:00", "Z"),
-        "gps": None,
-        "zone_id": zone_id,
-        "lang": lang if lang in ("de", "en", "auto") else "auto",
-        "media": media,
-        "note": note,
-    }
-    capture.pop("ts_device")  # optional field; set from EXIF/metadata later
-    result = await run_capture(capture)
-    _captures[cid] = result
-    return {"capture_id": cid, "status": "processed", "work_done": result["structured"]["work_done"]}
+        media.append({"type": _kind(f), "path": str(dest)})
+    now = datetime.now(UTC).replace(microsecond=0)
+    if ts is None:  # put live captures on the project's data date so they count as "today"
+        ts = f"{get_settings().data_date}T{now.strftime('%H:%M:%S')}Z"
+    capture = {"capture_id": cid, "ts_server": ts, "gps": None, "zone_id": zone_id,
+               "lang": lang if lang in ("de", "en", "auto") else "auto", "media": media,
+               "note": (note or "").strip() or None}
+    async with _lock:
+        if cid in project.captures:
+            return {"capture_id": cid, "status": "exists"}
+        result = await run_capture(capture)
+    _results[cid] = result
+    return {"capture_id": cid, "status": "processed",
+            "transcript": " ".join(s["text"] for s in result["transcript"]["segments"]),
+            "changes": [c for c in result["changes"] if c["action"] in ("confirmed", "proposed", "unchanged")],
+            "absences": result["structured"]["absences"], "events": result["structured"]["special_events"]}
 
 
 @app.get("/captures/{capture_id}")
 def get_capture(capture_id: str) -> dict:
-    if capture_id not in _captures:
+    if capture_id in _results:
+        return _results[capture_id]
+    c = get_project().captures.get(capture_id)
+    if not c:
         raise HTTPException(404)
-    return _captures[capture_id]
+    return c
+
+
+@app.get("/media/{capture_id}/{name}")
+def media(capture_id: str, name: str) -> FileResponse:
+    base = (Path(get_settings().data_dir) / "captures").resolve()
+    path = (base / capture_id / name).resolve()
+    if base not in path.parents or not path.is_file():
+        raise HTTPException(404)
+    return FileResponse(path)
+
+
+class Confirm(BaseModel):
+    state: str
+
+
+@app.post("/api/elements/{element_id}/confirm")
+async def confirm_element(element_id: str, body: Confirm) -> dict:
+    """Manual tap in the site-manager view; counts like voice evidence."""
+    project = get_project()
+    el = project.elements.get(element_id)
+    if not el:
+        raise HTTPException(404)
+    cid = f"manual-{uuid.uuid4().hex[:8]}"
+    ts = f"{get_settings().data_date}T{datetime.now(UTC).strftime('%H:%M:%S')}Z"
+    structured = {"capture_id": cid, "labour_present": [], "absences": [], "material_delivered": [],
+                  "work_done": [{"element_ids": [element_id], "activity_id": None, "state_proposed": body.state,
+                                 "evidence": "voice", "quote": f"manual: {el['name_de']} {body.state}", "t": None}],
+                  "special_events": [], "unmatched": []}
+    validate("structured", structured)
+    meta = {"capture_id": cid, "zone_id": el["zone"], "ts": ts, "note": "manual confirmation"}
+    async with _lock:
+        changes = project.apply_structured(meta, structured)
+        if changes and changes[0]["action"] == "invalid":
+            del project.captures[cid]
+            raise HTTPException(400, f"{body.state!r} is not a state of {element_id}")
+        save_result(meta, structured)
+        await asyncio.to_thread(sync_capture, get_store(), project, cid)
+    await broker.publish({"type": "update", "label": "Element", "id": element_id,
+                          "props": {"state": el["state"], "pct": el["pct"], "via": "CONFIRMED", "name": el["name_de"]}})
+    for aid in project.activities_of(element_id):
+        await broker.publish({"type": "update", "label": "Activity", "id": aid,
+                              "props": {"pct": project.activity_pct(aid), "name": project.activities[aid]["name"]}})
+    return {"element_id": element_id, "action": changes[0]["action"], "pct": el["pct"], "state": el["state"]}
 
 
 @app.get("/api/graph")
@@ -93,16 +169,44 @@ def graph_snapshot() -> dict:
 
 @app.get("/api/dashboard")
 def dashboard() -> dict:
-    # TODO(feat/loop): compute from the graph (roll-up, EV, forecast). Fixture until then.
-    return fixture("dashboard")
+    return validate("dashboard", get_project().dashboard(today()))
+
+
+@app.get("/api/overview")
+def overview() -> dict:
+    return get_project().overview(today())
 
 
 @app.get("/export/day.ics", response_class=PlainTextResponse)
 def export_ics() -> PlainTextResponse:
-    caps = [{"capture_id": cid, "ts_server": r["capture"]["ts_server"], "zone_id": r["capture"]["zone_id"],
-             "description": "; ".join(w["quote"] for w in r["structured"]["work_done"])}
-            for cid, r in _captures.items()]
-    return PlainTextResponse(captures_to_ics(caps), media_type="text/calendar")
+    project = get_project()
+    caps = [{"capture_id": cid, "ts_server": c["ts"], "zone_id": c["zone_id"],
+             "summary": f"Baustellenaufnahme {project.zones[c['zone_id']]['name_de']}",
+             "description": "; ".join(c["quotes"]) or (c.get("note") or "")}
+            for cid, c in sorted(project.captures.items(), key=lambda kv: kv[1]["ts"])]
+    return PlainTextResponse(captures_to_ics(caps, daily_reports=sorted({c["date"] for c in project.captures.values()})),
+                             media_type="text/calendar",
+                             headers={"Content-Disposition": "attachment; filename=tagwerk.ics"})
+
+
+@app.get("/export/p6.xml")
+def export_p6() -> Response:
+    return Response(p6_xml(get_project(), today(), progress=True), media_type="application/xml",
+                    headers={"Content-Disposition": "attachment; filename=hoersaal_progress_p6.xml"})
+
+
+@app.get("/export/p6-baseline.xml")
+def export_p6_baseline() -> Response:
+    return Response(p6_xml(get_project(), progress=False), media_type="application/xml",
+                    headers={"Content-Disposition": "attachment; filename=hoersaal_baseline_p6.xml"})
+
+
+@app.get("/export/boq.{phase}")
+def export_gaeb(phase: str) -> Response:
+    if phase not in ("x83", "x84"):
+        raise HTTPException(404)
+    return Response(gaeb_xml(get_project(), int(phase[1:])), media_type="application/xml",
+                    headers={"Content-Disposition": f"attachment; filename=hoersaal.{phase}"})
 
 
 @app.websocket("/events")
@@ -115,16 +219,30 @@ async def events(ws: WebSocket) -> None:
         broker.disconnect(ws)
 
 
+def _page(name: str) -> FileResponse:
+    return FileResponse(WEB / name / "index.html")
+
+
+@app.get("/")
+def index() -> FileResponse:
+    return _page("dashboard")
+
+
 @app.get("/upload")
 def upload_page() -> FileResponse:
-    return FileResponse(WEB / "upload" / "index.html")
+    return _page("upload")
 
 
 @app.get("/graph")
 def graph_page() -> FileResponse:
-    return FileResponse(WEB / "graph" / "index.html")
+    return _page("graph")
 
 
 @app.get("/dashboard")
 def dashboard_page() -> FileResponse:
-    return FileResponse(WEB / "dashboard" / "index.html")
+    return _page("dashboard")
+
+
+@app.get("/site")
+def site_page() -> FileResponse:
+    return _page("site")

@@ -42,6 +42,7 @@ include = ["tagwerk*"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+markers = ["gpu: needs the real GPU models (RUN_GPU_TESTS=1)"]
 
 [tool.ruff]
 line-length = 120
