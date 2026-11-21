@@ -386,6 +386,17 @@ def _page(name: str) -> FileResponse:
     return FileResponse(WEB / name / "index.html")
 
 
+VENDOR = {"echarts.min.js", "vis-network.min.js"}  # bundled so the pages work without internet at the venue
+
+
+@app.get("/vendor/{name}")
+def vendor(name: str) -> FileResponse:
+    if name not in VENDOR:
+        raise HTTPException(404)
+    return FileResponse(WEB / "vendor" / name, media_type="text/javascript",
+                        headers={"Cache-Control": "public, max-age=86400"})
+
+
 @app.get("/")
 def index() -> FileResponse:
     return _page("dashboard")

@@ -315,3 +315,15 @@ def test_processed_capture_keeps_its_video_with_the_cache(client, monkeypatch):
     import json
 
     assert json.loads((get_settings().cache_dir / "cap-keep" / "capture.json").read_text())["note"] == "Kratzer an der Bühne"
+
+
+def test_pages_use_bundled_libraries_not_a_cdn(client):
+    import re
+
+    for page in ("/graph", "/dashboard", "/site", "/upload", "/scan"):
+        html = client.get(page).text
+        assert not re.search(r"<script[^>]+src=[\"']https?://", html), page
+    for lib in ("echarts.min.js", "vis-network.min.js"):
+        r = client.get(f"/vendor/{lib}")
+        assert r.status_code == 200 and len(r.content) > 100_000
+    assert client.get("/vendor/..%2Fapi%2Fapp.py").status_code == 404
