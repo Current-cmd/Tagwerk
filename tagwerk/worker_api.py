@@ -6,6 +6,7 @@ The API posts multipart form data: field `capture` (JSON, capture contract) + fi
 """
 import json
 import tempfile
+from contextlib import asynccontextmanager
 from pathlib import Path
 
 from fastapi import FastAPI, File, Form, UploadFile
@@ -13,7 +14,36 @@ from fastapi import FastAPI, File, Form, UploadFile
 from tagwerk.contracts import validate
 from tagwerk.pipeline import normalize, speech, vision
 
-app = FastAPI(title="Tagwerk GPU worker")
+
+def warm_models() -> None:
+    """Load the models once at startup so the first upload does not pay for it (Whisper turbo takes ~8 s, the vision
+    models ~10 s). Vision first: Whisper goes where the GPU memory is left. TAGWERK_NO_WARMUP=1 skips this."""
+    import logging
+    import os
+
+    if os.environ.get("TAGWERK_NO_WARMUP") == "1":
+        return
+    log = logging.getLogger(__name__)
+    try:
+        if vision.ml_available():
+            vision.models()
+        speech._model()
+        log.info("worker models warm")
+    except Exception as exc:  # noqa: BLE001 - a failed warm-up must not stop the worker; the first request retries
+        log.warning("warm-up failed: %s", exc)
+
+
+@asynccontextmanager
+async def _lifespan(_app: FastAPI):
+    import asyncio
+    import os
+
+    if os.environ.get("TAGWERK_STUBS") != "1":  # tests run with stubs: nothing to load
+        asyncio.get_running_loop().run_in_executor(None, warm_models)
+    yield
+
+
+app = FastAPI(title="Tagwerk GPU worker", lifespan=_lifespan)
 
 
 def _gpu_info() -> dict:

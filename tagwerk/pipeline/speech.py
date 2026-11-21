@@ -32,27 +32,69 @@ def _glossary() -> str | None:
     return text or None
 
 
-def _device() -> str:
+DEFAULT_MODEL = "large-v3-turbo"  # faster-whisper alias for mobiuslabsgmbh/faster-whisper-large-v3-turbo
+FALLBACK_MODEL = "small"
+
+
+def _cuda_available() -> bool:
     try:
         import ctranslate2
 
-        return "cuda" if ctranslate2.get_cuda_device_count() > 0 else "cpu"
+        return ctranslate2.get_cuda_device_count() > 0
     except Exception:  # noqa: BLE001 - any failure means CPU
-        return "cpu"
+        return False
+
+
+def _device(model: str) -> str:
+    """WHISPER_DEVICE (cpu|cuda) wins. The large models run int8 on the CPU: with YOLO11s, YOLO-World and RelateAnything
+    resident the 6 GB GTX 1060 has no room (a GPU load of turbo failed with out of memory next to the worker).
+    Smaller models use the GPU when there is one."""
+    forced = os.environ.get("WHISPER_DEVICE", "").lower()
+    if forced in ("cpu", "cuda"):
+        return forced
+    return "cpu" if "large" in model or not _cuda_available() else "cuda"
+
+
+def _load(name: str, device: str, allow_download: bool):
+    from faster_whisper import WhisperModel
+
+    try:  # the cache first: a plain load asks the HF hub for model info and hangs when the hub is unreachable
+        return WhisperModel(name, device=device, compute_type="int8", local_files_only=True)
+    except (OSError, ValueError):  # not cached
+        if not allow_download:
+            raise
+        return WhisperModel(name, device=device, compute_type="int8")
 
 
 def _model():
-    """Lazy module-level singleton per (model name, device)."""
-    from faster_whisper import WhisperModel
-
-    key = (os.environ.get("WHISPER_MODEL", "small"), _device())
-    if key not in _models:
-        log.info("loading whisper %s on %s (int8)", *key)
-        try:  # the cache first: a plain load asks the HF hub for model info and hangs when the hub is unreachable
-            _models[key] = WhisperModel(key[0], device=key[1], compute_type="int8", local_files_only=True)
-        except (OSError, ValueError):  # not cached yet: download once (CUDA/runtime errors must propagate)
-            _models[key] = WhisperModel(key[0], device=key[1], compute_type="int8")
-    return _models[key]
+    """Lazy singleton. WHISPER_MODEL (alias, full repo id or local path) defaults to large-v3-turbo; a model that is not
+    cached (never downloaded here, only the last candidate may be) or does not load falls back to "small", and a GPU
+    that is full falls back to the CPU. Runtime errors on the CPU propagate."""
+    name = os.environ.get("WHISPER_MODEL") or DEFAULT_MODEL
+    names = [name] + ([FALLBACK_MODEL] if name != FALLBACK_MODEL else [])
+    for key in [(n, _device(n)) for n in names] + [(n, "cpu") for n in names]:
+        if key in _models:
+            return _models[key]
+    err: Exception | None = None
+    for i, n in enumerate(names):
+        dev = _device(n)
+        for d in [dev] + (["cpu"] if dev == "cuda" else []):
+            log.info("loading whisper %s on %s (int8)", n, d)
+            try:
+                _models[(n, d)] = _load(n, d, allow_download=i == len(names) - 1)
+                return _models[(n, d)]
+            except RuntimeError as exc:
+                err = exc
+                if d == "cuda":
+                    log.warning("whisper %s on the GPU failed (%s); trying the CPU", n, exc)
+                    continue
+                break
+            except (OSError, ValueError) as exc:
+                err = exc
+                break
+        if i + 1 < len(names):
+            log.warning("whisper %s is not available (%s); falling back to %s", n, err, names[i + 1])
+    raise err
 
 
 def _load_wav(path: str):

@@ -9,7 +9,9 @@ All commands in `~/Developer/hacka/Tagwerk`, with `export PYTHONPATH=$PWD`.
 3. Reset to the seeded state (keeps cached clips for replay): `.venv/bin/python scripts/reset_demo.py`
 4. `~/tw-restart.sh` and check `curl localhost:8080/health` shows `"graph":"Neo4jStore"`. `.env` needs `API_TOKEN`
    (the API will not start without it); open each page once with `?token=<API_TOKEN>` on every demo device.
-5. Warm the models once with a throwaway clip (first run loads Whisper/YOLO/RelateAnything, ~10 s extra), then
+5. The worker warms Whisper (large-v3-turbo, CPU int8, ~8 s) and the vision models at startup; wait for
+   `/tmp/worker.log` to say "worker models warm" after `~/tw-restart.sh`. Speech takes about 0.6x the clip length on the CPU
+   (22 s clip: 16 s, 70 s clip: 35 s); a 30 s clip is done in ~30 s, SfM follows after the result is shown. If you must warm by hand with a throwaway clip, then
    reset again (step 3) and restart (step 4).
 6. Open `/graph` on the projector, `/dashboard` in a second tab, `/upload` on the phone
    (`http://<laptop-ip>:8080/upload`, same Wi-Fi or Tailscale `100.118.181.69`).

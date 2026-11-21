@@ -114,7 +114,7 @@ def test_whisper_loads_from_local_cache_without_network(monkeypatch):
     monkeypatch.setattr(speech, "_models", {})
     calls.clear()
     speech._model()
-    assert calls == [True, False]  # not cached: falls back to the normal (downloading) load
+    assert calls == [True, True, False]  # turbo not cached -> small not cached -> only small may be downloaded
 
 
 def test_whisper_load_narrow_fallback(monkeypatch):
@@ -225,3 +225,94 @@ def test_segments_carry_word_timestamps_and_validate(tmp_path, monkeypatch):
     # sentence in 1 of 6 runs (5/5 stable with it)
     assert seen["hallucination_silence_threshold"] == speech.HALLUCINATION_SILENCE_S
     assert out["segments"][0]["words"][1] == {"start": 51.2, "end": 51.7, "word": "tables"}
+
+
+
+def _fake_whisper(monkeypatch, cached=("large-v3-turbo", "small"), cuda_oom=False):
+    """Fake faster_whisper whose WhisperModel records (name, device, local_files_only); `cached` = models it can load
+    offline, cuda_oom = every cuda load raises like a full GPU."""
+    import sys
+    import types
+
+    from tagwerk.pipeline import speech
+
+    calls = []
+
+    class M:
+        def __init__(self, name, device, compute_type, local_files_only=False):
+            calls.append((name, device, local_files_only))
+            assert compute_type == "int8"
+            if device == "cuda" and cuda_oom:
+                raise RuntimeError("CUDA failed with error out of memory")
+            if local_files_only and name not in cached:
+                raise OSError("not in cache")
+
+    mod = types.ModuleType("faster_whisper")
+    mod.WhisperModel = M
+    monkeypatch.setitem(sys.modules, "faster_whisper", mod)
+    monkeypatch.setattr(speech, "_models", {})
+    monkeypatch.delenv("WHISPER_MODEL", raising=False)
+    monkeypatch.delenv("WHISPER_DEVICE", raising=False)
+    monkeypatch.setattr(speech, "_cuda_available", lambda: True)
+    return calls
+
+
+def test_default_model_is_large_v3_turbo_on_cpu_int8(monkeypatch):
+    """Turbo fits next to YOLO + YOLO-World + RelateAnything only on the CPU (4.6 of 6 GB are taken on the GTX 1060)."""
+    from tagwerk.pipeline import speech
+
+    calls = _fake_whisper(monkeypatch)
+    speech._model()
+    assert calls == [("large-v3-turbo", "cpu", True)]
+
+
+def test_env_overrides_model_and_device(monkeypatch):
+    from tagwerk.pipeline import speech
+
+    calls = _fake_whisper(monkeypatch)
+    monkeypatch.setenv("WHISPER_MODEL", "small")
+    monkeypatch.setenv("WHISPER_DEVICE", "cuda")
+    speech._model()
+    assert calls == [("small", "cuda", True)]
+    calls = _fake_whisper(monkeypatch, cached=("/models/my-whisper",))
+    monkeypatch.setenv("WHISPER_MODEL", "/models/my-whisper")  # a local path or full repo id passes through unchanged
+    monkeypatch.setenv("WHISPER_DEVICE", "cpu")
+    speech._model()
+    assert calls == [("/models/my-whisper", "cpu", True)]
+
+
+def test_turbo_not_cached_falls_back_to_small_without_downloading_turbo(monkeypatch, caplog):
+    import logging
+
+    from tagwerk.pipeline import speech
+
+    calls = _fake_whisper(monkeypatch, cached=("small",))
+    with caplog.at_level(logging.WARNING):
+        speech._model()
+    assert calls == [("large-v3-turbo", "cpu", True), ("small", "cuda", True)]  # no multi-GB download attempt
+    assert "large-v3-turbo" in caplog.text and "small" in caplog.text
+
+
+def test_gpu_out_of_memory_retries_the_same_model_on_cpu(monkeypatch):
+    from tagwerk.pipeline import speech
+
+    calls = _fake_whisper(monkeypatch, cuda_oom=True)
+    monkeypatch.setenv("WHISPER_DEVICE", "cuda")
+    speech._model()
+    assert calls == [("large-v3-turbo", "cuda", True), ("large-v3-turbo", "cpu", True)]
+
+
+def test_worker_warms_the_models_at_startup(monkeypatch):
+    from tagwerk import worker_api
+    from tagwerk.pipeline import speech, vision
+
+    seen = []
+    monkeypatch.setattr(speech, "_model", lambda: seen.append("whisper"))
+    monkeypatch.setattr(vision, "ml_available", lambda: True)
+    monkeypatch.setattr(vision, "models", lambda: seen.append("vision"))
+    worker_api.warm_models()
+    assert seen == ["vision", "whisper"]  # vision first: whisper goes where the GPU memory is left
+    monkeypatch.setenv("TAGWERK_NO_WARMUP", "1")
+    seen.clear()
+    worker_api.warm_models()
+    assert seen == []

@@ -10,6 +10,9 @@ Hackathon deadline: Fri 27 Nov 2026, 09:00. Read `docs/PLAN.md` before larger ch
 - Pascal GPU (GTX 1060 6 GB / 1080 Ti). torch 2.14.x from the **cu126** index only; never cu128+.
 - fp32 only, no AMP benefit, no `torch.compile` (Triton needs compute capability 7.0+).
 - Keep YOLO11s, YOLO-World and RelateAnything loaded; Whisper int8 on CPU or as the only extra GPU model.
+- Whisper default is `large-v3-turbo` int8 on the **CPU** (a GPU load went out of memory next to the worker: ~4.7 of 6 GB are
+  taken). `WHISPER_MODEL` (alias, repo id or local path) and `WHISPER_DEVICE` (cpu|cuda) override; a model that is not
+  cached or fails to load falls back to `small`. The worker warms the models at startup (`TAGWERK_NO_WARMUP=1` skips).
 - Install RelateAnything with `--no-deps`; re-check `torch.__version__` ends in `+cu126` after every install.
 
 ## Contracts are the law
