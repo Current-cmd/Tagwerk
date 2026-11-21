@@ -189,3 +189,35 @@ Also `GET /export/report.html?date=D` (print-ready, German, A4) for a PDF via th
   `{"type":"status","props":{"step":"sfm","ok":…,"frames_registered":…,"objects":…,"reason":…}}`. A replay without a cached
   sfm.json skips it. `/api/scan` responses carry `scan3d: {ok, reason, frames_registered, objects, url}`.
 - Timing on the GTX 1060 laptop (CPU SIFT): 48 frames 58 s, 80 frames 60-64 s, plus the upload and the other stages.
+- Long walks (> 90 s, `sfm.LONG_CLIP_S`): 3 fps where each keyframe is the sharpest (Laplacian variance) of 2, 1024 px,
+  <= 380 frames, a phone focal prior (f = 0.6 x image diagonal), sequential overlap 15 and relaxed mapper thresholds;
+  time limit 150 s + 3 s per second above 90 s, at most 240 s. sfm.json then also has `pick`, `long_side`, `time_limit`.
+  Clips up to 90 s keep the old plan exactly. The 121 s venue walk (site_hackathon.mp4, multi-room, blur): old plan
+  0/80 registered; dense plan 38-49/364 registered (the largest connected room: the hall), ~105-115 s.
+- Speech: audio quieter than -32 dB mean is levelled (ffmpeg highpass + dynaudnorm) before Whisper; at -36 dB the VAD
+  dropped nearly every sentence.
+
+### "Gesagt": what the speaker named (added 2026-11-21, `tagwerk/pipeline/mentions.py`)
+`GET /api/v2/scan3d/{cid}` links the cached transcript (`cache/<cid>/speech.json`) to the objects at read time (older
+and replayed captures get it too):
+```json
+{"mentions": [{"t": 52.3, "t_start": 50.8, "t_end": 96.2, "text": "The tables over here, …", "phrase": "tables",
+               "label": "dining table", "name_de": "Tisch", "object_ids": ["obj-3"], "element_id": "S-DINING-TABLE-1",
+               "state": null, "state_de": null, "activity_id": "A050"}],
+ "unseen_mentions": [{"name": "Lager", "label": null, "phrase": "storage", "t": 98.1, "times": [98.1], "text": "…",
+                      "state": null, "state_de": null}],
+ "objects": [{"id": "obj-3", "…": "…", "mentioned": true, "mention_times": [52.3], "spoken_phrase": "tables",
+              "spoken_state": null, "spoken_state_de": null}]}
+```
+- Names: detected labels, their element names/aliases, the catalogue (German and English label), English everyday
+  aliases (`EN_ALIASES`: table, slab -> floor, dustbin -> trash can, pillar, screen …), German plurals; building stems in
+  compounds ("Betonfassade") and `UNSEEN_TERMS` (storage -> Lager) become unseen mentions. Labour (person, helmet,
+  vest) is never an item. "10 Uhr" is a time, not the clock.
+- `t`: the phrase's second, interpolated by its character position in the segment (segments can be 45 s long).
+  Objects: those of the label seen within 4 s of `t`, else all of that label.
+- `state`: from the item's span (its clause up to the next named item); "have to / muss noch / noch nicht" -> null.
+- Report inventory rows carry `mentioned`, `spoken`, `spoken_state_de`; mentioned rows come first and the HTML marks
+  them "gesagt: „…“ (state)".
+- `/app#/scan/<cid>`: mentioned objects amber with halo and the phrase in the label; "Gesagt" list (click: video seeks
+  to `t`, camera flies to the object); the object being talked about pulses while the video plays; "Genannt, nicht im
+  Bild" list for unseen mentions.
