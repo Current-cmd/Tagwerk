@@ -41,5 +41,11 @@ Event, DailyReport. Relationships: see `seed/ontology.yaml`.
 
 ## Rules
 - Keys only from `.env` (gitignored): `ANTHROPIC_API_KEY`, `NEO4J_*`, `HF_TOKEN`.
+- Pushing to GitHub: the token is the `git=` line in `~/Developer/hacka/.env` (the parent of all Tagwerk
+  checkouts and worktrees; not the per-repo `.env`). Never print, log, commit or paste its value. Push your own
+  `feat/<module>` branch only, never `main`, with a throwaway askpass script in your scratchpad:
+  `printf '#!/bin/sh\ncase "$1" in Username*) echo x-access-token;; *) echo "$GH_PUSH_TOKEN";; esac\n' > $S/askpass.sh; chmod 700 $S/askpass.sh`
+  then `GH_PUSH_TOKEN="$(sed -n 's/^git=//p' ~/Developer/hacka/.env | tr -d '\r\n"')" GIT_ASKPASS=$S/askpass.sh GIT_TERMINAL_PROMPT=0 git push -u origin feat/<module>`
+  and `rm -f $S/askpass.sh`. Do not store it in git config, a remote URL or a credential helper.
 - One module per branch (`feat/<module>`); `main` stays demo-ready.
 - Each new stage gets a pytest that runs on CPU with fixtures.
