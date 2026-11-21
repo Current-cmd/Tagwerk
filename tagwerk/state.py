@@ -37,8 +37,13 @@ def get_project() -> Project:
     if _project is None:
         p = Project.from_seed(seed_dir())
         p.load_history()
-        for f in sorted(results_dir().glob("*.json"), key=lambda f: json.loads(f.read_text())["meta"]["ts"]):
-            r = json.loads(f.read_text(encoding="utf-8"))
+        results = []
+        for f in results_dir().glob("*.json"):
+            try:
+                results.append(json.loads(f.read_text(encoding="utf-8")))
+            except (OSError, ValueError, KeyError) as exc:  # one broken file must not take the API down
+                log.warning("skipping unreadable result %s: %s", f.name, exc)
+        for r in sorted(results, key=lambda r: r["meta"]["ts"]):
             p.apply_structured(r["meta"], r["structured"])
             p.captures[r["meta"]["capture_id"]].update({k: r["meta"][k] for k in ("photos", "weather", "lang")
                                                          if k in r["meta"]})
@@ -49,8 +54,12 @@ def get_project() -> Project:
 
 
 def save_result(meta: dict, structured: dict) -> None:
-    (results_dir() / f"{meta['capture_id']}.json").write_text(
-        json.dumps({"meta": meta, "structured": structured}, ensure_ascii=False, indent=1), encoding="utf-8")
+    import os
+
+    final = results_dir() / f"{meta['capture_id']}.json"
+    tmp = final.with_suffix(".json.tmp")
+    tmp.write_text(json.dumps({"meta": meta, "structured": structured}, ensure_ascii=False, indent=1), encoding="utf-8")
+    os.replace(tmp, final)  # atomic: a crash never leaves a truncated result
 
 
 def reset() -> None:

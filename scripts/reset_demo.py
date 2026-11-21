@@ -16,6 +16,8 @@ a = ap.parse_args()
 s = get_settings()
 for sub in ("results", "captures", "work"):
     shutil.rmtree(Path(s.data_dir) / sub, ignore_errors=True)
+for extra in Path(s.data_dir).glob("results-*"):  # other projects' stored captures
+    shutil.rmtree(extra, ignore_errors=True)
 if a.all:
     shutil.rmtree(s.cache_dir, ignore_errors=True)
 if s.neo4j_uri:

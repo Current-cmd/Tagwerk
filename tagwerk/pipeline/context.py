@@ -38,7 +38,7 @@ def weather(lat: float, lon: float) -> dict:
     return w
 
 
-def build_context(capture: dict, vision: dict, project=None) -> dict:
+def build_context(capture: dict, vision: dict, project=None, transcript: dict | None = None) -> dict:
     s = get_settings()
     gps = capture.get("gps") or {}
     lat = (project.meta.get("lat") if project is not None and get_settings().project not in ("", "hoersaal")
@@ -63,7 +63,17 @@ def build_context(capture: dict, vision: dict, project=None) -> dict:
               if (a["planned_start"] <= today <= a["planned_finish"])
               or (0 < project.activity_pct(a["id"]) < 100)]
     ordered: list[str] = []
-    for eid in seen + [e for e, el in project.elements.items() if el["zone"] == capture["zone_id"]]:
+    zones = [capture["zone_id"]]
+    if len(project.elements) > MAX_CANDIDATES:  # big model: zones named in what was said come first
+        import re
+
+        text = " ".join(s["text"] for s in (transcript or {}).get("segments", [])) + " " + (capture.get("note") or "")
+        text = text.lower()
+        named = [z for z, zz in project.zones.items()
+                 if any(re.search(rf"(?<![\wäöü]){re.escape(a.lower())}(?![\wäöü])", text)
+                        for a in [zz["name_de"], zz["name_en"], *zz.get("aliases", [])] if a)]
+        zones = named + [z for z in zones if z not in named]
+    for eid in seen + [e for z in zones for e, el in project.elements.items() if el["zone"] == z]:
         if eid not in ordered:
             ordered.append(eid)
     for a in active:

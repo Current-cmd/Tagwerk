@@ -1,4 +1,4 @@
-""".ics for Outlook (UTC, stable UID). P6 XML progress export is TODO(feat/export)."""
+""".ics for Outlook (UTC, stable UIDs), Primavera P6 XML (baseline/progress) and GAEB DA XML X83/X84."""
 from datetime import UTC, datetime, timedelta
 
 
@@ -35,12 +35,6 @@ def captures_to_ics(captures: list[dict], host: str = "tagwerk", daily_reports: 
                   f"DTEND;VALUE=DATE:{nxt}", f"SUMMARY:Tagesbericht {d}", "END:VEVENT"]
     lines.append("END:VCALENDAR")
     return "\r\n".join(lines) + "\r\n"
-
-
-def p6_progress_xml(activities: list[dict]) -> str:
-    """TODO(feat/export): update PhysicalPercentComplete, ActualStartDate, ActualFinishDate,
-    RemainingDuration, Status and DataDate on a copy of the imported P6 XML (same ObjectIds)."""
-    raise NotImplementedError
 
 
 # ---------------------------------------------------------------- Primavera P6 XML
@@ -80,7 +74,7 @@ def p6_xml(project, today=None, progress: bool = True) -> str:
     proj = SubElement(root, "Project")
     start = min(a["planned_start"] for a in project.activities.values())
     finish = max(a["planned_finish"] for a in project.activities.values())
-    for k, v in (("ObjectId", 1), ("Id", "HS-SAN"), ("Name", "Hörsaal Sanierung"),
+    for k, v in (("ObjectId", 1), ("Id", project.meta.get("id", "P-1")), ("Name", project.meta.get("name", "Tagwerk")),
                  ("PlannedStartDate", _p6_date(start)), ("ScheduledFinishDate", _p6_finish(finish)),
                  ("DataDate", _p6_date(today) if (progress and today) else _p6_date(start)),
                  ("Status", "Active")):
@@ -130,8 +124,9 @@ def p6_xml(project, today=None, progress: bool = True) -> str:
         for pred in project.activities[aid]["predecessors"]:
             rel_id += 1
             r = SubElement(proj, "Relationship")
+            rel_type = "Start to Start" if pred in project.activities[aid].get("start_to_start", []) else "Finish to Start"
             for k, v in (("ObjectId", rel_id), ("PredecessorActivityObjectId", activity_object_id(pred)),
-                         ("SuccessorActivityObjectId", activity_object_id(aid)), ("Type", "Finish to Start"),
+                         ("SuccessorActivityObjectId", activity_object_id(aid)), ("Type", rel_type),
                          ("Lag", 0)):
                 SubElement(r, k).text = str(v)
     indent(root)
@@ -153,7 +148,7 @@ def gaeb_xml(project, phase: int = 83) -> str:
     SubElement(award, "DP").text = str(phase)
     boq = SubElement(award, "BoQ")
     binfo = SubElement(boq, "BoQInfo")
-    SubElement(binfo, "Name").text = "Hörsaal Sanierung"
+    SubElement(binfo, "Name").text = project.meta.get("name", "Tagwerk")
     bkdn = SubElement(binfo, "BoQBkdn")
     for typ, length in (("BoQLevel", 2), ("BoQLevel", 2), ("Item", 4)):
         lvl = SubElement(bkdn, "BoQBkdn")
@@ -161,8 +156,13 @@ def gaeb_xml(project, phase: int = 83) -> str:
         SubElement(lvl, "Length").text = str(length)
     body = SubElement(boq, "BoQBody")
     tree: dict[str, dict[str, list]] = {}
-    for oz, b in sorted(project.boq.items()):
-        l1, l2, item = oz.split(".")
+    lots = {lot: f"{i:02d}" for i, lot in enumerate(dict.fromkeys(b["lot"] for b in project.boq.values()), 1)}
+    for n, (oz, b) in enumerate(sorted(project.boq.items()), 1):
+        parts = oz.split(".")
+        if len(parts) == 3 and all(p.isdigit() for p in parts):  # OZ like 01.02.0030
+            l1, l2, item = parts
+        else:  # foreign numbering (e.g. SP.ST00020): lot -> one group -> running item numbers
+            l1, l2, item = lots[b["lot"]], "01", f"{n:04d}"
         tree.setdefault(l1, {}).setdefault(l2, []).append((item, b))
     total = 0.0
     for l1, sub in tree.items():

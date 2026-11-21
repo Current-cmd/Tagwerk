@@ -29,8 +29,10 @@ class MemoryStore:
 
     def snapshot(self) -> dict:
         return {
-            "nodes": [{"label": lb, "id": i, "props": p} for (lb, i), p in self.nodes.items()],
-            "edges": [{"src": s, "rel": r, "dst": d, "props": p} for (s, r, d), p in self.edges.items()],
+            # detections stay in the store but not in the snapshot (thousands per video)
+            "nodes": [{"label": lb, "id": i, "props": p} for (lb, i), p in self.nodes.items() if lb != "Observation"],
+            "edges": [{"src": s, "rel": r, "dst": d, "props": p} for (s, r, d), p in self.edges.items()
+                      if r not in ("DETECTED", "REL", "LIKELY_IS")],
         }
 
     def batch(self):
@@ -93,9 +95,11 @@ class Neo4jStore:
 
     def snapshot(self) -> dict:
         nodes, _, _ = self._driver.execute_query(
-            "MATCH (n:Tw) RETURN [l IN labels(n) WHERE l <> 'Tw'][0] AS label, n.id AS id, properties(n) AS props LIMIT 2000")
+            "MATCH (n:Tw) WHERE NOT n:Observation RETURN [l IN labels(n) WHERE l <> 'Tw'][0] AS label, n.id AS id, "
+            "properties(n) AS props LIMIT 6000")
         edges, _, _ = self._driver.execute_query(
-            "MATCH (a)-[r]->(b) RETURN a.id AS src, type(r) AS rel, b.id AS dst, properties(r) AS props LIMIT 5000")
+            "MATCH (a:Tw)-[r]->(b:Tw) WHERE NOT a:Observation AND NOT b:Observation "
+            "RETURN a.id AS src, type(r) AS rel, b.id AS dst, properties(r) AS props LIMIT 15000")
         return {"nodes": [dict(r) for r in nodes], "edges": [dict(r) for r in edges]}
 
     def close(self) -> None:

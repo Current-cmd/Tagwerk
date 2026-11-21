@@ -31,7 +31,9 @@ Event, DailyReport. Relationships: see `seed/ontology.yaml`.
 - DIN 276: three-digit codes, marked `verify` until checked.
 - P6 XML: activities, WBS, relationships, user-defined fields. Costs live in GAEB.
 - .ics times in UTC with stable UID `capture-<id>@tagwerk`.
-- Forecast "today" is `DATA_DATE` from config.
+- Forecast "today" is `data_date` from the project's `project.json` if set, else `DATA_DATE` from config.
+- A sick report counts for 3 working days (`ABSENCE_WORKDAYS`); repeated reports on one day do not add up.
+- Ids (`capture_id`, `replay_of`) are limited to `[A-Za-z0-9_-]{1,64}`: they become folder names.
 
 ## Commands
 - Tests: `PYTHONPATH=$PWD .venv/bin/python -m pytest -q`

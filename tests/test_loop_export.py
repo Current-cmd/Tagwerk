@@ -1,5 +1,5 @@
 from tagwerk.pipeline.export import captures_to_ics
-from tagwerk.pipeline.loop import activity_pct, apply_work
+from tagwerk.pipeline.loop import apply_work
 
 
 def test_voice_confirms_vision_proposes():
@@ -15,10 +15,6 @@ def test_state_never_goes_down():
 
 def test_unknown_type_uses_default_states():
     assert apply_work({"type": "door"}, "installed", "both")["pct"] == 70
-
-
-def test_activity_pct_is_quantity_weighted():
-    assert activity_pct([{"pct": 100, "qty": 3}, {"pct": 0, "qty": 1}]) == 75.0
 
 
 def test_ics_is_utc_with_stable_uid():

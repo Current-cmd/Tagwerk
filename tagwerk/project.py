@@ -8,7 +8,6 @@ from __future__ import annotations
 
 import csv
 import json
-import math
 from collections import defaultdict
 from dataclasses import dataclass, field
 from datetime import date, timedelta
@@ -258,11 +257,9 @@ class Project:
         el["pct"], el["state"], el["updated"] = pct, state, day
         self.history_log.append({"date": day, "element_id": el["id"], "state": state, "pct": pct, "capture_id": cid})
         for link in self._by_el.get(el["id"], []):
-            if True:
-                a = self.activities[link["activity_id"]]
-                if a["actual_start"] is None or day < a["actual_start"]:
-                    if self._element_contrib(el, link, pct) > 0:
-                        a["actual_start"] = day
+            a = self.activities[link["activity_id"]]
+            if (a["actual_start"] is None or day < a["actual_start"]) and self._element_contrib(el, link, pct) > 0:
+                a["actual_start"] = day
 
     # ----- lookups -----
 
@@ -441,7 +438,8 @@ class Project:
                 "planned_start": a["planned_start"], "baseline_finish": a["planned_finish"],
                 "forecast_start": start, "forecast_finish": finish, "tracked": tracked,
                 "delay_d": workday_diff(a["planned_finish"], finish),
-                "bac_eur": bac, "pv_eur": round(bac * ppct / 100, 2), "ev_eur": round(bac * pct / 100, 2),
+                "bac_eur": bac, "pv_eur": round(bac * ppct / 100, 2),
+                "ev_eur": round(bac * pct / 100, 2) if tracked else 0.0,  # assumed progress earns nothing
                 "crew_planned": a["crew_planned"],
                 "crew_today": max(0.0, a["crew_planned"] - self.absent_on(a["trade_id"], today)),
                 "elements": self.elements_of(aid), "predecessors": a["predecessors"],
@@ -506,13 +504,14 @@ class Project:
                               "elements": [{"id": e["id"], "name": e["name_de"], "pct": e["pct"],
                                             "state": e["state"], "type": e["type"],
                                             "states": [s for s, _ in states_for(e["type"])]} for e in els]})
-        today_caps = [c for c in self.captures.values() if c["date"] == iso]
+        today_caps = [c for c in list(self.captures.values()) if c["date"] == iso]
         return {
             "date": iso,
             "kpi": {
                 "pct_actual": round(100 * ev / bac, 1) if bac else 0, "pct_planned": round(100 * pv / bac, 1) if bac else 0,
                 "spi": round(ev / pv, 2) if pv else None, "ev_eur": round(ev), "pv_eur": round(pv), "bac_eur": round(bac),
                 "priced": any(lk["value"] for lk in self.links),
+                "planned_basis": "start of report day (curve points: end of each day)",
                 "ac_eur": round(self.actual_cost(today)), "ac_note": "labour hours x invented trade rates",
                 "forecast_finish": project_finish.isoformat(), "baseline_finish": baseline_finish.isoformat(),
                 "delay_d": workday_diff(baseline_finish, project_finish),
@@ -530,7 +529,7 @@ class Project:
                                  "note": c.get("note"), "quotes": c["quotes"],
                                  "photos": c.get("photos", []),
                                  "changes": [ch for ch in c["changes"] if ch["action"] in ("confirmed", "proposed")]}
-                                for c in self.captures.values()], key=lambda c: c["ts"], reverse=True),
+                                for c in list(self.captures.values())], key=lambda c: c["ts"], reverse=True),
             "today_capture_ids": [c["capture_id"] for c in today_caps],
             "events": sorted(self.events, key=lambda e: e["date"], reverse=True),
             "labour": {"present": dict(labour_today), "planned": dict(planned_crew)},
@@ -601,7 +600,3 @@ class Project:
         if row["pct"] < row["planned_pct"]:
             reasons.append(f"{row['pct']:.0f} % done vs {row['planned_pct']:.0f} % planned")
         return "; ".join(reasons) or "behind plan"
-
-
-def ceil_div(a: float, b: float) -> int:
-    return math.ceil(a / b) if b else 0

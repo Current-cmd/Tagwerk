@@ -123,3 +123,22 @@ def test_absence_on_weekend_counts_from_monday(p):
     p.apply_structured(*_cap("c7", absences=[{"trade": "Trockenbau", "count": 2, "reason": "krank"}], day="2026-11-28"))
     assert p.absent_on("T-TROCKENBAU", d(2026, 11, 30)) == 2
     assert p.absent_on("T-TROCKENBAU", d(2026, 12, 3)) == 0
+
+
+def test_exports_for_imported_project():
+    from xml.etree.ElementTree import fromstring
+
+    from tagwerk.pipeline.export import gaeb_xml, p6_xml
+    from tagwerk.project import SEED_DIR
+
+    sp_dir = SEED_DIR / "projects" / "schependomlaan"
+    if not (sp_dir / "elements.csv").exists():
+        import pytest
+
+        pytest.skip("no Schependomlaan seed")
+    sp = Project.from_seed(sp_dir)
+    sp.load_history()
+    x84 = fromstring(gaeb_xml(sp, 84))
+    assert len(x84.findall(".//{*}Item")) == len(sp.boq)
+    xml = p6_xml(sp, date.fromisoformat(sp.meta["data_date"]))
+    assert "Schependomlaan" in xml and "Start to Start" in xml

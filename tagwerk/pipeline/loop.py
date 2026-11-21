@@ -30,11 +30,3 @@ def apply_work(element: dict, state: str, evidence: str) -> dict:
     if new <= current:
         return {"action": "unchanged", "pct": current}
     return {"action": "confirmed", "pct": new}
-
-
-def activity_pct(elements: list[dict]) -> float:
-    """Quantity-weighted average of element % (qty defaults to 1)."""
-    total = sum(float(e.get("qty", 1) or 1) for e in elements)
-    if not total:
-        return 0.0
-    return round(sum(float(e.get("pct", 0)) * float(e.get("qty", 1) or 1) for e in elements) / total, 1)

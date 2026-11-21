@@ -112,7 +112,8 @@ async def run_capture(capture: dict, replay: bool = False) -> dict:
 
     if replay:
         await asyncio.sleep(REPLAY_PAUSE_S)
-    ctx = validate("context", context.build_context(capture, vis, project))
+    cached_ctx = _cached(cid, "context") if replay else None
+    ctx = validate("context", cached_ctx or context.build_context(capture, vis, project, transcript))
     _store_cache(cid, "context", ctx)
     structured = validate("structured", await asyncio.to_thread(structure.structure, capture, transcript, vis,
                                                                  ctx, project, replay))

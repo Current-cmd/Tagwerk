@@ -95,3 +95,10 @@ def test_future_and_questions_are_not_progress(p):
             zone="Z-STAGE")
     ids = {e for w in s["work_done"] for e in w["element_ids"]}
     assert "E-CURTAIN" in ids and "E-SCREEN" not in ids and "E-PROJECTOR" not in ids
+
+
+def test_fehlt_about_work_is_not_an_absence(p):
+    s = run(p, "Bei Reihe B fehlt noch die Unterkonstruktion")
+    assert not s["absences"]
+    s = run(p, "Zwei Monteure fehlen heute")
+    assert s["absences"] and s["absences"][0]["count"] == 2

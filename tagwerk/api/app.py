@@ -1,6 +1,6 @@
 """Tagwerk API: uploads, processing, websocket events, graph snapshot, dashboard data, exports.
 
-    uvicorn tagwerk.api.app:app --host 0.0.0.0 --port 8000
+    uvicorn tagwerk.api.app:app --host 0.0.0.0 --port 8080
 """
 import asyncio
 import logging
@@ -195,7 +195,11 @@ async def scan_video(files: list[UploadFile] = File(...), make_project: str | No
             item["thumb"] = f"/media/{sid}/derived/frames/{name}"
     if make_project:
         name = re.sub(r"[^a-z0-9_-]", "", make_project.lower())[:40] or sid
-        out = (seed_dir().parent if seed_dir().name != "seed" else seed_dir()) / "projects" / name
+        from tagwerk.project import SEED_DIR
+
+        out = SEED_DIR / "projects" / name
+        if name in ("hoersaal", "schependomlaan") or (out / "history.json").exists():  # never clobber real projects
+            raise HTTPException(409, f"project {name} exists; choose another name")
         inv["project"] = seed_from_scan(inv, out, name, today(), zone_name)
     return inv
 
@@ -287,16 +291,20 @@ def export_ics() -> PlainTextResponse:
                              headers={"Content-Disposition": "attachment; filename=tagwerk.ics"})
 
 
+def _slug() -> str:
+    return get_settings().project or "hoersaal"
+
+
 @app.get("/export/p6.xml")
 def export_p6() -> Response:
     return Response(p6_xml(get_project(), today(), progress=True), media_type="application/xml",
-                    headers={"Content-Disposition": "attachment; filename=hoersaal_progress_p6.xml"})
+                    headers={"Content-Disposition": f"attachment; filename={_slug()}_progress_p6.xml"})
 
 
 @app.get("/export/p6-baseline.xml")
 def export_p6_baseline() -> Response:
     return Response(p6_xml(get_project(), progress=False), media_type="application/xml",
-                    headers={"Content-Disposition": "attachment; filename=hoersaal_baseline_p6.xml"})
+                    headers={"Content-Disposition": f"attachment; filename={_slug()}_baseline_p6.xml"})
 
 
 @app.get("/export/boq.{phase}")
@@ -304,7 +312,7 @@ def export_gaeb(phase: str) -> Response:
     if phase not in ("x83", "x84"):
         raise HTTPException(404)
     return Response(gaeb_xml(get_project(), int(phase[1:])), media_type="application/xml",
-                    headers={"Content-Disposition": f"attachment; filename=hoersaal.{phase}"})
+                    headers={"Content-Disposition": f"attachment; filename={_slug()}.{phase}"})
 
 
 @app.websocket("/events")
