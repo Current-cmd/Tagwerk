@@ -159,14 +159,20 @@ async def scan_video(files: list[UploadFile] = File(...), make_project: str | No
         media.append({"type": _kind(f), "path": str(dest)})
     capture = {"capture_id": sid, "ts_server": datetime.now(UTC).isoformat().replace("+00:00", "Z"), "gps": None,
                "zone_id": next(iter(get_project().zones)), "lang": "auto", "media": media, "note": None}
-    derived = None
-    if not get_settings().gpu_worker_url:
-        from tagwerk.pipeline import normalize
+    from tagwerk.pipeline import normalize
 
-        derived = await asyncio.to_thread(normalize.normalize, capture, folder / "derived")
+    # frames locally too (same 1 fps numbering as the worker), so the page can show where each label was seen
+    derived = await asyncio.to_thread(normalize.normalize, capture, folder / "derived")
     async with _lock:
-        vis = validate("vision", await _gpu_stage("vision", capture, derived))
+        vis = validate("vision", await _gpu_stage("vision", capture,
+                                                  None if get_settings().gpu_worker_url else derived))
     inv = inventory(vis)
+    inv["scan_id"] = sid
+    for item in inv["items"]:
+        best = item.get("best") or {}
+        name = Path(best.get("media_path") or "").name
+        if name and (folder / "derived" / "frames" / name).exists():
+            item["thumb"] = f"/media/{sid}/derived/frames/{name}"
     if make_project:
         name = re.sub(r"[^a-z0-9_-]", "", make_project.lower())[:40] or sid
         out = (seed_dir().parent if seed_dir().name != "seed" else seed_dir()) / "projects" / name
@@ -190,7 +196,7 @@ def get_capture(capture_id: str) -> dict:
     return c
 
 
-@app.get("/media/{capture_id}/{name}")
+@app.get("/media/{capture_id}/{name:path}")
 def media(capture_id: str, name: str) -> FileResponse:
     base = (Path(get_settings().data_dir) / "captures").resolve()
     path = (base / capture_id / name).resolve()
@@ -312,6 +318,11 @@ def graph_page() -> FileResponse:
 @app.get("/dashboard")
 def dashboard_page() -> FileResponse:
     return _page("dashboard")
+
+
+@app.get("/scan")
+def scan_page() -> FileResponse:
+    return _page("scan")
 
 
 @app.get("/site")

@@ -95,7 +95,7 @@ def test_exports(client):
 def test_overview_and_pages(client):
     ov = client.get("/api/overview").json()
     assert ov["kpi"]["bac_eur"] > 0 and ov["zones"] and ov["curve"]
-    for page in ("/", "/upload", "/graph", "/dashboard", "/site"):
+    for page in ("/", "/upload", "/graph", "/dashboard", "/site", "/scan"):
         assert client.get(page).status_code == 200, page
 
 
