@@ -16,6 +16,11 @@
   header h1 { font-size: 19px; margin: 0; }
   header .date { color: var(--muted); }
   header a { margin-left: auto; color: var(--accent); text-decoration: none; font-size: 15px; }
+  .filters { display: flex; gap: 8px; padding: 10px 16px; background: var(--bg); max-width: 1100px; margin: 0 auto; }
+  .filters select, .filters input { font: inherit; font-size: 16px; min-height: 44px; border: 1px solid var(--line); border-radius: 10px; padding: 0 12px; background: var(--card); color: var(--ink); }
+  .filters select { flex: 0 0 40%; min-width: 0; }
+  .filters input { flex: 1; min-width: 0; }
+  .more { color: var(--muted); font-size: 14px; margin: 8px 0 0; }
   main { max-width: 1100px; margin: 0 auto; padding: 16px; display: grid; gap: 14px; }
   @media (min-width: 900px) { main { grid-template-columns: 1fr 1fr; } }
   .act { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 16px; }
@@ -58,6 +63,10 @@
   <span class="date" id="date">–</span>
   <a href="/upload">+ Aufnahme</a>
 </header>
+<div class="filters" id="filters">
+  <select id="storey" aria-label="Geschoss"><option value="">Alle Zonen</option></select>
+  <input id="q" type="search" placeholder="Bauteil suchen…" aria-label="Bauteil suchen" autocomplete="off">
+</div>
 <main id="acts"><p class="empty">Lade…</p></main>
 <div class="footer"><button class="btn primary" id="release">Tagesbericht freigeben</button></div>
 
@@ -94,26 +103,53 @@ function toast(msg, err) {
   clearTimeout(toastTimer); toastTimer = setTimeout(() => t.className = 'toast' + (err ? ' err' : ''), 2800);
 }
 
-let elements = {};
+let elements = {}, last = null;
+const CHIP_CAP = 40;
+function filterState() { return { zone: $('storey').value, q: $('q').value.trim().toLowerCase() }; }
+const matches = (e, f) => (!f.zone || e.zone_id === f.zone) && (!f.q || e.name.toLowerCase().includes(f.q));
 function render(d) {
+  last = d;
   $('date').textContent = dmy(d.date);
   elements = {};
-  (d.zones || []).forEach(z => (z.elements || []).forEach(e => elements[e.id] = { ...e, zone: z.name }));
-  const acts = (d.activities || []).filter(a => (a.pct ?? 0) < 100 && a.planned_start && a.planned_start <= d.date);
-  if (!acts.length) { $('acts').replaceChildren(h('p', { class: 'empty' }, 'Heute keine offenen Vorgänge. No open activities today.')); return; }
-  $('acts').replaceChildren(...acts.map(a => h('div', { class: 'act' },
+  (d.zones || []).forEach(z => (z.elements || []).forEach(e => elements[e.id] = { ...e, zone: z.name, zone_id: z.zone_id }));
+  const sel = $('storey');
+  if (sel.options.length !== (d.zones || []).length + 1) {
+    const keep = sel.value;
+    sel.replaceChildren(h('option', { value: '' }, 'Alle Zonen'), ...(d.zones || []).map(z => h('option', { value: z.zone_id }, `${z.name} (${(z.elements || []).length})`)));
+    sel.value = keep;
+  }
+  const f = filterState(), filtering = !!(f.zone || f.q);
+  const cards = [];
+  if (f.q) {  // search reaches every element, not only today's open activities
+    const hits = Object.values(elements).filter(e => matches(e, f));
+    cards.push(h('div', { class: 'act' }, h('h2', {}, `Suchergebnisse (${hits.length})`),
+      h('div', { class: 'meta', style: 'margin-bottom:10px' }, `„${$('q').value.trim()}“${f.zone ? ' · ' + sel.selectedOptions[0].textContent : ''}`),
+      hits.length ? chipList(hits) : h('p', { class: 'empty', style: 'margin:0' }, 'Keine Treffer.')));
+  }
+  let acts = (d.activities || []).filter(a => a.tracked !== false && (a.pct ?? 0) < 100 && ((a.pct ?? 0) > 0 || (a.planned_start && a.planned_start <= d.date)));
+  if (filtering) acts = acts.filter(a => (a.elements || []).some(id => elements[id] && matches(elements[id], f)));
+  cards.push(...acts.map(a => h('div', { class: 'act' },
     h('h2', {}, a.name),
     h('div', { class: 'meta' }, `${a.trade || '–'} · ${pct(a.pct)} von Soll ${pct(a.planned_pct)}`),
     h('div', { class: 'bar' }, h('div', { style: `width:${Math.min(100, a.pct || 0)}%` })),
-    chipsFor(a))));
+    chipsFor(a, f))));
+  if (!cards.length) cards.push(h('p', { class: 'empty' }, filtering ? 'Keine offenen Vorgänge für diesen Filter.' : 'Heute keine offenen Vorgänge. No open activities today.'));
+  $('acts').replaceChildren(...cards);
 }
-function chipsFor(a) {
-  const els = (a.elements || []).map(id => elements[id]).filter(Boolean);
+let filterTimer;
+$('storey').onchange = () => last && render(last);
+$('q').oninput = () => { clearTimeout(filterTimer); filterTimer = setTimeout(() => last && render(last), 150); };
+function chipsFor(a, f) {
+  const els = (a.elements || []).map(id => elements[id]).filter(e => e && matches(e, f));
   if (!els.length) return h('p', { class: 'empty', style: 'margin:0;font-size:14px' }, 'Keine Elemente verknüpft.');
-  return h('div', { class: 'chips' }, els.map(e => {
+  return chipList(els);
+}
+function chipList(els) {
+  const shown = els.slice(0, CHIP_CAP);
+  return h('div', {}, h('div', { class: 'chips' }, shown.map(e => {
     const cls = !e.pct ? 's-0' : e.pct >= 100 ? 's-done' : 's-mid';
     return h('button', { class: 'chip ' + cls, onclick: () => openSheet(e.id) }, h('b', {}, e.name), h('span', {}, `${de(e.state)} · ${pct(e.pct)}`));
-  }));
+  })), els.length > CHIP_CAP ? h('p', { class: 'more' }, `+${els.length - CHIP_CAP} weitere – Zone oder Suche nutzen`) : null);
 }
 
 function openSheet(id) {
@@ -157,6 +193,7 @@ async function load() {
     const r = await fetch('/api/overview', { cache: 'no-store' });
     if (!r.ok) throw new Error(`HTTP ${r.status}`);
     render(await r.json());
+    window.tagwerkReady = window.tagwerkReady || performance.now();
   } catch (e) {
     $('acts').replaceChildren(h('p', { class: 'empty' }, `Daten konnten nicht geladen werden (${e.message}).`));
   }
