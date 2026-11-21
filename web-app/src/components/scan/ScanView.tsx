@@ -1,12 +1,12 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { AlertTriangle, ArrowLeft, Box, EyeOff, Layers, Loader2, MessageSquareQuote, Route as RouteIcon, Tag, FlipVertical2, Video } from 'lucide-react'
+import { AlertTriangle, ArrowLeft, Box, EyeOff, Layers, Loader2, MessageSquareQuote, Route as RouteIcon, Tag, FlipVertical2, Upload, Video } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Separator } from '@/components/ui/separator'
 import { Toggle } from '@/components/ui/toggle'
-import { fetchScan3d } from '@/lib/api'
+import { fetchScan3d, uploadLayout } from '@/lib/api'
 import { num } from '@/lib/format'
 import type { Scan3D, ScanMention, ScanObject, ScanSection } from '@/lib/types'
 import { cn } from '@/lib/utils'
@@ -38,7 +38,10 @@ export function ScanView({ cid, onBack }: { cid: string; onBack: () => void }) {
   const [showPath, setShowPath] = useState(true)
   const [showLabels, setShowLabels] = useState(true)
   const [flipY, setFlipY] = useState(true)
-  const [sectionId, setSectionId] = useState(0)
+  const [sectionId, setSectionId] = useState(0) // -1 = the phone-scan room (layout)
+  const [reload, setReload] = useState(0)
+  const [uploadMsg, setUploadMsg] = useState<string | null>(null)
+  const fileRef = useRef<HTMLInputElement>(null)
   const [follow, setFollow] = useState(true) // the section follows the video time
 
   useEffect(() => {
@@ -49,15 +52,17 @@ export function ScanView({ cid, onBack }: { cid: string; onBack: () => void }) {
     fetchScan3d(cid).then(r => {
       if (!live) return
       setState({ loading: false, scan: r.data, demo: r.demo, error: r.error })
-      setFlipY(!r.data?.gravity_aligned) // levelled scans already have +y up; raw SfM points down
+      setFlipY(!r.data?.gravity_aligned && !r.data?.layout) // levelled scans already have +y up; raw SfM points down
+      if (r.data?.layout) { setSectionId(-1); setFollow(false) } // the joined room first
     })
     return () => { live = false }
-  }, [cid])
+  }, [cid, reload])
 
   const scan = state.scan
   const sel = scan?.objects.find(o => o.id === selected) ?? null
   const sections: ScanSection[] = useMemo(() => scan?.sections?.length ? scan.sections : [], [scan])
   const view = useMemo<Scan3D | null>(() => { // the scene shows one section: its points, cameras and objects
+    if (scan && sectionId === -1 && scan.layout) return { ...scan, points: [], cameras: [], objects: [] }
     if (!scan || !sections.length) return scan
     const s = sections.find(x => x.id === sectionId) ?? sections[0]
     return { ...scan, points: s.points, cameras: s.cameras, objects: scan.objects.filter(o => (o.section ?? 0) === s.id) }
@@ -124,13 +129,24 @@ export function ScanView({ cid, onBack }: { cid: string; onBack: () => void }) {
         {scan && (
           <span className="text-xs text-muted-foreground tabular-nums">
             {scan.frames_registered ?? '–'} / {scan.frames_used ?? '–'} Bilder registriert
-            {sections.length > 1 && ` in ${sections.length} Abschnitten`} · {(view ?? scan).points.length.toLocaleString('de-DE')} Punkte · {scan.objects.length} Objekte
+            {sections.length > 1 && ` in ${sections.length} Abschnitten`} · {sectionId === -1 && scan.layout ? `${scan.layout.faces.toLocaleString('de-DE')} Dreiecke (Raumscan)` : `${(view ?? scan).points.length.toLocaleString('de-DE')} Punkte`} · {scan.objects.length} Objekte
             {scan.gravity_aligned && ' · Boden waagrecht, Maße ≈ m'}
             {scan.seconds != null && ` · ${num(scan.seconds, 0)} s Rechenzeit`}
           </span>
         )}
         {scan?.ok && (
           <div className="ml-auto flex items-center gap-1">
+            <input ref={fileRef} type="file" accept=".glb,.gltf,.obj,.ply" className="hidden" data-testid="layout-file"
+              onChange={async e => {
+                const f = e.currentTarget.files?.[0]
+                if (!f) return
+                setUploadMsg('lädt …')
+                const err = await uploadLayout(cid, f)
+                setUploadMsg(err ? `Fehler: ${err}` : null)
+                if (!err) setReload(x => x + 1)
+              }} />
+            <Button variant="outline" size="sm" onClick={() => fileRef.current?.click()} title="Raumscan vom Handy (GLB/OBJ/PLY, z. B. Polycam) als zusammenhängendes Raumlayout"><Upload /> {scan.layout ? 'Raumscan ersetzen' : 'Raumscan hinzufügen'}</Button>
+            {uploadMsg && <span className="text-xs text-muted-foreground">{uploadMsg}</span>}
             <Toggle size="sm" variant="outline" pressed={showPath} onPressedChange={setShowPath} aria-label="Kamerapfad"><RouteIcon /> Kamerapfad</Toggle>
             <Toggle size="sm" variant="outline" pressed={showLabels} onPressedChange={setShowLabels} aria-label="Beschriftungen"><Tag /> Beschriftungen</Toggle>
             <Toggle size="sm" variant="outline" pressed={flipY} onPressedChange={setFlipY} aria-label="Hochachse umkehren" title="SfM-Koordinaten zeigen nach unten; umkehren, falls der Raum kopfsteht"><FlipVertical2 /> Hochachse</Toggle>
@@ -138,10 +154,17 @@ export function ScanView({ cid, onBack }: { cid: string; onBack: () => void }) {
         )}
       </div>
 
-      {scan?.ok && sections.length > 1 && (
+      {scan?.ok && (sections.length > 1 || scan.layout) && (
         <div className="flex items-center gap-2" data-testid="scan-sections">
           <span className="flex shrink-0 items-center gap-1 text-xs font-medium text-muted-foreground"><Layers className="size-3.5" /> Abschnitte</span>
           <div className="flex min-w-0 flex-1 gap-1 overflow-x-auto pb-0.5">
+            {scan.layout && (
+              <button type="button" data-testid="scan-layout-chip" onClick={() => { setSectionId(-1); setFollow(false); setSelected(null) }}
+                title={`${scan.layout.source} · ${scan.layout.faces.toLocaleString('de-DE')} Dreiecke`}
+                className={cn('shrink-0 rounded-full border px-2.5 py-0.5 text-xs hover:bg-muted', sectionId === -1 && 'border-emerald-500 bg-emerald-50 font-medium text-emerald-900')}>
+                Raum (Scan) · {scan.layout.size[0].toFixed(1)}×{scan.layout.size[2].toFixed(1)} m
+              </button>
+            )}
             {[...sections].sort((a, b) => a.t_start - b.t_start).map(s => (
               <button key={s.id} type="button" onClick={() => { setSectionId(s.id); setFollow(false); setSelected(null) }}
                 title={`${s.frames_registered} Bilder · ${s.points.length.toLocaleString('de-DE')} Punkte · ${s.objects} Objekte`}
@@ -166,7 +189,7 @@ export function ScanView({ cid, onBack }: { cid: string; onBack: () => void }) {
             </div>
           ) : scan.ok ? (
             <>
-              <SceneView scan={view!} colorOf={cOf} selected={selected} onSelect={choose} showPath={showPath} showLabels={showLabels} flipY={flipY} talking={talking} />
+              <SceneView key={sectionId === -1 ? 'layout' : 'sfm'} layout={sectionId === -1 ? scan.layout : null} scan={view!} colorOf={cOf} selected={selected} onSelect={choose} showPath={showPath} showLabels={showLabels} flipY={flipY} talking={talking} />
               {nowSaid && (
                 <div className="pointer-events-none absolute top-3 left-1/2 max-w-[80%] -translate-x-1/2 rounded-full bg-amber-500/95 px-3 py-1 text-sm font-medium text-white shadow" data-testid="scan-talking">
                   <MessageSquareQuote className="mr-1 inline size-4" /> „{nowSaid.phrase}“ → {nowSaid.name_de}

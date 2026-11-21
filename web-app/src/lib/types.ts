@@ -296,6 +296,16 @@ export interface Scan3D {
   // long walks: every reconstructed piece (largest first); top-level points/cameras = sections[0]
   sections?: ScanSection[]
   gravity_aligned?: boolean // +y is up, floor at y = 0, ~metres
+  layout?: ScanLayout | null // joined room from a phone scan (GLB), metric, y-up, floor at 0
+}
+
+export interface ScanLayout {
+  url: string
+  source: string
+  faces: number
+  vertices: number
+  size: [number, number, number]
+  bounds: [[number, number, number], [number, number, number]]
 }
 
 export interface ScanSection {

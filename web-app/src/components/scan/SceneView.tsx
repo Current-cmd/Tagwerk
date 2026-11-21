@@ -2,13 +2,14 @@
 // Objects the speaker named are amber with a halo and the spoken phrase; the ones being talked about now pulse.
 import { useEffect, useRef } from 'react'
 import {
-  AmbientLight, BoxGeometry, BufferGeometry, Color, EdgesGeometry, Float32BufferAttribute, Group, Line, LineBasicMaterial,
-  LineSegments, Mesh, MeshBasicMaterial, PerspectiveCamera, Points, PointsMaterial, SRGBColorSpace, Scene, SphereGeometry, Vector3,
+  AmbientLight, BoxGeometry, DirectionalLight, DoubleSide, HemisphereLight, BufferGeometry, Color, EdgesGeometry, Float32BufferAttribute, Group, Line, LineBasicMaterial,
+  LineSegments, Mesh, MeshBasicMaterial, MeshStandardMaterial, PerspectiveCamera, Points, PointsMaterial, SRGBColorSpace, Scene, SphereGeometry, Vector3,
   WebGLRenderer,
 } from 'three'
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js'
+import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js'
 import { CSS2DObject, CSS2DRenderer } from 'three/addons/renderers/CSS2DRenderer.js'
-import type { Scan3D } from '@/lib/types'
+import type { Scan3D, ScanLayout } from '@/lib/types'
 
 interface Props {
   scan: Scan3D
@@ -19,6 +20,7 @@ interface Props {
   showLabels: boolean
   flipY: boolean
   talking?: string[] // ids of the objects being talked about at the current video time
+  layout?: ScanLayout | null // phone-scan room (GLB) shown instead of / under the points
 }
 
 const SAID_COLOR = '#f59e0b'
@@ -28,7 +30,7 @@ function percentile(sorted: number[], p: number) {
   return sorted[Math.min(sorted.length - 1, Math.max(0, Math.round((sorted.length - 1) * p)))]
 }
 
-export function SceneView({ scan, colorOf, selected, onSelect, showPath, showLabels, flipY, talking }: Props) {
+export function SceneView({ scan, colorOf, selected, onSelect, showPath, showLabels, flipY, talking, layout }: Props) {
   const host = useRef<HTMLDivElement>(null)
   const api = useRef<{
     select: (id: string | null) => void
@@ -52,7 +54,9 @@ export function SceneView({ scan, colorOf, selected, onSelect, showPath, showLab
     scene.add(root)
 
     // robust scene extent (ignore SfM outliers)
-    const src = scan.points.length ? scan.points.map(p => [p[0], p[1], p[2]]) : scan.objects.filter(o => o.position).map(o => o.position!)
+    const src = scan.points.length ? scan.points.map(p => [p[0], p[1], p[2]])
+      : layout ? [layout.bounds[0], layout.bounds[1]]
+      : scan.objects.filter(o => o.position).map(o => o.position!)
     const axes = [0, 1, 2].map(i => src.map(p => p[i]).sort((a, b) => a - b))
     const lo = axes.map(a => percentile(a, 0.03)), hi = axes.map(a => percentile(a, 0.97))
     const center = new Vector3((lo[0] + hi[0]) / 2, (lo[1] + hi[1]) / 2, (lo[2] + hi[2]) / 2)
@@ -71,6 +75,22 @@ export function SceneView({ scan, colorOf, selected, onSelect, showPath, showLab
       g.setAttribute('position', new Float32BufferAttribute(pos, 3))
       g.setAttribute('color', new Float32BufferAttribute(col, 3))
       root.add(new Points(g, new PointsMaterial({ size: diag * 0.006, vertexColors: true, sizeAttenuation: true })))
+    }
+
+    // phone-scan room (metric, y-up GLB), loaded asynchronously
+    if (layout) {
+      scene.add(new HemisphereLight(0xffffff, 0x666666, 1.6), new DirectionalLight(0xffffff, 0.8).translateY(10).translateX(4))
+      new GLTFLoader().load(layout.url, gltf => {
+        gltf.scene.traverse(o => { // scans carry their light in the texture/colours: show them unlit, from both sides
+          const m = o as Mesh
+          if (!m.isMesh) return
+          const old = m.material as MeshStandardMaterial
+          m.material = new MeshBasicMaterial({ map: old.map ?? null, color: old.map ? 0xffffff : old.color,
+            vertexColors: !!m.geometry.getAttribute('color'), side: DoubleSide })
+          old.dispose()
+        })
+        root.add(gltf.scene)
+      }, undefined, () => {})
     }
 
     // camera path + frustums
@@ -162,7 +182,8 @@ export function SceneView({ scan, colorOf, selected, onSelect, showPath, showLab
       const mean = scan.cameras.reduce((v, k) => v.add(new Vector3(...k.look)), new Vector3())
       const dir = mean.lengthSq() > 1e-6 ? mean.multiply(root.scale).setY(0) : new Vector3(0, 0, 1)
       const back = (dir.lengthSq() > 1e-6 ? dir : new Vector3(0, 0, 1)).normalize().multiplyScalar(-1)
-      camera.position.copy(c).addScaledVector(back, diag * 0.7).add(new Vector3(0, diag * 0.32, 0))
+      if (layout) camera.position.copy(c).add(new Vector3(0, diag * 0.75, diag * 0.55)) // room plan: from above, tilted
+      else camera.position.copy(c).addScaledVector(back, diag * 0.7).add(new Vector3(0, diag * 0.32, 0))
       camera.up.set(0, 1, 0)
       controls.update()
     }
@@ -245,7 +266,7 @@ export function SceneView({ scan, colorOf, selected, onSelect, showPath, showLab
     }
     // flipY is applied through the api below; the scene is rebuilt only for a new scan
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [scan, colorOf])
+  }, [scan, colorOf, layout])
 
   useEffect(() => { api.current?.select(selected) }, [selected, scan])
   useEffect(() => { api.current?.setPath(showPath) }, [showPath, scan])

@@ -473,7 +473,47 @@ def v2_scan3d(capture_id: str) -> dict:
     data["capture_id"] = data.get("capture_id") or capture_id
     data.update(mentions_for(data, get_settings().cache_dir, get_project()))  # what the speaker named, linked to objects
     data["video"] = v2._media(capture_id)[0]  # the kept walkthrough video, shown beside the 3D view
+    from tagwerk.layout import load_meta
+
+    lay = load_meta(get_settings().cache_dir, capture_id)  # joined room from a phone scan, if one was attached
+    data["layout"] = {**lay, "url": f"/api/v2/scan3d/{capture_id}/layout.glb"} if lay else None
     return data
+
+
+@app.post("/api/v2/scan3d/{capture_id}/layout")
+async def v2_scan3d_layout_upload(capture_id: str, file: UploadFile = File(...)) -> dict:
+    """Attach a room scan (GLB/OBJ/PLY from a phone app) to a scan capture: tagwerk/layout.py."""
+    import tempfile
+
+    from tagwerk.layout import FORMATS, import_layout
+
+    _check_id(capture_id, "capture_id")
+    d = Path(get_settings().cache_dir) / capture_id
+    if not (d / "sfm.json").is_file():
+        raise HTTPException(404, "no scan3d for this capture")
+    ext = Path(file.filename or "").suffix.lower()
+    if ext not in FORMATS:
+        raise HTTPException(400, f"Format {ext or '?'} nicht unterstützt ({', '.join(FORMATS)})")
+    limit = get_settings().max_upload_mb * 1024 * 1024
+    data = await file.read(limit + 1)
+    if len(data) > limit:
+        raise HTTPException(413, f"file too large (max {get_settings().max_upload_mb} MB)")
+    with tempfile.TemporaryDirectory() as tmp:
+        src = Path(tmp) / f"upload{ext}"
+        src.write_bytes(data)
+        try:
+            return await asyncio.to_thread(import_layout, src, d, Path(file.filename or src.name).name)
+        except ValueError as exc:
+            raise HTTPException(400, str(exc)) from None
+
+
+@app.get("/api/v2/scan3d/{capture_id}/layout.glb")
+def v2_scan3d_layout(capture_id: str) -> FileResponse:
+    _check_id(capture_id, "capture_id")
+    f = Path(get_settings().cache_dir) / capture_id / "layout.glb"
+    if not f.is_file():
+        raise HTTPException(404, "no layout for this capture")
+    return FileResponse(f, media_type="model/gltf-binary")
 
 
 @app.get("/export/day.ics", response_class=PlainTextResponse)

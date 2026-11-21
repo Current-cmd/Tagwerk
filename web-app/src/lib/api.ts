@@ -92,6 +92,20 @@ async function routeMissing(r: Response) {
 
 export type Loaded<T> = { data: T | null; demo: boolean; error?: string }
 
+/** Attach a room scan (GLB/OBJ/PLY from a phone app) to a scan capture; returns an error text or null. */
+export async function uploadLayout(cid: string, file: File): Promise<string | null> {
+  const fd = new FormData()
+  fd.append('file', file)
+  try {
+    const r = await fetch(`/api/v2/scan3d/${encodeURIComponent(cid)}/layout`, { method: 'POST', body: fd })
+    if (r.ok) return null
+    const j = await r.json().catch(() => null)
+    return (j && j.detail) || `HTTP ${r.status}`
+  } catch (e) {
+    return (e as Error).message
+  }
+}
+
 export async function fetchScan3d(cid: string): Promise<Loaded<Scan3D>> {
   if (mode === 'mock') return { data: mockScan3d(cid), demo: true }
   try {
