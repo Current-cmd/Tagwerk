@@ -310,7 +310,13 @@ def rules_structure(capture: dict, transcript: dict, vision: dict, context: dict
                     next((trade_of_element[w["element_ids"][0]] for w in reversed(out["work_done"])
                           if w["element_ids"] and w["element_ids"][0] in trade_of_element), "unbekannt")
             reason = "krank" if any(_has(s, w) for w in ("krank", "sick")) else "abwesend"
-            out["absences"].append({"trade": trade, "count": count, "reason": reason})
+            # said and typed (or repeated) in one capture: one absence per trade, keep the higher count
+            same = next((a for a in out["absences"] if a["trade"] == trade), None)
+            if same:
+                if count > same["count"]:
+                    same["count"], same["reason"] = count, reason
+            else:
+                out["absences"].append({"trade": trade, "count": count, "reason": reason})
             continue
         if trade:
             mentioned_trades.append(trade)

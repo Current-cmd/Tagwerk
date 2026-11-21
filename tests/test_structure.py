@@ -102,3 +102,9 @@ def test_fehlt_about_work_is_not_an_absence(p):
     assert not s["absences"]
     s = run(p, "Zwei Monteure fehlen heute")
     assert s["absences"] and s["absences"][0]["count"] == 2
+
+
+def test_same_absence_said_and_typed_counts_once(p):
+    # speech says it, the typed note repeats it: one absence per trade per capture, keep the higher count
+    s = run(p, "Zwei Mann vom Trockenbau krank. Zwei Mann vom Trockenbau sind heute krank. Drei Mann vom Trockenbau fehlen.")
+    assert [(a["trade"], a["count"]) for a in s["absences"]] == [("Trockenbau", 3)]
