@@ -510,7 +510,8 @@ class Project:
                             "forecast_finish": r["forecast_finish"].isoformat(),
                             "red": r["delay_d"] > 0 and r["pct"] < 100 and r["tracked"],
                             "done": r["pct"] >= 100,
-                            "cause": self._cause(r, today, fc)} for r in sorted(acts, key=lambda r: (-r["delay_d"], r["pct"]))],
+                            "cause": self._cause(r, today, fc)}
+                           for r in sorted(acts, key=lambda r: (not r["tracked"], -r["delay_d"], r["pct"]))],
             "captures": sorted([{"capture_id": c["capture_id"], "zone_id": c["zone_id"], "ts": c["ts"],
                                  "note": c.get("note"), "quotes": c["quotes"],
                                  "photos": c.get("photos", []),

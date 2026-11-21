@@ -11,6 +11,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 from fastapi import FastAPI, File, Form, HTTPException, UploadFile, WebSocket, WebSocketDisconnect
+from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.responses import FileResponse, PlainTextResponse, Response
 from pydantic import BaseModel
 
@@ -47,6 +48,7 @@ async def lifespan(_app: FastAPI):
 
 
 app = FastAPI(title="Tagwerk", lifespan=lifespan)
+app.add_middleware(GZipMiddleware, minimum_size=2000)  # /api/overview and /api/graph are large for big projects
 
 
 @app.get("/health")
