@@ -23,10 +23,10 @@
   .act .meta { color: var(--muted); font-size: 14px; margin-top: 2px; }
   .bar { height: 8px; background: #eef0f3; border-radius: 4px; margin: 10px 0 12px; position: relative; overflow: hidden; }
   .bar div { position: absolute; inset: 0 auto 0 0; background: var(--accent); border-radius: 4px; }
-  .chips { display: flex; flex-wrap: wrap; gap: 8px; }
+  .chips { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; }
   .chip { min-height: 52px; padding: 8px 14px; border-radius: 12px; border: 1px solid var(--line); background: #fafbfc;
           font: inherit; text-align: left; cursor: pointer; color: var(--ink); display: flex; flex-direction: column; justify-content: center; }
-  .chip b { font-size: 15px; font-weight: 600; }
+  .chip b { font-size: 15px; font-weight: 600; overflow-wrap: anywhere; hyphens: auto; }
   .chip span { font-size: 13px; color: var(--muted); }
   .chip.s-0 { border-left: 5px solid var(--grey); } .chip.s-mid { border-left: 5px solid var(--amber); } .chip.s-done { border-left: 5px solid var(--green); }
   .chip:active { transform: scale(.98); }
@@ -37,8 +37,8 @@
   .btn.primary { background: var(--accent); color: #fff; width: 100%; max-width: 520px; }
   .sheet-bg { position: fixed; inset: 0; background: rgba(20, 22, 26, .35); display: none; z-index: 10; }
   .sheet { position: fixed; left: 0; right: 0; bottom: 0; background: var(--card); border-radius: 18px 18px 0 0; padding: 18px 16px calc(18px + env(safe-area-inset-bottom));
-           max-width: 560px; margin: 0 auto; z-index: 11; transform: translateY(105%); transition: transform .18s ease-out; max-height: 85vh; overflow: auto; }
-  .sheet.open { transform: none; }
+           max-width: 560px; margin: 0 auto; z-index: 11; transform: translateY(105%); visibility: hidden; transition: transform .18s ease-out, visibility 0s .18s; max-height: 85vh; overflow: auto; }
+  .sheet.open { transform: none; visibility: visible; transition: transform .18s ease-out; }
   .sheet h3 { margin: 0 0 4px; font-size: 18px; }
   .sheet .meta { color: var(--muted); font-size: 14px; margin-bottom: 14px; }
   .state { display: flex; justify-content: space-between; align-items: center; width: 100%; min-height: 56px; margin-bottom: 8px; padding: 0 16px;
@@ -81,7 +81,12 @@ function h(tag, attrs, ...kids) {
   return el;
 }
 const dmy = s => { if (!s) return '–'; const [y, m, d] = s.slice(0, 10).split('-'); return `${d}.${m}.${y}`; };
-const pct = v => (+(v || 0)).toLocaleString('de-DE', { maximumFractionDigits: 0 }) + ' %';
+const STATE_DE = { removed: 'demontiert', substructure: 'Unterkonstruktion', installed: 'montiert', checked: 'abgenommen',
+  prepared: 'vorbereitet', primed: 'grundiert', painted: 'gestrichen', done: 'fertig', framed: 'Rahmen', boarded: 'beplankt',
+  finished: 'fertig', mounted: 'montiert', wired: 'verkabelt', tested: 'geprüft', connected: 'angeschlossen',
+  commissioned: 'in Betrieb', stripped: 'entfernt', levelled: 'nivelliert', covered: 'belegt' };
+const de = s => s ? (STATE_DE[s] || s) : 'nicht begonnen';
+const pct = v => (+(v || 0)).toLocaleString('de-DE', { maximumFractionDigits: 0 }) + '\u00a0%';
 
 let toastTimer;
 function toast(msg, err) {
@@ -107,18 +112,18 @@ function chipsFor(a) {
   if (!els.length) return h('p', { class: 'empty', style: 'margin:0;font-size:14px' }, 'Keine Elemente verknüpft.');
   return h('div', { class: 'chips' }, els.map(e => {
     const cls = !e.pct ? 's-0' : e.pct >= 100 ? 's-done' : 's-mid';
-    return h('button', { class: 'chip ' + cls, onclick: () => openSheet(e.id) }, h('b', {}, e.name), h('span', {}, `${e.state || 'nicht begonnen'} · ${pct(e.pct)}`));
+    return h('button', { class: 'chip ' + cls, onclick: () => openSheet(e.id) }, h('b', {}, e.name), h('span', {}, `${de(e.state)} · ${pct(e.pct)}`));
   }));
 }
 
 function openSheet(id) {
   const e = elements[id]; if (!e) return;
   $('sheetTitle').textContent = e.name;
-  $('sheetMeta').textContent = `${e.zone || ''} · aktuell: ${e.state || 'nicht begonnen'} (${pct(e.pct)})`;
+  $('sheetMeta').textContent = `${e.zone || ''} · aktuell: ${de(e.state)} (${pct(e.pct)})`;
   const states = e.states || [], cur = states.indexOf(e.state);
   $('states').replaceChildren(...(states.length ? states.map((s, i) => h('button', {
     class: 'state' + (i === cur ? ' current' : i < cur ? ' reached' : ''), onclick: ev => confirmState(id, s, ev.currentTarget),
-  }, s, i <= cur ? h('span', {}, '✓') : null)) : [h('p', { class: 'empty' }, 'Keine Zustände definiert.')]));
+  }, de(s), i <= cur ? h('span', {}, '✓') : null)) : [h('p', { class: 'empty' }, 'Keine Zustände definiert.')]));
   $('sheetBg').style.display = 'block';
   requestAnimationFrame(() => $('sheet').classList.add('open'));
 }
@@ -135,8 +140,8 @@ async function confirmState(id, state, btn) {
     const body = await r.json().catch(() => ({}));
     if (!r.ok) throw new Error(body.detail || `HTTP ${r.status}`);
     const name = elements[id]?.name || id;
-    toast(body.action === 'confirmed' ? `✓ ${name}: ${body.state} bestätigt (confirmed)`
-        : body.action === 'unchanged' ? `${name}: unverändert (unchanged), bereits ${body.state}` : `${name}: ${body.action}`);
+    toast(body.action === 'confirmed' ? `✓ ${name}: ${de(body.state)} bestätigt`
+        : body.action === 'unchanged' ? `${name}: unverändert, bereits ${de(body.state)}` : `${name}: ${body.action}`);
     closeSheet();
     await load();
   } catch (e) {
@@ -157,6 +162,20 @@ async function load() {
   }
 }
 load();
+
+let refreshTimer = null, backoff = 1000;
+function connect() {
+  const ws = new WebSocket(`${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}/events`);
+  ws.onmessage = ev => {
+    let m; try { m = JSON.parse(ev.data); } catch { return; }
+    if (m.type === 'update' || (m.type === 'status' && m.props && m.props.step === 'done')) {
+      clearTimeout(refreshTimer); refreshTimer = setTimeout(load, 600);
+    }
+  };
+  ws.onopen = () => { backoff = 1000; };
+  ws.onclose = () => { setTimeout(connect, backoff); backoff = Math.min(backoff * 2, 15000); };
+}
+connect();
 </script>
 </body>
 </html>
