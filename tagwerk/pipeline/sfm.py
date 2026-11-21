@@ -10,6 +10,9 @@ analyse(capture, workdir) -> the sfm.json dict (cache/<cid>/sfm.json):
   4. a detection becomes a 3D observation from the points whose keypoint falls inside its box (median position, 10-90 %
      extent); observations of the same label that are close relative to the scene size are one instance
   5. relations (RelateAnything triplets) are aggregated per instance pair with German predicate labels
+  6. sections: a long walk splits into several pieces (doors, fast turns, blur break the tracks). Every piece is
+     kept, levelled with gravity (cameras' up axis -> +y, floor at y = 0, scale so the camera is ~1.5 m above the
+     floor), split again where a camera pose jumps; the largest is also the top-level points/cameras.
 When the reconstruction fails the objects and relations are still listed from the 2D detections (position null).
 """
 from __future__ import annotations
@@ -37,6 +40,11 @@ MAX_FRAMES, FPS, LONG_SIDE, MAX_POINTS = 80, 2.5, 1280, 20000
 MERGE_FACTOR = 0.08  # same label and closer than 8 % of the scene size = one instance
 MAX_RELATIONS = 8
 UNITS = "relative (SfM scale is arbitrary)"
+UNITS_ALIGNED = "≈ m (Kamerahöhe 1,5 m angenommen)"
+CAMERA_HEIGHT_M = 1.5
+JUMP_FACTOR = 6.0  # a camera step > 6x the median step is a wrong registration (spike) or a break (split)
+MIN_SECTION_FRAMES, MIN_SECTION_POINTS, MAX_SECTIONS = 4, 30, 12
+DETECT_BUDGET = 60  # keyframes the detectors see in total, spread over all sections (time limit)
 
 REL_DE = {"on": "auf", "standing on": "steht auf", "in front of": "vor", "behind": "hinter", "next to": "neben",
           "beside": "neben", "above": "über", "below": "unter", "under": "unter", "mounted on": "montiert an",
@@ -200,9 +208,10 @@ def _relations_for(objs: list[dict], triplets: list[dict], det_inst: dict[str, s
 
 
 def build_objects(dets: list[dict], triplets: list[dict], scale: float, cid: str,
-                  elements: list[dict] | None = None) -> list[dict]:
-    """Merge 3D detections into object instances (contract `objects`)."""
-    objs, det_inst, used = [], {}, set()
+                  elements: list[dict] | None = None, id_offset: int = 0, used: set[str] | None = None) -> list[dict]:
+    """Merge 3D detections into object instances (contract `objects`); ids obj-<id_offset + n>."""
+    objs, det_inst = [], {}
+    used = set() if used is None else used
     groups = merge_instances(dets, scale)
     groups.sort(key=lambda g: (-len(g), g[0]["label"]))
     for n, g in enumerate(groups, 1):
@@ -212,7 +221,7 @@ def build_objects(dets: list[dict], triplets: list[dict], scale: float, cid: str
         pos = np.median([d["pos"] for d in g], axis=0)
         ext = np.median([d["ext"] for d in g], axis=0)
         ts = [d["t"] for d in g if d["t"] is not None]
-        oid = f"obj-{n}"
+        oid = f"obj-{id_offset + n}"
         for d in g:
             det_inst[d["obj_id"]] = oid
         objs.append({"id": oid, "label": label, "name_de": name_de, "category_de": cat_de,
@@ -395,7 +404,10 @@ def analyse(capture: dict, workdir: Path, elements: list[dict] | None = None, ti
         names = sorted(p.name for p in frames.glob("*.jpg"))
         model, reason = run_colmap(frames, workdir, time_limit - DETECT_RESERVE_S - (time.perf_counter() - t0), time_limit,
                                    plan["dense"])
-        det_names = ([str(x) for x in model["names"]] if model else names[:: max(1, len(names) // 40)])
+        sections = make_sections(model) if model else []
+        if model and not sections:  # nothing passed the section filters: the largest piece as it is
+            sections = split_models(model)[:1]
+        det_names = detection_frames(sections) if sections else names[:: max(1, len(names) // 40)]
         det_frames, triplets = detect_frames(frames, det_names)
         res = _empty(cid, reason or "", time.perf_counter() - t0, fps=round(fps, 4), pick=plan["pick"],
                      long_side=plan["long_side"], time_limit=time_limit)
@@ -406,11 +418,8 @@ def analyse(capture: dict, workdir: Path, elements: list[dict] | None = None, ti
             res["objects"] = objects_2d(fr, triplets, cid, elements)
             res["reason"] = reason
         else:
-            pts = model["points"]
-            res.update(ok=True, reason=None, frames_registered=len(model["names"]),
-                       points=downsample_points(pts, MAX_POINTS),
-                       cameras=cameras_json(model["names"], model["pos"], model["look"], fps, cid))
-            res["objects"] = build_objects(lift_detections(det_frames, model, fps), triplets, scene_scale(pts), cid, elements)
+            res.update(build_sections(sections, det_frames, triplets, fps, cid, elements))
+            res["reason"] = None
         res["seconds"] = round(time.perf_counter() - t0, 1)
         return res
     except Exception as exc:  # noqa: BLE001 - this stage must never fail a capture
@@ -451,3 +460,178 @@ def attach_elements(res: dict, elements: list[dict]) -> dict:
     for o in res.get("objects", []):
         o["element_id"] = match_element(o["label"], elements, used)
     return res
+
+
+# ---------------------------------------------------------------- sections: all pieces, gravity, pose jumps
+
+def split_models(arrays: dict) -> list[dict]:
+    """sfm_colmap's npz -> one dict per piece (largest first). Old files hold a single model without n_models."""
+    if "n_models" not in arrays:
+        return [arrays]
+    keys = ("points", "names", "pos", "look", "up", "obs")
+    return [{k: arrays[f"{k}_{i}"] for k in keys if f"{k}_{i}" in arrays} for i in range(int(arrays["n_models"]))]
+
+
+def floor_normal(pts: np.ndarray, pos: np.ndarray, up0: np.ndarray, max_deg: float = 25.0, iters: int = 400) -> np.ndarray:
+    """Up refined by the floor: RANSAC plane through the lowest 40 % of the points (along up0, below the cameras)
+    whose normal is within max_deg of up0; the cameras' up vector alone is tilted by the phone's pitch."""
+    if len(pts) < 30:
+        return up0
+    h = pts @ up0
+    cand = pts[(h <= np.percentile(h, 40)) & (h < np.median(pos @ up0))]
+    if len(cand) < 20:
+        return up0
+    tol = 0.01 * scene_scale(pts)
+    rng = np.random.default_rng(0)
+    d0 = float(np.median(cand @ up0))
+    best, best_d, best_n = up0, d0, int((np.abs(cand @ up0 - d0) < tol).sum())
+    cos_max = np.cos(np.radians(max_deg))
+    for _ in range(iters):
+        a, b, c = cand[rng.choice(len(cand), 3, replace=False)]
+        n = np.cross(b - a, c - a)
+        ln = np.linalg.norm(n)
+        if ln < 1e-12:
+            continue
+        n = n / ln
+        if n @ up0 < 0:
+            n = -n
+        if n @ up0 < cos_max:
+            continue
+        k = int((np.abs((cand - a) @ n) < tol).sum())
+        if k > best_n:
+            best, best_d, best_n = n, float(a @ n), k
+    inl = cand[np.abs(cand @ best - best_d) < tol]
+    if len(inl) >= 10:  # least-squares refit on the inliers
+        q = inl - inl.mean(0)
+        n = np.linalg.svd(q, full_matrices=False)[2][-1]
+        best = n if n @ up0 > 0 else -n
+    return best
+
+
+def align_model(m: dict, camera_height: float = CAMERA_HEIGHT_M) -> dict:
+    """Level a piece with gravity: the cameras' mean up vector becomes +y (a phone is held upright), the floor (3rd
+    percentile of point heights) y = 0, the camera path centred, and the scale set so the cameras stand
+    `camera_height` above the floor (heights then read roughly in metres). Without up vectors it is returned as is."""
+    if "up" not in m or len(m["up"]) == 0:
+        return m
+    up = np.asarray(m["up"], float).mean(axis=0)
+    up /= np.linalg.norm(up) or 1.0
+    up = floor_normal(np.asarray(m["points"], float)[:, :3], np.asarray(m["pos"], float), up)
+    look = np.asarray(m["look"], float).mean(axis=0)
+    x = np.cross(up, look)
+    if np.linalg.norm(x) < 1e-6:
+        x = np.cross(up, [1.0, 0.0, 0.0]) if abs(up[0]) < 0.9 else np.cross(up, [0.0, 0.0, 1.0])
+    x /= np.linalg.norm(x)
+    R = np.stack([x, up, np.cross(x, up)])
+    c = np.asarray(m["pos"], float).mean(axis=0)
+    pts = np.asarray(m["points"], float)
+    h = (pts[:, :3] - c) @ R[1] if len(pts) else np.zeros(1)
+    floor = float(np.percentile(h, 3))
+    cam_h = float(np.median((np.asarray(m["pos"], float) - c) @ R[1])) - floor
+    scale = camera_height / cam_h if cam_h > 1e-6 else 1.0
+    shift = np.array([0.0, floor, 0.0])
+
+    def tf(p):
+        return ((np.asarray(p, float) - c) @ R.T - shift) * scale
+
+    out = dict(m)
+    out["points"] = np.hstack([tf(pts[:, :3]), pts[:, 3:]]) if len(pts) else pts
+    out["pos"] = tf(m["pos"])
+    out["look"] = np.asarray(m["look"], float) @ R.T
+    out["up"] = np.tile([0.0, 1.0, 0.0], (len(m["up"]), 1))
+    obs = np.asarray(m["obs"], float).copy()
+    if len(obs):
+        obs[:, 3:6] = tf(obs[:, 3:6])
+    out["obs"] = obs
+    return out
+
+
+def split_at_jumps(names, pos, factor: float = JUMP_FACTOR) -> list[np.ndarray]:
+    """Indices (in frame order) of the consistent stretches of a piece: a single camera far off both neighbours is
+    dropped (wrong registration), a jump that stays (everything after it elsewhere) starts a new stretch."""
+    order = np.argsort(np.asarray([str(n) for n in names]))
+    p = np.asarray(pos, float)[order]
+    if len(p) < 3:
+        return [order]
+    step = np.linalg.norm(np.diff(p, axis=0), axis=1)
+    med = float(np.median(step)) or 1e-9
+    keep = [0]
+    for i in range(1, len(p) - 1):
+        spike = step[i - 1] > factor * med and step[i] > factor * med and \
+            np.linalg.norm(p[i + 1] - p[i - 1]) <= factor * med
+        if not spike:
+            keep.append(i)
+    keep.append(len(p) - 1)
+    parts, cur = [], [keep[0]]
+    for a, b in zip(keep, keep[1:], strict=False):
+        if np.linalg.norm(p[b] - p[a]) > factor * med:
+            parts.append(cur)
+            cur = []
+        cur.append(b)
+    parts.append(cur)
+    return [order[np.array(x)] for x in parts]
+
+
+def subset_model(m: dict, idx) -> dict:
+    """The piece restricted to cameras `idx` (indices into m["names"]); points = those its cameras observe."""
+    idx = np.asarray(idx, int)
+    remap = {int(k): j for j, k in enumerate(idx)}
+    obs = np.asarray(m["obs"], float)
+    mine = obs[np.isin(obs[:, 0].astype(int), idx)] if len(obs) else obs
+    if len(mine):
+        mine = mine.copy()
+        mine[:, 0] = [remap[int(k)] for k in mine[:, 0]]
+    pts = np.asarray(m["points"], float)
+    if len(mine) and mine.shape[1] > 6:
+        pts = pts[np.unique(mine[:, 6].astype(int))]
+    out = {"points": pts, "names": np.asarray(m["names"])[idx], "pos": np.asarray(m["pos"])[idx],
+           "look": np.asarray(m["look"])[idx], "obs": mine}
+    if "up" in m:
+        out["up"] = np.asarray(m["up"])[idx]
+    return out
+
+
+def make_sections(arrays: dict) -> list[dict]:
+    """All usable pieces, levelled and cut at pose jumps, largest first (at most MAX_SECTIONS)."""
+    out = []
+    for m in split_models(arrays):
+        for idx in split_at_jumps(m["names"], m["pos"]):
+            sub = subset_model(m, idx)
+            if len(sub["names"]) >= MIN_SECTION_FRAMES and len(sub["points"]) >= MIN_SECTION_POINTS:
+                out.append(align_model(sub))
+    out.sort(key=lambda m: -len(m["names"]))
+    return out[:MAX_SECTIONS]
+
+
+def detection_frames(models: list[dict], budget: int = DETECT_BUDGET) -> list[str]:
+    """Keyframes for the detectors, spread over all sections in proportion to their size (at least 3 each)."""
+    total = sum(len(m["names"]) for m in models) or 1
+    out: list[str] = []
+    for m in models:
+        names = sorted(str(n) for n in m["names"])
+        k = min(len(names), max(3, round(budget * len(names) / total)))
+        out += [names[int(i)] for i in np.linspace(0, len(names) - 1, k)]
+    return list(dict.fromkeys(out))
+
+
+def build_sections(models: list[dict], det_frames: list[dict], triplets: list[dict], fps: float, cid: str,
+                   elements: list[dict] | None = None) -> dict:
+    """sfm.json fields for a reconstruction of one or more pieces: `sections` (largest first, each with its own
+    points/cameras), all objects with their `section` and unique ids, top-level points/cameras = section 0."""
+    models = sorted(models, key=lambda m: -len(m["names"]))
+    secs, objs, used = [], [], set()
+    for k, m in enumerate(models):
+        pts = np.asarray(m["points"], float)
+        cams = cameras_json(m["names"], m["pos"], m["look"], fps, cid)
+        mine = build_objects(lift_detections(det_frames, m, fps), triplets, scene_scale(pts), cid, elements,
+                             id_offset=len(objs), used=used)
+        for o in mine:
+            o["section"] = k
+        objs += mine
+        ts = [c["t"] for c in cams]
+        secs.append({"id": k, "t_start": min(ts), "t_end": max(ts), "frames_registered": len(cams),
+                     "points": downsample_points(pts, MAX_POINTS), "cameras": cams, "objects": len(mine)})
+    aligned = all("up" in m for m in models)
+    return {"ok": bool(secs), "frames_registered": sum(s["frames_registered"] for s in secs),
+            "points": secs[0]["points"] if secs else [], "cameras": secs[0]["cameras"] if secs else [],
+            "objects": objs, "sections": secs, "gravity_aligned": aligned, "units": UNITS_ALIGNED if aligned else UNITS}

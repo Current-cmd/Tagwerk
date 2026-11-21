@@ -160,3 +160,93 @@ def test_pycolmap_api_we_use_exists():
         assert hasattr(o.mapper, name), name
     r = pycolmap.ImageReaderOptions()
     assert hasattr(r, "camera_params") and hasattr(r, "camera_model")
+
+
+# ---------------------------------------------------------------- all pieces, gravity, pose jumps (sections)
+
+def _rot(axis, deg):
+    a = np.radians(deg)
+    c, s = np.cos(a), np.sin(a)
+    if axis == "x":
+        return np.array([[1, 0, 0], [0, c, -s], [0, s, c]])
+    return np.array([[c, 0, s], [0, 1, 0], [-s, 0, c]])
+
+
+def _model(n=10, tilt=35.0, offset=(5.0, -2.0, 3.0), scale=0.37, start=1):
+    """A walk along +x at camera height 1.5 above a floor at y=0 (gravity +y), then tilted/shifted/scaled like an
+    arbitrary COLMAP frame. obs = [image, x, y, X, Y, Z, point index]."""
+    R = _rot("x", tilt) @ _rot("y", 20.0)
+    off = np.array(offset)
+    tf = lambda p: (np.asarray(p, float) @ R.T) * scale + off  # noqa: E731
+    floor = np.array([[x, 0.0, z] for x in np.linspace(0, 9, 30) for z in np.linspace(-2, 2, 10)])
+    wall = np.array([[x, y, 2.0] for x in np.linspace(0, 9, 30) for y in np.linspace(0, 2.6, 8)])
+    pts_w = np.vstack([floor, wall])
+    pos_w = np.array([[i * 0.9, 1.5, 0.0] for i in range(n)])
+    up_w, look_w = np.array([0.0, 1.0, 0.0]), np.array([0.0, 0.0, 1.0])
+    pts = np.hstack([tf(pts_w), np.full((len(pts_w), 3), 128.0)])
+    obs = np.array([[k, 10.0, 10.0, *tf(pts_w[j]), j] for k in range(n) for j in range(0, len(pts_w), 7)])
+    return {"points": pts, "names": np.array([f"{start + i:04d}.jpg" for i in range(n)]), "pos": tf(pos_w),
+            "look": np.tile(look_w @ R.T, (n, 1)), "up": np.tile(up_w @ R.T, (n, 1)), "obs": obs}
+
+
+def test_split_models_reads_all_pieces_and_the_old_single_model_format():
+    m0, m1 = _model(start=1), _model(n=6, start=40)
+    old = {k: v for k, v in m0.items()}
+    assert [len(m["names"]) for m in sfm.split_models(old)] == [10]
+    new = {"n_models": np.array(2), **{f"{k}_{i}": v for i, m in enumerate((m0, m1)) for k, v in m.items()}}
+    got = sfm.split_models(new)
+    assert [len(m["names"]) for m in got] == [10, 6] and str(got[1]["names"][0]) == "0040.jpg"
+
+
+def test_align_puts_the_floor_level_at_zero_and_cameras_at_1_5_m():
+    a = sfm.align_model(_model())
+    pts, pos = a["points"][:, :3], a["pos"]
+    assert abs(np.percentile(pts[:, 1], 3)) < 0.05  # floor at y = 0
+    assert np.allclose(pos[:, 1], 1.5, atol=0.05) and np.ptp(pos[:, 1]) < 0.05  # cameras level, at 1.5
+    assert np.allclose(a["up"], [0, 1, 0], atol=1e-6) and np.allclose(a["look"][:, 1], 0, atol=1e-6)
+    assert abs(np.percentile(pts[:, 1], 97) - 2.6) < 0.15  # the wall top stays ~2.6 m: heights are real
+    k = int(a["obs"][0, 6])
+    assert np.allclose(a["obs"][0, 3:6], pts[k], atol=1e-6)  # observations moved with their points
+    assert np.isclose(np.linalg.norm(pos[1] - pos[0]), 0.9, atol=0.01)  # metric-ish scale from camera height
+
+
+def test_pose_jumps_split_a_piece_and_single_spikes_are_dropped():
+    pos = np.array([[i * 0.1, 0, 0] for i in range(12)], float)
+    pos[5] += [3.0, 0, 0]  # one frame registered far away: spike
+    pos[8:] += [5.0, 0, 0]  # teleport: everything after frame 8 sits elsewhere
+    names = np.array([f"{i + 1:04d}.jpg" for i in range(12)])
+    parts = sfm.split_at_jumps(names, pos)
+    assert [list(p) for p in parts] == [[0, 1, 2, 3, 4, 6, 7], [8, 9, 10, 11]]
+
+
+def test_sections_from_all_pieces_unique_object_ids_and_largest_on_top(monkeypatch):
+    models = [sfm.align_model(_model(n=6, start=40)), sfm.align_model(_model(n=10, start=1))]
+    dets = [{"name": "0003.jpg", "objects": [{"obj_id": "0003_o1", "label": "door", "conf": 0.9, "bbox": [0, 0, 20, 20],
+                                              "source": "world"}]},
+            {"name": "0042.jpg", "objects": [{"obj_id": "0042_o1", "label": "door", "conf": 0.8, "bbox": [0, 0, 20, 20],
+                                              "source": "world"}]}]
+    res = sfm.build_sections(models, dets, [], fps=3.0, cid="c1")
+    secs = res["sections"]
+    assert [s["frames_registered"] for s in secs] == [10, 6]  # largest first
+    assert secs[0]["t_start"] == 0.0 and secs[1]["t_start"] == round(39 / 3.0, 2)
+    assert res["points"] == secs[0]["points"] and res["cameras"] == secs[0]["cameras"]
+    assert res["frames_registered"] == 16 and res["gravity_aligned"] is True
+    ids = [o["id"] for o in res["objects"]]
+    assert len(ids) == len(set(ids)) == 2 and {o["section"] for o in res["objects"]} == {0, 1}
+
+
+def test_detection_frames_are_capped_and_spread_over_all_pieces():
+    models = [_model(n=40, start=1), _model(n=20, start=100), _model(n=5, start=200)]
+    names = sfm.detection_frames(models, budget=30)
+    assert len(names) <= 30 + 3 and any(n.startswith("02") for n in names) and any(n.startswith("01") for n in names)
+
+
+def test_floor_plane_corrects_the_pitch_of_a_phone_held_slightly_down():
+    """Walking, the phone points ~12° down: the cameras' up vector is tilted, the floor is not. The floor plane
+    (RANSAC on the lowest points near the camera-up estimate) wins, so floor and camera path come out level."""
+    m = _model(tilt=0.0)
+    pitch = _rot("x", 12.0)
+    m["up"] = m["up"] @ pitch.T  # biased up vectors, geometry unchanged
+    a = sfm.align_model(m)
+    floor = a["points"][:300, 1]  # the first 300 points of _model are the floor
+    assert np.ptp(floor) < 0.05 and np.ptp(a["pos"][:, 1]) < 0.05
