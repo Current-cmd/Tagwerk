@@ -15,3 +15,7 @@ models/
 neo4j/
 .DS_Store
 cache/
+seed/projects/*
+!seed/projects/schependomlaan/
+data-*/
+cache-*/
