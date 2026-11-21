@@ -62,7 +62,7 @@ STATE_WORDS: list[tuple[str, list[str]]] = [
                  "goedgekeurd", "opgeleverd"]),
     ("painted", ["gestrichen", "lackiert", "painted"]),
     ("primed", ["grundiert", "primed"]),
-    ("prepared", ["vorbereitet", "gespachtelt", "prepared"]),
+    ("prepared", ["vorbereitet", "gespachtelt", "verputzt", "geputzt", "prepared", "plastered", "skimmed"]),
     ("wired", ["verkabelt", "wired"]),
     ("connected", ["angeschlossen", "connected"]),
     ("substructure", ["unterkonstruktion", "substructure"]),
