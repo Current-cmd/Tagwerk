@@ -1,1 +1,184 @@
-<!doctype html><title>Tagwerk · Scan</title><p>scan</p>
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tagwerk · Video scannen</title>
+<style>
+  :root { --ink: #1d1d1f; --muted: #6b6b70; --line: #e3e3e8; --bg: #f6f7f9; --card: #fff; --accent: #1f6feb; }
+  * { box-sizing: border-box; }
+  body { font-family: system-ui, sans-serif; margin: 0; background: var(--bg); color: var(--ink); }
+  main { max-width: 760px; margin: 0 auto; padding: 24px 16px 64px; }
+  h1 { margin: 0 0 4px; font-size: 26px; }
+  .sub { color: var(--muted); margin: 0 0 20px; }
+  form, .card, .summary, .project { background: var(--card); border: 1px solid var(--line); border-radius: 12px; }
+  form { padding: 16px; }
+  label { display: block; margin: 14px 0 4px; font-weight: 600; font-size: 14px; }
+  label:first-child { margin-top: 0; }
+  input, button { width: 100%; font-size: 16px; padding: 10px; border-radius: 8px; border: 1px solid var(--line); }
+  button { margin-top: 18px; background: var(--accent); color: #fff; border: 0; font-weight: 600; }
+  button:disabled { opacity: .55; }
+  progress { width: 100%; margin-top: 14px; }
+  .busy { display: flex; align-items: center; gap: 12px; margin-top: 14px; color: var(--muted); }
+  .spinner { width: 22px; height: 22px; border: 3px solid var(--line); border-top-color: var(--accent);
+             border-radius: 50%; animation: spin 0.9s linear infinite; flex: none; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  [hidden] { display: none !important; }
+  .error { margin-top: 14px; padding: 10px 12px; border-radius: 8px; background: #fdecec; color: #8a1c1c; }
+  #result { margin-top: 24px; }
+  .summary { padding: 14px 16px; font-size: 18px; font-weight: 600; }
+  .project { margin-top: 12px; padding: 12px 16px; background: #eef6ff; border-color: #c7defa; }
+  .project code { background: #fff; padding: 2px 6px; border-radius: 6px; }
+  h2 { margin: 28px 0 10px; font-size: 18px; }
+  h2 small { color: var(--muted); font-weight: 400; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 12px; }
+  .card { overflow: hidden; }
+  .thumb { position: relative; background: #111; line-height: 0; }
+  .thumb img { width: 100%; height: auto; display: block; }
+  .thumb .box { position: absolute; border: 2px solid #ffd60a; box-shadow: 0 0 0 1px rgba(0,0,0,.55);
+                border-radius: 2px; pointer-events: none; }
+  .nothumb { padding: 28px 8px; text-align: center; color: var(--muted); background: #eee; font-size: 13px; }
+  .body { padding: 10px 12px 12px; }
+  .name { font-weight: 700; font-size: 16px; }
+  .label { color: var(--muted); font-size: 13px; margin-bottom: 6px; }
+  dl { display: grid; grid-template-columns: auto 1fr; gap: 2px 10px; margin: 0; font-size: 13px; }
+  dt { color: var(--muted); }
+  dd { margin: 0; text-align: right; font-variant-numeric: tabular-nums; }
+  .pill { display: inline-block; padding: 1px 8px; border-radius: 999px; background: #eef1f5; font-size: 12px; }
+  .pill.none { background: #f3f3f3; color: var(--muted); }
+</style>
+</head>
+<body>
+<main>
+  <h1>Video scannen</h1>
+  <p class="sub">Video oder Fotos hochladen: Tagwerk erkennt Bauteile, Geräte und Personen.</p>
+  <form id="f">
+    <label for="files">Video / Fotos</label>
+    <input id="files" name="files" type="file" accept="video/*,image/*" multiple required>
+    <label for="proj">Projektname (optional)</label>
+    <input id="proj" name="make_project" type="text" placeholder="z. B. neubau-nord" autocomplete="off">
+    <label for="zone">Zonenname (optional)</label>
+    <input id="zone" name="zone_name" type="text" placeholder="Baustelle" autocomplete="off">
+    <button id="go" type="submit">Scannen</button>
+    <progress id="up" value="0" max="100" hidden></progress>
+    <div id="busy" class="busy" hidden><div class="spinner"></div><span id="busytext"></span></div>
+    <div id="err" class="error" role="alert" hidden></div>
+  </form>
+  <section id="result" hidden></section>
+</main>
+<script>
+const $ = id => document.getElementById(id);
+const f = $('f'), go = $('go'), up = $('up'), busy = $('busy'), busytext = $('busytext'), err = $('err'),
+      result = $('result');
+const fmtT = t => (t == null ? '–' : Number(t).toFixed(1).replace('.', ',') + ' s');
+const fmtN = n => String(n).replace('.', ',');
+
+function el(tag, attrs, ...kids) {
+  const e = document.createElement(tag);
+  for (const [k, v] of Object.entries(attrs || {})) {
+    if (k === 'class') e.className = v; else if (k === 'text') e.textContent = v; else e.setAttribute(k, v);
+  }
+  kids.forEach(k => e.append(k));
+  return e;
+}
+
+function drawBox(img, box, bbox) {
+  // bbox = [x1, y1, x2, y2] in pixels of the original frame; scale to the displayed size
+  const s = img.clientWidth / img.naturalWidth;
+  if (!isFinite(s) || s <= 0) return;
+  box.style.left = bbox[0] * s + 'px';
+  box.style.top = bbox[1] * s + 'px';
+  box.style.width = (bbox[2] - bbox[0]) * s + 'px';
+  box.style.height = (bbox[3] - bbox[1]) * s + 'px';
+}
+
+function card(item) {
+  const thumb = el('div', { class: 'thumb' });
+  const bbox = item.best && item.best.bbox;
+  if (item.thumb) {
+    const img = el('img', { alt: item.name_de, loading: 'lazy' });
+    const box = el('div', { class: 'box' });
+    box.hidden = !(bbox && bbox.length === 4);
+    img.addEventListener('load', () => bbox && drawBox(img, box, bbox));
+    window.addEventListener('resize', () => bbox && drawBox(img, box, bbox));
+    img.src = item.thumb;
+    thumb.append(img, box);
+  } else {
+    thumb.className = 'nothumb';
+    thumb.textContent = 'kein Vorschaubild';
+  }
+  const ifc = item.ifc_class ? el('span', { class: 'pill', text: item.ifc_class })
+                             : el('span', { class: 'pill none', text: 'kein Bauteil' });
+  const rows = [
+    ['Anzahl', item.instances], ['Bilder', item.frames],
+    ['Konfidenz', Math.round(item.best_conf * 100) + ' %'],
+    ['Erstmals', fmtT(item.first_t)], ['Zuletzt', fmtT(item.last_t)],
+  ];
+  const dl = el('dl', {});
+  rows.forEach(([k, v]) => dl.append(el('dt', { text: k }), el('dd', { text: String(v) })));
+  dl.append(el('dt', { text: 'IFC' }), el('dd', {}, ifc));
+  return el('div', { class: 'card' }, thumb,
+            el('div', { class: 'body' }, el('div', { class: 'name', text: item.name_de }),
+               el('div', { class: 'label', text: item.label }), dl));
+}
+
+function render(inv) {
+  result.replaceChildren();
+  result.append(el('div', { class: 'summary',
+    text: `${inv.frames} Bilder · ${inv.element_count} Bauteile · bis zu ${inv.people_max} Personen` }));
+  if (inv.project) {
+    const p = inv.project;
+    result.append(el('div', { class: 'project' },
+      el('div', { text: `Projekt erstellt: ${p.dir}, ${p.elements} Bauteile, ${p.activities} Vorgänge` }),
+      el('div', {}, 'API starten mit ', el('code', { text: 'PROJECT=' + String(p.dir).split('/').pop() }))));
+  }
+  const order = [];
+  const groups = {};
+  (inv.items || []).forEach(i => {
+    if (!(i.category_de in groups)) { groups[i.category_de] = []; order.push(i.category_de); }
+    groups[i.category_de].push(i);
+  });
+  order.forEach(cat => {
+    result.append(el('h2', {}, cat + ' ', el('small', { text: `(${groups[cat].length})` })));
+    const grid = el('div', { class: 'grid' });
+    groups[cat].forEach(i => grid.append(card(i)));
+    result.append(grid);
+  });
+  if (!order.length) result.append(el('p', { class: 'sub', text: 'Nichts erkannt.' }));
+  result.hidden = false;
+}
+
+f.addEventListener('submit', ev => {
+  ev.preventDefault();
+  const fd = new FormData(f);
+  if (!fd.get('make_project')) fd.delete('make_project');
+  if (!fd.get('zone_name')) fd.delete('zone_name');
+  err.hidden = true; result.hidden = true; go.disabled = true;
+  up.value = 0; up.hidden = false; busy.hidden = true;
+  const xhr = new XMLHttpRequest();
+  let timer = null, t0 = 0;
+  const stop = () => { clearInterval(timer); busy.hidden = true; up.hidden = true; go.disabled = false; };
+  const fail = msg => { stop(); err.textContent = msg; err.hidden = false; };
+  xhr.open('POST', '/api/scan');
+  xhr.upload.onprogress = e => { if (e.lengthComputable) up.value = 100 * e.loaded / e.total; };
+  xhr.upload.onload = () => {   // upload done, the server is now analysing
+    up.hidden = true; busy.hidden = false; t0 = Date.now();
+    const tick = () => { busytext.textContent = `Analysiere… ${Math.floor((Date.now() - t0) / 1000)} s`; };
+    tick(); timer = setInterval(tick, 500);
+  };
+  xhr.onload = () => {
+    if (xhr.status !== 200) {
+      let d = ''; try { d = JSON.parse(xhr.responseText).detail || ''; } catch (e) {}
+      return fail(`Fehler ${xhr.status}${d ? ': ' + (typeof d === 'string' ? d : JSON.stringify(d)) : ''}`);
+    }
+    let inv; try { inv = JSON.parse(xhr.responseText); } catch (e) { return fail('Ungültige Antwort vom Server.'); }
+    stop(); render(inv);
+  };
+  xhr.onerror = () => fail('Netzwerkfehler: ist die API erreichbar?');
+  xhr.ontimeout = () => fail('Zeitüberschreitung.');
+  xhr.timeout = 600000;
+  xhr.send(fd);
+});
+</script>
+</body>
+</html>
