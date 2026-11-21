@@ -26,16 +26,18 @@ Event, DailyReport. Relationships: see `seed/ontology.yaml`.
 - The site manager uses the tool; labour appears only as data (trades, counts, absences); the Bauleiter reads the dashboard.
 - An element state changes only when `evidence` is `voice` or `both`, or on a manual tap. Vision alone creates a Proposal.
 - Absences ("zwei Mann krank") are `Event {type: absence, trade, count, date}` linked to the activity.
-- States only go up (store the max). Activity % is quantity-weighted.
+- States only go up (store the max). Activity % is BoQ-weighted (qty × unit price × share).
+- No API key: structuring falls back to keyword rules; a typed note counts like voice.
 - DIN 276: three-digit codes, marked `verify` until checked.
 - P6 XML: activities, WBS, relationships, user-defined fields. Costs live in GAEB.
 - .ics times in UTC with stable UID `capture-<id>@tagwerk`.
 - Forecast "today" is `DATA_DATE` from config.
 
 ## Commands
-- Tests: `pytest`
+- Tests: `PYTHONPATH=$PWD .venv/bin/python -m pytest -q`
 - Validate fixtures: `python scripts/validate_fixtures.py`
-- API: `uvicorn tagwerk.api.app:app --reload --port 8000`
+- API: `uvicorn tagwerk.api.app:app --host 0.0.0.0 --port 8080` (8000 is Portainer on the laptop); restart both services with `~/tw-restart.sh`
+- Always set `PYTHONPATH=$PWD` on the laptop (its shell exports ROS Humble 3.10 paths that break the 3.12 venv)
 - GPU worker: `uvicorn tagwerk.worker_api:app --host 0.0.0.0 --port 8100`
 - Neo4j: `docker compose up -d neo4j`
 

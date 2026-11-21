@@ -8,49 +8,44 @@ Full plan: `docs/PLAN.md` (export of the planning doc).
 
 ## Architecture
 
+Everything runs on the GPU laptop (Ubuntu 22.04, GTX 1060). The Mac only edits code.
+
 ```
- Chrome upload page ──► API (laptop) ──► GPU worker (friend's machine, optional)
-                         │   │              speech · vision
-                         │   └── Claude structuring · loop · exports
-                         ├── Neo4j (Docker)
-                         └── websocket ──► live graph page · Bauleiter dashboard
+ Chrome upload page (phone/laptop) ──► API :8080 ──► GPU worker :8100 (Whisper int8, ArUco, YOLO11s,
+                                        │   │         YOLO-World, RelateAnything)
+                                        │   └── context (Open-Meteo) · structuring (Claude or rules) · progress loop
+                                        ├── Neo4j :7687 (Docker), browser at :7474
+                                        └── websocket /events ──► /graph (live graph) · /dashboard (Bauleiter) · /site
 ```
 
-- **API** (`tagwerk/api`): uploads, job queue, websocket events, graph writes. Runs anywhere, CPU only.
-- **GPU worker** (`tagwerk/worker_api.py`): speech-to-text and vision behind HTTP. Run it on the
-  machine with the GPU and point `GPU_WORKER_URL` at it. If unset, the API runs those stages itself.
-- **Contracts** (`contracts/`): JSON Schemas every stage must produce. `fixtures/` holds one valid
-  example per contract. Stages are stubs that return fixture-shaped data until implemented.
+Port 8000 is taken by Portainer on the laptop, so the API runs on **8080**.
 
-## Quickstart (API side)
+- **Project state** (`tagwerk/project.py`) is authoritative: seed CSVs + `seed/history.json` + every stored
+  capture result, all applied through one function (`apply_structured`). The graph is a projection of it
+  (`tagwerk/graph/sync.py`, batched idempotent `MERGE`s; every node also carries `:Tw` for a unique id index).
+- **Structuring** (`tagwerk/pipeline/structure.py`): Claude with an enum-restricted tool schema when
+  `ANTHROPIC_API_KEY` is set, otherwise German/English keyword rules (elements by alias and row lists, states
+  by verb, absences, labour, deliveries, defects) plus ArUco marker hits. Voice/note confirms, vision alone proposes.
+- **Forecast**: rate = 100 % / (planned working days × planned crew); remaining work is simulated day by day
+  with crew minus that day's absences; finish-to-start successors shift with it. Labelled "projection from
+  today's evidence". Activity % is BoQ-weighted (qty × unit price × share of each linked position).
+- **Caching / replay**: every stage output lands in `cache/<capture_id>/`. `replay_of=<capture_id>` (or
+  `scripts/replay.py <capture_id>`) replays a processed capture with no GPU, network or Claude.
+
+## Run it (on the laptop)
 
 ```bash
-cp .env.example .env              # fill in keys; never commit .env
-docker compose up -d neo4j        # graph at http://localhost:7474
-uv venv --python 3.12 && source .venv/bin/activate
-uv pip install -e ".[dev]"
-pytest                            # contracts + API tests, CPU only
-uvicorn tagwerk.api.app:app --reload --port 8000
+cd ~/Developer/hacka/Tagwerk
+docker compose up -d neo4j
+~/tw-restart.sh                                  # (re)starts worker :8100 and API :8080 from this checkout
+PYTHONPATH=$PWD .venv/bin/python -m pytest -q    # PYTHONPATH must be set: the shell's ROS paths break the venv
 ```
 
-Open http://localhost:8000/upload, http://localhost:8000/graph and http://localhost:8000/dashboard.
+Pages: `/graph`, `/dashboard`, `/site`, `/upload`. Exports: `/export/p6.xml`, `/export/p6-baseline.xml`,
+`/export/day.ics`, `/export/boq.x83`, `/export/boq.x84`. Demo runbook: `docs/DEMO.md`.
 
-## GPU worker (Pascal GPUs such as GTX 1060 / 1080 Ti)
-
-```bash
-uv venv --python 3.12 && source .venv/bin/activate
-uv pip install -e ".[gpu]" -c constraints-cu126.txt \
-    --extra-index-url https://download.pytorch.org/whl/cu126
-git clone https://github.com/Maelic/RelateAnything ../RelateAnything
-uv pip install --no-deps -e ../RelateAnything   # package "relsgg"; add its missing deps by hand
-python -c "import torch; print(torch.__version__)"   # must still end in +cu126
-python scripts/env_check.py       # CUDA, CTranslate2 int8, YOLO, ArUco, RelateAnything
-uvicorn tagwerk.worker_api:app --host 0.0.0.0 --port 8100
-```
-
-Then set `GPU_WORKER_URL=http://<gpu-host>:8100` in the API's `.env`.
-
-Pascal rules: torch stays on the cu126 build (never cu128+), fp32 only, no `torch.compile`.
+`.env`: `NEO4J_URI=bolt://localhost:7687`, `GPU_WORKER_URL=http://localhost:8100`, `DATA_DATE=2026-11-26`
+(the forecast's "today"; live captures are stamped with it). `ANTHROPIC_API_KEY` optional.
 
 ## Layout
 
