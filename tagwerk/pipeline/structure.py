@@ -80,7 +80,7 @@ STATE_WORDS: list[tuple[str, list[str]]] = [
     ("boarded", ["beplankt", "boarded"]),
     ("stripped", ["abgezogen", "rausgerissen", "stripped"]),
     ("levelled", ["nivelliert", "ausgeglichen", "levelled", "leveled"]),
-    ("covered", ["verlegt", "belegt", "versiegelt", "covered", "laid"]),
+    ("covered", ["verlegt", "belegt", "versiegelt", "covered", "laid", "placed"]),
     ("removed", ["demontiert", "ausgebaut", "rückgebaut", "entfernt", "removed"]),
     ("mounted", ["montiert", "hängt", "hängen", "aufgehängt", "mounted", "hung"]),
     ("installed", ["montiert", "eingebaut", "installiert", "steht", "stehen", "eingefüllt", "verfüllt", "eingesetzt",

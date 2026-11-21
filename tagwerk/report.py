@@ -138,16 +138,26 @@ def _frame_url(cid: str, media_path: str | None) -> str | None:
 
 
 def _inventory_of(cid: str) -> list[dict]:
-    """One capture's objects: [{name_de, count, relations, thumb}], from sfm.json, else the vision detections."""
+    """One capture's objects: [{name_de, count, relations, thumb, mentioned, spoken, spoken_state_de}], from sfm.json
+    (mentioned: the speaker named it, tagwerk.pipeline.mentions), else the vision detections."""
+    from tagwerk.pipeline.mentions import for_capture
+
     sfm = _sfm(cid)
     items: dict[str, dict] = {}
     if sfm and sfm.get("objects"):
-        for o in sfm["objects"]:
+        objs = for_capture({**sfm, "capture_id": cid}, get_settings().cache_dir)["objects"]
+        for o in objs:
             if CATALOG.get(o.get("label", ""), ("other",))[0] in NO_INVENTORY | {"other"}:
                 continue  # people, and COCO labels outside the catalog ("broccoli", "skis", "tie")
-            it = items.setdefault(o["name_de"], {"name_de": o["name_de"], "count": 0, "relations": [], "thumb": None})
+            it = items.setdefault(o["name_de"], {"name_de": o["name_de"], "count": 0, "relations": [], "thumb": None,
+                                                 "mentioned": False, "spoken": None, "spoken_state_de": None})
             it["count"] += 1
             it["thumb"] = it["thumb"] or o.get("thumb")
+            if o.get("mentioned"):
+                it["mentioned"] = True
+                it["spoken"] = it["spoken"] or o.get("spoken_phrase")
+                st = o.get("spoken_state")
+                it["spoken_state_de"] = it["spoken_state_de"] or (STATE_DE.get(st, st) if st else None)
             for r in o.get("relations", []):
                 if r.get("target_name") in NO_INVENTORY_NAMES:
                     continue
@@ -163,7 +173,8 @@ def _inventory_of(cid: str) -> list[dict]:
             if cat in NO_INVENTORY | {"other"}:
                 continue
             counts[name] = counts.get(name, 0) + 1
-            it = items.setdefault(name, {"name_de": name, "count": 0, "relations": [], "thumb": None})
+            it = items.setdefault(name, {"name_de": name, "count": 0, "relations": [], "thumb": None,
+                                         "mentioned": False, "spoken": None, "spoken_state_de": None})
             it["thumb"] = it["thumb"] or _frame_url(cid, f.get("media_path"))
         for name, n in counts.items():
             per_frame[name] = max(per_frame.get(name, 0), n)
@@ -183,13 +194,18 @@ def _inventory(caps: list[dict]) -> list[dict]:
         cid = c["capture_id"]
         for it in _inventory_of(cid):
             row = out.setdefault(it["name_de"], {"name_de": it["name_de"], "count": 0, "relations": [], "thumb": None,
-                                                 "capture_id": cid})
+                                                 "capture_id": cid, "mentioned": False, "spoken": None,
+                                                 "spoken_state_de": None})
             row["count"] += it["count"]
+            if it.get("mentioned"):
+                row["mentioned"] = True
+                row["spoken"] = row["spoken"] or it.get("spoken")
+                row["spoken_state_de"] = row["spoken_state_de"] or it.get("spoken_state_de")
             row["thumb"] = row["thumb"] or it["thumb"]
             row["relations"] += it["relations"]
     for row in out.values():
         row["relations"] = list(dict.fromkeys(row["relations"]))[:MAX_RELATIONS]
-    return sorted(out.values(), key=lambda r: (-r["count"], r["name_de"]))
+    return sorted(out.values(), key=lambda r: (not r["mentioned"], -r["count"], r["name_de"]))
 
 
 def _photos(caps: list[dict], recordings: list[dict]) -> list[str]:
@@ -283,6 +299,8 @@ table.kopf th { width: 18%; }
 .sign { display: grid; grid-template-columns: 1fr 1fr; gap: 30px; margin-top: 28px; page-break-inside: avoid; }
 .sign div { border-top: 1px solid #111; padding-top: 3px; font-size: 9pt; }
 q { font-style: italic; color: #333; }
+.said { display: inline-block; margin-left: 4px; padding: 0 5px; border-radius: 8px; background: #fff3cd;
+        border: 1px solid #f0b429; font-size: 0.85em; }
 @media print {
   body { padding: 0; max-width: none; }
   h2 { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
@@ -339,7 +357,10 @@ def render_html(rep: dict, number: int) -> str:
     thumbs = any(x["thumb"] for x in rep["inventory"])  # no empty picture column
     inv = _table(([""] if thumbs else []) + ["Objekt", "Anzahl", "Relationen"],
                  [([f'<img class="thumb" src="{e(x["thumb"])}" alt="">' if x["thumb"] else ""] if thumbs else [])
-                  + [e(x["name_de"]), str(x["count"]), "".join(f'<span class="chip">{e(r)}</span>' for r in x["relations"])]
+                  + [e(x["name_de"]) + (f' <span class="said">gesagt: „{e(x["spoken"] or x["name_de"])}“'
+                                         + (f' ({e(x["spoken_state_de"])})' if x.get("spoken_state_de") else "")
+                                         + "</span>" if x.get("mentioned") else ""),
+                     str(x["count"]), "".join(f'<span class="chip">{e(r)}</span>' for r in x["relations"])]
                   for x in rep["inventory"]])
     events = _table(["Art", "Beschreibung", "Schwere"],
                     [[e(EVENT_DE.get(x["type"], x["type"])), e(x["text"]),

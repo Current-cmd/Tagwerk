@@ -53,6 +53,7 @@ CATALOG: dict[str, tuple[str, str | None, str, str]] = {
     "bench": ("furniture", "IfcFurniture", "Bank", "default"),
     "potted plant": ("furniture", "IfcFurniture", "Pflanze", "default"),
     "refrigerator": ("furniture", "IfcFurniture", "Kühlschrank", "default"),
+    "trash can": ("furniture", "IfcFurniture", "Mülleimer", "default"),
     "sink": ("services", "IfcSanitaryTerminal", "Waschbecken", "default"),
     "toilet": ("services", "IfcSanitaryTerminal", "WC", "default"),
     "scaffolding": ("equipment", None, "Gerüst", ""),

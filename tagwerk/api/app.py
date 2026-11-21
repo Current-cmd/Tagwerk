@@ -462,6 +462,7 @@ def v2_scan3d(capture_id: str) -> dict:
     import json
 
     _check_id(capture_id, "capture_id")
+    from tagwerk.pipeline.mentions import for_capture as mentions_for
     from tagwerk.pipeline.sfm import drop_person_pairs
 
     try:
@@ -469,6 +470,8 @@ def v2_scan3d(capture_id: str) -> dict:
     except (OSError, ValueError):
         raise HTTPException(404, "no scan3d for this capture") from None
     drop_person_pairs(data.get("objects") or [])
+    data["capture_id"] = data.get("capture_id") or capture_id
+    data.update(mentions_for(data, get_settings().cache_dir, get_project()))  # what the speaker named, linked to objects
     data["video"] = v2._media(capture_id)[0]  # the kept walkthrough video, shown beside the 3D view
     return data
 
