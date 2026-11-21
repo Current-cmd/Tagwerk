@@ -28,7 +28,8 @@ log = logging.getLogger(__name__)
 
 NUMBERS = {"ein": 1, "eine": 1, "einer": 1, "einen": 1, "one": 1, "a": 1, "zwei": 2, "two": 2, "drei": 3,
            "three": 3, "vier": 4, "four": 4, "fünf": 5, "funf": 5, "five": 5, "sechs": 6, "six": 6,
-           "sieben": 7, "seven": 7, "acht": 8, "eight": 8, "neun": 9, "nine": 9, "zehn": 10, "ten": 10}
+           "sieben": 7, "seven": 7, "acht": 8, "eight": 8, "neun": 9, "nine": 9, "zehn": 10, "ten": 10,
+           "een": 1, "twee": 2, "drie": 3, "vijf": 5, "zes": 6, "zeven": 7, "negen": 9, "tien": 10}
 
 # trade name (as in seed/trades.csv) -> words that name it
 TRADE_WORDS = {
@@ -40,16 +41,25 @@ TRADE_WORDS = {
     "AV-Technik": ["av-techniker", "av techniker", "techniker", "av-technik", "av technician", "av"],
     "Rückbau": ["rückbau", "abbruch", "demolition"],
     "Bauleitung": ["bauleitung", "bauleiter"],
+    # Dutch trades (Schependomlaan)
+    "Metselaar": ["metselaar", "metselaars"],
+    "Betonwerker": ["betonwerker", "betonwerkers", "betonploeg"],
+    "Timmerman": ["timmerman", "timmerlieden", "timmermannen"],
+    "Dakdekker": ["dakdekker", "dakdekkers"],
+    "Installateur": ["installateur", "installateurs", "loodgieter"],
+    "Montage": ["monteurs montage", "montageploeg"],
 }
-PERSON_WORDS = ["mann", "leute", "arbeiter", "kollegen", "männer", "people", "men", "workers", "guys"]
+PERSON_WORDS = ["mann", "leute", "arbeiter", "kollegen", "männer", "people", "men", "workers", "guys", "man",
+                "mannen", "mensen"]
 ABSENT_WORDS = ["krank", "fehlen", "fehlt", "nicht da", "ausgefallen", "abwesend", "sick", "absent", "missing",
-                "off today", "not here"]
+                "off today", "not here", "ziek", "afwezig", "niet aanwezig"]
 
 # keyword -> state; checked in this order, the first state that exists for the element type wins
 STATE_WORDS: list[tuple[str, list[str]]] = [
     ("commissioned", ["in betrieb", "eingemessen", "commissioned"]),
     ("tested", ["getestet", "test bestanden", "tested"]),
-    ("checked", ["abgenommen", "geprüft", "kontrolliert", "checked", "inspected", "signed off"]),
+    ("checked", ["abgenommen", "geprüft", "kontrolliert", "checked", "inspected", "signed off", "gecontroleerd",
+                 "goedgekeurd", "opgeleverd"]),
     ("painted", ["gestrichen", "lackiert", "painted"]),
     ("primed", ["grundiert", "primed"]),
     ("prepared", ["vorbereitet", "gespachtelt", "prepared"]),
@@ -63,19 +73,22 @@ STATE_WORDS: list[tuple[str, list[str]]] = [
     ("covered", ["verlegt", "belegt", "versiegelt", "covered", "laid"]),
     ("removed", ["demontiert", "ausgebaut", "rückgebaut", "entfernt", "removed"]),
     ("mounted", ["montiert", "hängt", "hängen", "aufgehängt", "mounted", "hung"]),
-    ("installed", ["montiert", "eingebaut", "installiert", "steht", "installed", "fitted"]),
-    ("started", ["begonnen", "angefangen", "started"]),
+    ("installed", ["montiert", "eingebaut", "installiert", "steht", "installed", "fitted", "geplaatst",
+                   "gemonteerd", "gemetseld", "gestort", "gelegd", "aangebracht", "staat"]),
+    ("started", ["begonnen", "angefangen", "started", "gestart", "mee bezig"]),
 ]
-DONE_WORDS = ["fertig", "erledigt", "komplett", "done", "finished", "complete", "completed"]
+DONE_WORDS = ["fertig", "erledigt", "komplett", "done", "finished", "complete", "completed", "klaar", "gereed"]
 
 EVENT_WORDS = [
     ("safety", "high", ["unfall", "verletzt", "sicherheit", "absturz", "gefahr", "accident", "injured", "safety", "hazard"]),
     ("defect", "low", ["mangel", "mängel", "kratzer", "schaden", "beschädigt", "riss", "defekt", "defect", "damage",
-                       "damaged", "scratch", "crack"]),
-    ("delay", "medium", ["verspätet", "verzögert", "verzug", "kommt später", "verschoben", "delayed", "delay", "late"]),
-    ("weather", "low", ["regen", "sturm", "frost", "schnee", "rain", "storm", "snow"]),
+                       "damaged", "scratch", "crack", "gebrek", "scheur", "beschadigd"]),
+    ("delay", "medium", ["verspätet", "verzögert", "verzug", "kommt später", "verschoben", "delayed", "delay", "late",
+                         "vertraagd", "vertraging", "te laat"]),
+    ("weather", "low", ["regen", "sturm", "frost", "schnee", "rain", "storm", "snow", "sneeuw", "vorst"]),
 ]
-DELIVERY_WORDS = ["geliefert", "angeliefert", "lieferung", "delivered", "delivery", "arrived", "angekommen"]
+DELIVERY_WORDS = ["geliefert", "angeliefert", "lieferung", "delivered", "delivery", "arrived", "angekommen",
+                  "geleverd", "levering", "aangekomen"]
 
 
 def _norm(s: str) -> str:
@@ -179,11 +192,29 @@ def _trade_in(text: str) -> str | None:
     return None
 
 
+LARGE_PROJECT = 200  # above this many elements, speech only matches elements in the named/current storey or zone
+
+
 def rules_structure(capture: dict, transcript: dict, vision: dict, context: dict,
                     element_types: dict[str, str], current_pct: dict[str, int] | None = None,
                     trade_of_element: dict[str, str] | None = None,
-                    activity_of_element: dict[str, str] | None = None, markers: dict[int, str] | None = None) -> dict:
+                    activity_of_element: dict[str, str] | None = None, markers: dict[int, str] | None = None,
+                    zone_elements: dict[str, list[dict]] | None = None,
+                    zone_aliases: dict[str, list[str]] | None = None) -> dict:
     cands = context["candidates"]["elements"]
+    if zone_elements:
+        everything = [c for z in zone_elements.values() for c in z]
+        large = len(everything) > LARGE_PROJECT
+
+        def cands_for(sentence: str) -> list[dict]:
+            if not large:
+                return everything
+            named = [z for z, al in (zone_aliases or {}).items() if any(_has(sentence, _norm(a)) for a in al)]
+            zones = named or [capture["zone_id"]]
+            return [c for z in zones for c in zone_elements.get(z, [])]
+    else:
+        def cands_for(sentence: str) -> list[dict]:
+            return cands
     current_pct = current_pct or {}
     trade_of_element = trade_of_element or {}
     activity_of_element = activity_of_element or {}
@@ -201,7 +232,7 @@ def rules_structure(capture: dict, transcript: dict, vision: dict, context: dict
     mentioned_trades: list[str] = []
     for sent, t in _sentences(transcript, capture.get("note")):
         s = _norm(sent)
-        els = _match_elements(s, cands)
+        els = _match_elements(s, cands_for(s))
         is_absence = any(_has(s, w) for w in ABSENT_WORDS)
         trade = _trade_in(s)
 
@@ -375,8 +406,15 @@ def structure(capture: dict, transcript: dict, vision: dict, context: dict, proj
         except Exception as exc:  # noqa: BLE001 - never let the API kill a capture
             log.warning("structure: Claude failed (%s), using rules", exc)
     if result is None:
+        zone_elements, zone_aliases = None, None
+        if project is not None:
+            zone_elements = {}
+            for e, el in project.elements.items():
+                zone_elements.setdefault(el["zone"], []).append(
+                    {"id": e, "name_de": el["name_de"], "name_en": el["name_en"], "aliases": el["aliases"]})
+            zone_aliases = {z: [zz["name_de"], zz["name_en"], *zz.get("aliases", [])] for z, zz in project.zones.items()}
         result = rules_structure(capture, transcript, vision, context, element_types, current, trade_of, act_of,
-                                 markers)
+                                 markers, zone_elements, zone_aliases)
     result.pop("_source", None)
     cp.parent.mkdir(parents=True, exist_ok=True)
     cp.write_text(json.dumps(result, ensure_ascii=False, indent=1), encoding="utf-8")
