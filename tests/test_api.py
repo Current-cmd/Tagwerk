@@ -148,8 +148,12 @@ def test_same_filenames_do_not_overwrite(client, tmp_path):
     assert saved == ["00_image.jpg", "01_image.jpg"]
 
 
-def test_absence_only_capture_publishes_activity_update_and_graph_delay(client):
+def test_absence_only_capture_publishes_activity_update_and_graph_delay(client, monkeypatch):
     """An absence changes the forecast of its activity: /graph and the websocket must show it without a reload."""
+    from tagwerk.pipeline import speech, vision  # no media: without the models the fixture stubs would add work
+    monkeypatch.setattr(speech, "transcribe", lambda cap, derived: {"capture_id": cap["capture_id"], "lang": "de",
+                                                                     "segments": []})
+    monkeypatch.setattr(vision, "analyse", lambda cap, derived: {"capture_id": cap["capture_id"], "frames": []})
     with client.websocket_connect("/events") as ws:
         r = client.post("/captures", data={"zone_id": "Z-AUDIENCE", "capture_id": "cap-abs",
                                            "note": "Zwei Mann vom Trockenbau sind krank."})
