@@ -359,7 +359,8 @@ def _write_sfm(cid="cap-3d", scan=None):
 
 
 def test_scan3d_endpoint_404_validation_and_payload(client):
-    assert client.get("/api/v2/scan3d/nope").status_code == 404
+    r = client.get("/api/v2/scan3d/nope")  # the app treats FastAPI's default {"detail": "Not Found"} as "route not deployed"
+    assert r.status_code == 404 and r.json() == {"detail": "no scan3d for this capture"}
     assert client.get("/api/v2/scan3d/a$b").status_code == 400
     _write_sfm()
     body = client.get("/api/v2/scan3d/cap-3d").json()

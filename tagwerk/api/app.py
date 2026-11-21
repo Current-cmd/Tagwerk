@@ -372,7 +372,7 @@ def v2_scan3d(capture_id: str) -> dict:
     try:
         return json.loads((Path(get_settings().cache_dir) / capture_id / "sfm.json").read_text(encoding="utf-8"))
     except (OSError, ValueError):
-        raise HTTPException(404, "no 3D scan for this capture") from None
+        raise HTTPException(404, "no scan3d for this capture") from None
 
 
 @app.get("/export/day.ics", response_class=PlainTextResponse)
