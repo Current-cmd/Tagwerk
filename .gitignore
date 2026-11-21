@@ -19,3 +19,6 @@ seed/projects/*
 !seed/projects/schependomlaan/
 data-*/
 cache-*/
+
+# local agent worktrees
+.claude/worktrees/
