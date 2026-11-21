@@ -101,6 +101,7 @@ def test_scan_rejects_a_taken_project_name_before_the_vision_pass(tmp_path, monk
     async def boom(*a, **k):
         raise AssertionError("vision ran before the name check")
 
+    monkeypatch.setenv("ALLOW_PROJECT_CREATE", "1")
     with _client(tmp_path, monkeypatch) as c:
         monkeypatch.setattr(runner, "_gpu_stage", boom)
         r = c.post("/api/scan", data={"make_project": "Hoersaal"}, files={"files": ("a.jpg", b"\x00" * 10, "image/jpeg")})

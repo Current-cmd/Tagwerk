@@ -1,4 +1,4 @@
-
+import pytest
 
 NOTE = "Stuhlreihe A ist montiert. Zwei Mann vom Trockenbau sind heute krank."
 
