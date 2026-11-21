@@ -75,3 +75,16 @@ def test_result_is_cached_and_valid(p, tmp_path):
 
     validate("structured", run(p, "Leinwand angeschlossen", zone="Z-STAGE"))
     assert (tmp_path / "c" / "structured.json").exists()
+
+
+def test_whisper_comma_run_on(p):
+    s = run(p, "Stuhlreihe A ist montiert, zwei Mann vom Trockenbau sind heute krank, die hintere Traverse ist verkabelt",
+            markers=[4])
+    wd = {(tuple(w["element_ids"]), w["state_proposed"], w["evidence"]) for w in s["work_done"]}
+    assert (("E-ROW-A",), "installed", "both") in wd and (("E-TRUSS-2",), "wired", "voice") in wd
+    assert s["absences"] == [{"trade": "Trockenbau", "count": 2, "reason": "krank"}]
+
+
+def test_row_list_with_commas(p):
+    s = run(p, "Reihe C, D und E sind montiert")
+    assert {"E-ROW-C", "E-ROW-D", "E-ROW-E"} <= {e for w in s["work_done"] for e in w["element_ids"]}

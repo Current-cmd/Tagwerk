@@ -97,14 +97,30 @@ def _number_before(text: str, pos: int) -> int | None:
 
 # ---------------------------------------------------------------- rules engine
 
+_LIST_TAIL = re.compile(r"^\s*(?:und|bis|and|to|-)?\s*[a-h](?:\s|$|,)", re.I)
+
+
+def _clauses(sentence: str) -> list[str]:
+    """Split on commas and ' und ' between clauses, but keep lists like 'Reihe A, B und C montiert' together."""
+    parts = [x for x in re.split(r",\s*|\s+und\s+(?=(?:die|der|das|zwei|drei|vier|ein|eine|reihe|stuhlreihe|"
+                                 r"wir|es|\d))", sentence) if x and x.strip()]
+    out: list[str] = []
+    for part in parts:
+        if out and (_LIST_TAIL.match(part) or len(part.split()) < 2):
+            out[-1] = f"{out[-1]}, {part.strip()}"
+        else:
+            out.append(part.strip())
+    return out
+
+
 def _sentences(transcript: dict, note: str | None) -> list[tuple[str, float | None]]:
     out = []
     for seg in transcript.get("segments", []):
         for part in re.split(r"(?<=[.!?;])\s+", seg["text"].strip()):
-            if part.strip():
-                out.append((part.strip(), float(seg["start"])))
+            out += [(c, float(seg["start"])) for c in _clauses(part)]
     if note:
-        out += [(p.strip(), None) for p in re.split(r"(?<=[.!?;\n])\s*", note) if p.strip()]
+        for part in re.split(r"(?<=[.!?;\n])\s*", note):
+            out += [(c, None) for c in _clauses(part)]
     return out
 
 
