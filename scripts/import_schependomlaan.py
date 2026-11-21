@@ -108,7 +108,8 @@ def read_design(path: Path) -> dict[str, dict]:
             continue  # ArchiCAD artefact containers ("6.06", "A0.00", ...)
         props = ue.get_psets(el).get("ArchiCADProperties", {})
         out[el.Tag] = {"global_id": el.GlobalId, "ifc_class": el.is_a(), "name": clean_name(el.Name), "zone": zone,
-                       "layer": props.get("Layer") or "", "material": props.get("Building Material / Composite / Profile / Fill") or ""}
+                       "layer": props.get("Layer") or "",
+                       "material": props.get("Building Material / Composite / Profile / Fill") or ""}
     log(f"  {len(out)} tagged elements on the 6 storeys")
     return out
 
@@ -348,7 +349,7 @@ def _zone_of(element_ids: list[str], out: Path) -> str:
     """Most common zone among the elements (read back from the elements.csv just written)."""
     global _ZONES
     try:
-        _ZONES
+        _ZONES  # noqa: B018 - existence check for the module cache
     except NameError:
         with (out / "elements.csv").open(encoding="utf-8") as fh:
             _ZONES = {r["element_id"]: r["zone"] for r in csv.DictReader(fh)}

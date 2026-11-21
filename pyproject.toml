@@ -45,8 +45,8 @@ testpaths = ["tests"]
 markers = ["gpu: needs the real GPU models (RUN_GPU_TESTS=1)"]
 
 [tool.ruff]
-line-length = 120
+line-length = 130
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B"]
-ignore = ["B008"]  # FastAPI's File()/Form() defaults are idiomatic
+ignore = ["B008", "B905", "E702", "E731"]  # B008: FastAPI File()/Form() defaults; rest: compact vision code

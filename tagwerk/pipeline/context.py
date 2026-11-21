@@ -6,7 +6,6 @@ started and unfinished).
 """
 import logging
 import time
-from datetime import date
 
 import httpx
 

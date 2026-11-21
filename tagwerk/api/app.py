@@ -167,7 +167,6 @@ async def scan_video(files: list[UploadFile] = File(...), make_project: str | No
 
     from tagwerk.pipeline.runner import _gpu_stage
     from tagwerk.pipeline.scan import inventory, seed_from_scan
-    from tagwerk.state import seed_dir
 
     sid = f"scan-{uuid.uuid4().hex[:8]}"
     folder = Path(get_settings().data_dir) / "captures" / sid
