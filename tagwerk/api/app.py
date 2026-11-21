@@ -200,6 +200,10 @@ async def scan_video(files: list[UploadFile] = File(...), make_project: str | No
         name = Path(best.get("media_path") or "").name
         if name and (folder / "derived" / "frames" / name).exists():
             item["thumb"] = f"/media/{sid}/derived/frames/{name}"
+    sf = await runner.sfm_stage(capture, get_project())  # 3D reconstruction of the same clip (<= 150 s, never raises)
+    if sf is not None:
+        inv["scan3d"] = {"ok": sf["ok"], "reason": sf["reason"], "frames_registered": sf["frames_registered"],
+                         "objects": len(sf["objects"]), "url": f"/api/v2/scan3d/{sid}"}
     if make_project and not inv["element_count"]:  # a project without elements has no activities: dashboard/P6 break
         inv["project_error"] = "Keine Bauteile erkannt: Projekt nicht angelegt. Näher heran, mehr Licht, nochmal scannen."
     elif make_project:
@@ -369,6 +373,18 @@ def v2_report(date: str | None = None) -> dict:
 def export_report(date: str | None = None) -> HTMLResponse:
     """Print-ready German A4 Bautagebuch page (print to PDF in the browser)."""
     return HTMLResponse(report.report_html(_v2_date(date)))
+
+
+@app.get("/api/v2/scan3d/{capture_id}")
+def v2_scan3d(capture_id: str) -> dict:
+    """cache/<id>/sfm.json (Scan 3D); 404 when the capture has none."""
+    import json
+
+    _check_id(capture_id, "capture_id")
+    try:
+        return json.loads((Path(get_settings().cache_dir) / capture_id / "sfm.json").read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        raise HTTPException(404, "no scan3d for this capture") from None
 
 
 @app.get("/export/day.ics", response_class=PlainTextResponse)

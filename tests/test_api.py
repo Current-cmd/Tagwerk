@@ -327,3 +327,95 @@ def test_pages_use_bundled_libraries_not_a_cdn(client):
         r = client.get(f"/vendor/{lib}")
         assert r.status_code == 200 and len(r.content) > 100_000
     assert client.get("/vendor/..%2Fapi%2Fapp.py").status_code == 404
+
+
+# ---------------------------------------------------------------- scan 3D: runner stage, /api/v2/scan3d
+
+SFM = {"capture_id": "cap-3d", "ok": True, "reason": None, "seconds": 12.0, "frames_used": 40, "frames_registered": 30,
+       "fps": 2.5, "points": [[0, 0, 1, 10, 20, 30]], "cameras": [], "units": "relative (SfM scale is arbitrary)",
+       "objects": [{"id": "obj-1", "label": "door", "name_de": "Tür", "category_de": "Öffnungen", "position": [0, 0, 1],
+                    "extent": [1, 2, 0.1], "detections": 3, "first_t": 1.0, "last_t": 2.0, "conf": 0.8,
+                    "thumb": "/media/cap-3d/sfm/0001.jpg", "bbox_in_thumb": [1, 2, 3, 4], "element_id": None,
+                    "relations": [{"rel": "next to", "rel_de": "neben", "target": "obj-2", "target_name": "Wand",
+                                   "score": 0.5, "count": 2, "source": "model"}]}]}
+
+
+def _pin_models(monkeypatch):
+    from tagwerk.pipeline import speech, vision
+
+    monkeypatch.setattr(speech, "transcribe", lambda cap, derived: {"capture_id": cap["capture_id"], "lang": "de",
+                                                                     "segments": []})
+    monkeypatch.setattr(vision, "analyse", lambda cap, derived: {"capture_id": cap["capture_id"], "frames": []})
+
+
+def _write_sfm(cid="cap-3d", scan=None):
+    import json
+
+    from tagwerk.config import get_settings
+
+    d = get_settings().cache_dir / cid
+    d.mkdir(parents=True, exist_ok=True)
+    (d / "sfm.json").write_text(json.dumps(scan or {**SFM, "capture_id": cid}), encoding="utf-8")
+
+
+def test_scan3d_endpoint_404_validation_and_payload(client):
+    r = client.get("/api/v2/scan3d/nope")  # the app treats FastAPI's default {"detail": "Not Found"} as "route not deployed"
+    assert r.status_code == 404 and r.json() == {"detail": "no scan3d for this capture"}
+    assert client.get("/api/v2/scan3d/a$b").status_code == 400
+    _write_sfm()
+    body = client.get("/api/v2/scan3d/cap-3d").json()
+    assert body["ok"] is True and body["objects"][0]["relations"][0]["rel_de"] == "neben" and body["frames_registered"] == 30
+
+
+def test_capture_with_video_runs_the_sfm_stage_caches_it_and_publishes_status(client, monkeypatch):
+    import json
+
+    import tagwerk.pipeline.runner as runner
+    from tagwerk.config import get_settings
+
+    _pin_models(monkeypatch)
+    seen = []
+    monkeypatch.setattr(runner.sfm, "analyse", lambda cap, workdir: seen.append(cap["capture_id"]) or {**SFM, "objects": [
+        {**SFM["objects"][0], "label": "wall", "name_de": "Wand"}], "frames_used": 0})
+    with client.websocket_connect("/events") as ws:
+        r = client.post("/captures", data={"zone_id": "Z-AUDIENCE", "capture_id": "cap-v3d", "note": "Kratzer an der Bühne"},
+                        files=[("files", ("walk.mp4", b"\x00" * 64, "video/mp4"))])
+        assert r.status_code == 200, r.text
+        steps = []
+        while True:
+            ev = ws.receive_json()
+            if ev["type"] == "status" and ev["id"] == "cap-v3d":
+                steps.append(ev["props"])
+                if ev["props"]["step"] == "sfm":
+                    break
+    assert seen == ["cap-v3d"] and steps[-1]["frames_registered"] == 30 and steps[-1]["objects"] == 1 and steps[-1]["ok"] is True
+    assert json.loads((get_settings().cache_dir / "cap-v3d" / "sfm.json").read_text())["objects"][0]["name_de"] == "Wand"
+    assert client.get("/api/v2/scan3d/cap-v3d").status_code == 200
+    rec = next(x for x in client.get("/api/v2/day").json()["recordings"] if x["capture_id"] == "cap-v3d")
+    assert rec["has_3d"] is True
+
+
+def test_sfm_failure_never_fails_the_capture(client, monkeypatch):
+    import tagwerk.pipeline.runner as runner
+
+    _pin_models(monkeypatch)
+
+    def boom(cap, workdir):
+        raise RuntimeError("colmap exploded")
+
+    monkeypatch.setattr(runner.sfm, "analyse", boom)
+    r = client.post("/captures", data={"zone_id": "Z-AUDIENCE", "capture_id": "cap-bad3d", "note": "Kratzer an der Bühne"},
+                    files=[("files", ("walk.mp4", b"\x00" * 64, "video/mp4"))])
+    assert r.status_code == 200 and r.json()["status"] == "processed"
+    scan = client.get("/api/v2/scan3d/cap-bad3d").json()
+    assert scan["ok"] is False and "fehlgeschlagen" in scan["reason"] and scan["objects"] == []
+
+
+def test_replay_without_cached_sfm_skips_the_stage_and_reads_the_cache_when_there(client, monkeypatch):
+    import tagwerk.pipeline.runner as runner
+
+    _pin_models(monkeypatch)
+    runner.REPLAY_PAUSE_S = 0
+    client.post("/captures", data={"zone_id": "Z-AUDIENCE", "capture_id": "cap-src3", "note": "Reihe H Unterkonstruktion"})
+    monkeypatch.setattr(runner.sfm, "analyse", lambda cap, workdir: pytest.fail("a replay must not run the SfM stage"))
+    assert client.post("/captures", data={"capture_id": "cap-rep3", "replay_of": "cap-src3"}).status_code == 200

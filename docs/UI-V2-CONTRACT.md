@@ -172,3 +172,17 @@ Also `GET /export/report.html?date=D` (print-ready, German, A4) for a PDF via th
 - `#/report/<date>`: the Tagesbericht laid out like a German Bautagebuch page (shadcn Cards/Table), print button
   (window.print with print CSS) and link to `/export/report.html`.
 - Recording accordion items with `has_3d` get a "3D ansehen" button; the dashboard header gets "Tagesbericht".
+
+### Scan 3D: implementation notes (backend, feat/scan3d)
+- Detections are run on the SfM keyframes themselves (YOLO + YOLO-World + RelateAnything via the models the vision stage
+  keeps loaded), not mapped from the 1 fps vision frames: boxes then sit in the same images as the triangulated points
+  and coverage is 40-80 frames instead of 20. A box that holds < 3 triangulated keypoints is grown once (x1.3), then dropped.
+- `fps` and `frames_used` are extra fields of sfm.json (frame NNNN is at (NNNN-1)/fps s). Keyframes are in
+  `cache/<cid>/media/sfm/NNNN.jpg` (`/media/<cid>/sfm/NNNN.jpg`).
+- `ok: false`: `points`/`cameras` are empty, `objects` come from the 2D detections with `position: null`, `extent: null`
+  (one instance per label per max simultaneous count; relations are attached to the label's first instance).
+- Persons walking through the clip are reconstructed badly (moving points) and show up as several instances.
+- The stage runs after "done" (the day already shows the result) and publishes
+  `{"type":"status","props":{"step":"sfm","ok":…,"frames_registered":…,"objects":…,"reason":…}}`. A replay without a cached
+  sfm.json skips it. `/api/scan` responses carry `scan3d: {ok, reason, frames_registered, objects, url}`.
+- Timing on the GTX 1060 laptop (CPU SIFT): 48 frames 58 s, 80 frames 60-64 s, plus the upload and the other stages.
