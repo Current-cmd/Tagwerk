@@ -213,6 +213,41 @@ def replayable() -> list[str]:
     return sorted(p.name for p in d.iterdir() if (p / "speech.json").exists()) if d.exists() else []
 
 
+HIDDEN_REPLAY_PREFIXES = ("replay-", "dt-", "scan-", "cap-ui-")
+
+
+def _replay_entry(cid: str, label: str | None = None) -> dict:
+    """{"id", "label", "zone_id", "ts"} from the cached stage outputs (best effort, nothing is required but speech.json)."""
+    import json
+
+    d = Path(get_settings().cache_dir) / cid
+
+    def load(name: str) -> dict:
+        try:
+            return json.loads((d / name).read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            return {}
+
+    ctx, structured, speech = load("context.json"), load("structured.json"), load("speech.json")
+    if not label:
+        text = " ".join(seg.get("text", "") for seg in speech.get("segments", [])).strip() or \
+            (ctx.get("note") or structured.get("note") or "").strip()
+        label = (text[:60].rstrip() + ("…" if len(text) > 60 else "")) if text else cid
+    return {"id": cid, "label": label, "zone_id": ctx.get("zone_id"), "ts": ctx.get("ts") or structured.get("ts")}
+
+
+@app.get("/api/replays")
+def replays() -> list[dict]:
+    """Replay picker for /graph: the project's curated `demo_replays` (project.json) that have a cache, else every
+    cached capture except test/scan/replay runs."""
+    d = Path(get_settings().cache_dir)
+    cached = {p.name for p in d.iterdir() if (p / "speech.json").exists()} if d.exists() else set()
+    curated = get_project().meta.get("demo_replays")
+    if curated:
+        return [_replay_entry(e["id"], e.get("label")) for e in curated if e.get("id") in cached]
+    return [_replay_entry(cid) for cid in sorted(cached) if not cid.startswith(HIDDEN_REPLAY_PREFIXES)]
+
+
 @app.get("/captures/{capture_id}")
 def get_capture(capture_id: str) -> dict:
     if capture_id in _results:

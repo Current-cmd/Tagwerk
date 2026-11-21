@@ -168,3 +168,43 @@ def test_absence_only_capture_publishes_activity_update_and_graph_delay(client, 
     node = next(n for n in client.get("/api/graph").json()["nodes"] if n["id"] == "A1080")
     fc = {a["id"]: a for a in client.get("/api/dashboard").json()["activities"]}
     assert node["props"]["delay_d"] == fc["A1080"]["delay_d"]
+
+
+def _fake_cache(cid, text="", zone="Z-AUDIENCE", note=None):
+    import json
+
+    from tagwerk.config import get_settings
+
+    d = get_settings().cache_dir / cid
+    d.mkdir(parents=True, exist_ok=True)
+    (d / "speech.json").write_text(json.dumps({"capture_id": cid, "lang": "de", "segments": (
+        [{"start": 0, "end": 1, "text": text}] if text else [])}), encoding="utf-8")
+    (d / "context.json").write_text(json.dumps({"capture_id": cid, "zone_id": zone}), encoding="utf-8")
+    if note:
+        (d / "structured.json").write_text(json.dumps({"capture_id": cid, "note": note}), encoding="utf-8")
+
+
+def test_replays_hoersaal_curated_list_from_seed_skips_missing_cache(client):
+    assert client.get("/api/replays").json() == []  # curated entry has no cache yet
+    _fake_cache("cap-e2e-2", "Stuhlreihe A ist montiert")
+    r = client.get("/api/replays").json()
+    assert [e["id"] for e in r] == ["cap-e2e-2"] and r[0]["label"].startswith("Demo-Video") and r[0]["zone_id"] == "Z-AUDIENCE"
+    assert client.get("/api/replayable").json() == ["cap-e2e-2"]  # unchanged contract: plain list of ids
+
+
+def test_replays_curated_order_and_fallback_filter(client):
+    from tagwerk.state import get_project
+
+    for cid, text in [("a-first", "Erste Notiz"), ("b-second", "x" * 100), ("dt-x", "test"), ("replay-1", "r"),
+                      ("scan-9", "s"), ("cap-ui-3", "u"), ("c-empty", "")]:
+        _fake_cache(cid, text)
+    meta = get_project().meta
+    meta["demo_replays"] = [{"id": "b-second", "label": "Zweite"}, {"id": "ghost", "label": "fehlt"},
+                            {"id": "a-first", "label": "Erste"}]
+    assert [(e["id"], e["label"]) for e in client.get("/api/replays").json()] == [("b-second", "Zweite"),
+                                                                                  ("a-first", "Erste")]
+    meta.pop("demo_replays")
+    r = client.get("/api/replays").json()
+    assert [e["id"] for e in r] == ["a-first", "b-second", "c-empty"]  # dt-, replay-, scan-, cap-ui- are hidden
+    labels = {e["id"]: e["label"] for e in r}
+    assert labels["a-first"] == "Erste Notiz" and len(labels["b-second"]) <= 61 and labels["c-empty"] == "c-empty"

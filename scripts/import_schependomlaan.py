@@ -331,7 +331,9 @@ def build(data: Path, out: Path) -> dict:
                         for (_, zid, nl, _, _), elev in zip(STOREYS, [-1.0, 0.0, 3.0, 6.0, 9.0, 12.0])],
             "source": "github.com/openBIMstandards/Archive-DataSetSchependomlaan (CC BY 4.0, (C) original owners; "
                       "academic use)",
-            "progress_evidence": hist["source"]}
+            "progress_evidence": hist["source"],
+            "demo_replays": [{"id": "sp-demo-roof",
+                              "label": "Notiz: Sporenkap derde verdieping geplaatst, 2× Timmerman ziek"}]}
     (out / "project.json").write_text(json.dumps(meta, ensure_ascii=False, indent=1), encoding="utf-8")
     (out / "ATTRIBUTION.md").write_text(
         "Data: Schependomlaan open BIM dataset, github.com/openBIMstandards/Archive-DataSetSchependomlaan.\n"

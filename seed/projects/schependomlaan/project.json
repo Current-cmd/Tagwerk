@@ -41,5 +41,11 @@
   }
  ],
  "source": "github.com/openBIMstandards/Archive-DataSetSchependomlaan (CC BY 4.0, (C) original owners; academic use)",
- "progress_evidence": "Synchro 4D as-planned snapshots (no as-built data in the dataset)"
+ "progress_evidence": "Synchro 4D as-planned snapshots (no as-built data in the dataset)",
+ "demo_replays": [
+  {
+   "id": "sp-demo-roof",
+   "label": "Notiz: Sporenkap derde verdieping geplaatst, 2× Timmerman ziek"
+  }
+ ]
 }

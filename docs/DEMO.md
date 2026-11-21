@@ -17,6 +17,10 @@ All commands in `~/Developer/hacka/Tagwerk`, with `export PYTHONPATH=$PWD`.
 - Filmed walk: upload the clip from the phone/laptop, or replay its cached run:
   `.venv/bin/python scripts/replay.py <capture_id>` (`--list` shows what is cached). Replay needs no GPU,
   network or Claude.
+- Replay picker: on `/graph` the header has a list of saved captures and **▶ Abspielen** (hidden when nothing is
+  cached). It replays the chosen one with no GPU/network; the graph animates live and a toast says "fertig: N Änderungen".
+  The list is the project's `demo_replays` (`seed/project.json`, `seed/projects/<name>/project.json`), else every
+  cached capture except `dt-`, `replay-`, `scan-`, `cap-ui-` ones (`GET /api/replays`).
 - Live: photo + short voice note from the phone. Phrases that change the freshly reset demo state (checked by
   `tests/test_demo_phrases.py`): "Stuhlreihe A ist montiert", "Reihen F bis H Unterkonstruktion",
   "zwei Mann vom Trockenbau sind krank", "Lautsprecher links und Lautsprecher rechts angeschlossen", "die Leinwand ist in Betrieb",
