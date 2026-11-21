@@ -2,6 +2,7 @@
 (so tests and laptop demos run without Docker). All writes are idempotent MERGEs."""
 import logging
 import re
+from contextlib import contextmanager, nullcontext
 
 from tagwerk.config import get_settings
 
@@ -32,6 +33,9 @@ class MemoryStore:
             "edges": [{"src": s, "rel": r, "dst": d, "props": p} for (s, r, d), p in self.edges.items()],
         }
 
+    def batch(self):
+        return nullcontext()
+
     def close(self) -> None:
         pass
 
@@ -45,11 +49,45 @@ class Neo4jStore:
         # every node also carries :Tw so edge MATCHes hit one unique index instead of scanning all labels
         self._driver.execute_query("CREATE CONSTRAINT tw_id IF NOT EXISTS FOR (n:Tw) REQUIRE n.id IS UNIQUE")
 
+    _buf: list | None = None
+
+    @contextmanager
+    def batch(self):
+        """Collect merges and flush them with one UNWIND query per label / relationship type."""
+        if self._buf is not None:  # nested: the outer batch flushes
+            yield
+            return
+        self._buf = []
+        try:
+            yield
+            self._flush(self._buf)
+        finally:
+            self._buf = None
+
+    def _flush(self, buf: list) -> None:
+        nodes: dict[str, list] = {}
+        edges: dict[str, list] = {}
+        for kind, key, row in buf:
+            (nodes if kind == "n" else edges).setdefault(key, []).append(row)
+        for label, rows in nodes.items():
+            self._driver.execute_query(
+                f"UNWIND $rows AS r MERGE (n:Tw {{id: r.id}}) SET n:{label} SET n += r.props", rows=rows)
+        for rel, rows in edges.items():
+            self._driver.execute_query(
+                f"UNWIND $rows AS r MATCH (a:Tw {{id: r.src}}), (b:Tw {{id: r.dst}}) "
+                f"MERGE (a)-[x:{rel}]->(b) SET x += r.props", rows=rows)
+
     def merge_node(self, label: str, node_id: str, props: dict | None = None) -> None:
+        if self._buf is not None:
+            self._buf.append(("n", _safe(label), {"id": node_id, "props": props or {}}))
+            return
         q = f"MERGE (n:Tw {{id: $id}}) SET n:{_safe(label)} SET n += $props"
         self._driver.execute_query(q, id=node_id, props=props or {})
 
     def merge_edge(self, src: str, rel: str, dst: str, props: dict | None = None) -> None:
+        if self._buf is not None:
+            self._buf.append(("e", _safe(rel), {"src": src, "dst": dst, "props": props or {}}))
+            return
         q = f"MATCH (a:Tw {{id: $src}}), (b:Tw {{id: $dst}}) MERGE (a)-[r:{_safe(rel)}]->(b) SET r += $props"
         self._driver.execute_query(q, src=src, dst=dst, props=props or {})
 

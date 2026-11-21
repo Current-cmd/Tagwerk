@@ -31,9 +31,10 @@ _lock = asyncio.Lock()  # one capture at a time: the GPU and the state are share
 
 def _sync_all() -> None:
     store, project = get_store(), get_project()
-    sync_seed(store, project)
-    for cid in project.captures:
-        sync_capture(store, project, cid)
+    with store.batch():
+        sync_seed(store, project)
+        for cid in project.captures:
+            sync_capture(store, project, cid)
 
 
 @asynccontextmanager

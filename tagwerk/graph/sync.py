@@ -3,6 +3,11 @@ from tagwerk.project import Project, states_for
 
 
 def sync_seed(store, p: Project) -> None:
+    with store.batch():
+        _sync_seed(store, p)
+
+
+def _sync_seed(store, p: Project) -> None:
     store.merge_node("Project", "P-HS", {"name": "Hörsaal Sanierung", "client": "TUM (fictitious renovation)"})
     store.merge_node("Site", "S-1", {"name": "Hörsaal", "lat": 48.137, "lon": 11.575})
     store.merge_node("Building", "B-1", {"name": "Hörsaalgebäude"})
@@ -60,6 +65,11 @@ def activity_props(p: Project, aid: str) -> dict:
 
 
 def sync_capture(store, p: Project, capture_id: str, vision: dict | None = None) -> None:
+    with store.batch():
+        _sync_capture(store, p, capture_id, vision)
+
+
+def _sync_capture(store, p: Project, capture_id: str, vision: dict | None = None) -> None:
     c = p.captures[capture_id]
     store.merge_node("Capture", capture_id, {"zone_id": c["zone_id"], "ts": c["ts"], "date": c["date"],
                                              "name": f"Capture {c['ts'][5:16].replace('T', ' ')}"})
