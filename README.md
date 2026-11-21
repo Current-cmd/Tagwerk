@@ -56,7 +56,8 @@ task→element assignments + MS Project XML, joined on the ArchiCAD Unique ID (`
 100 tasks, 6 storeys as zones, unpriced. History = weekly Synchro 4D snapshots (weeks 26–30). These are planned
 states, not as-built data: a task's elements appear when it starts, so started tasks read 100 %.
 Run it with `PROJECT=schependomlaan` (the laptop serves it on :8081 with an in-memory graph). Dutch notes work:
-"Buitenblad tweede verdieping gemetseld", "twee metselaars ziek", "scheur in de vloer".
+"Buitenblad tweede verdieping gecontroleerd" (the snapshots already mark it installed), "twee metselaars ziek",
+"scheur in de vloer".
 
 ## Scan a video into a project
 

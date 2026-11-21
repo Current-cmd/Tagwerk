@@ -17,9 +17,10 @@ All commands in `~/Developer/hacka/Tagwerk`, with `export PYTHONPATH=$PWD`.
 - Filmed walk: upload the clip from the phone/laptop, or replay its cached run:
   `.venv/bin/python scripts/replay.py <capture_id>` (`--list` shows what is cached). Replay needs no GPU,
   network or Claude.
-- Live: photo + short voice note from the phone. Phrases the rules understand: "Stuhlreihe A ist montiert",
-  "Reihen C bis E Unterkonstruktion", "zwei Mann vom Trockenbau sind krank", "die hintere Traverse ist verkabelt",
-  "Leinwand angeschlossen", "40 Stühle geliefert", "Kratzer an der Bühne".
+- Live: photo + short voice note from the phone. Phrases that change the freshly reset demo state (checked by
+  `tests/test_demo_phrases.py`): "Stuhlreihe A ist montiert", "Reihen F bis H Unterkonstruktion",
+  "zwei Mann vom Trockenbau sind krank", "Lautsprecher links und rechts angeschlossen", "die Leinwand ist in Betrieb",
+  "40 Stühle geliefert", "Kratzer an der Bühne". Each element only moves up once: after a reset they work again.
 - Dashboard: KPI strip, forecast moved by the sick workers, exports (P6 XML, .ics, GAEB X84).
 
 ## Fallbacks
