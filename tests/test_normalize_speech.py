@@ -221,4 +221,7 @@ def test_segments_carry_word_timestamps_and_validate(tmp_path, monkeypatch):
     _write_wav(tmp_path / "a.wav", 0.3 * np.sin(np.arange(16000) / 5))
     out = validate("transcript", speech.transcribe({"capture_id": "c", "lang": "en"}, {"audio": str(tmp_path / "a.wav")}))
     assert seen["word_timestamps"] is True
+    # noisy venue audio: without it Whisper filled 30 s of near-silence with invented text and dropped the real
+    # sentence in 1 of 6 runs (5/5 stable with it)
+    assert seen["hallucination_silence_threshold"] == speech.HALLUCINATION_SILENCE_S
     assert out["segments"][0]["words"][1] == {"start": 51.2, "end": 51.7, "word": "tables"}

@@ -65,6 +65,7 @@ def _load_wav(path: str):
         return np.frombuffer(w.readframes(w.getnframes()), dtype=np.int16).astype(np.float32) / 32768.0
 
 
+HALLUCINATION_SILENCE_S = 2.0  # skip silent gaps > 2 s where Whisper starts inventing text (needs word timestamps)
 QUIET_DB = -32.0  # mean level below which the voice is levelled first (venue walkthroughs: ~-36 dB; user_walk -28 dB)
 
 
@@ -119,6 +120,7 @@ def transcribe(capture: dict, derived: dict) -> dict:
         vad_filter=True,
         initial_prompt=_glossary(),
         word_timestamps=True,  # a long walk can come back as one 90 s segment: words keep each item's second
+        hallucination_silence_threshold=HALLUCINATION_SILENCE_S,
     )
     return {
         "capture_id": capture["capture_id"],
