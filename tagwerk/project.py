@@ -107,7 +107,8 @@ class Project:
         p = cls()
         for r in _read_csv(seed_dir / "zones.csv"):
             p.zones[r["zone_id"]] = {"id": r["zone_id"], "name_de": r["name_de"], "name_en": r["name_en"],
-                                     "kind": r["kind"], "storey": r.get("storey") or None}
+                                     "kind": r["kind"], "storey": r.get("storey") or None,
+                                     "aliases": [x for x in (r.get("aliases") or "").split("|") if x]}
         for r in _read_csv(seed_dir / "elements.csv"):
             eid = r["element_id"]
             p.elements[eid] = {
@@ -130,7 +131,10 @@ class Project:
                 "planned_start": date.fromisoformat(r["planned_start"]),
                 "planned_finish": date.fromisoformat(r["planned_finish"]),
                 "crew_planned": _num(r.get("crew_planned"), 1),
-                "predecessors": [x for x in (r.get("predecessors") or "").split(";") if x],
+                "predecessors": [x.split(":")[0] for x in (r.get("predecessors") or "").split(";") if x],
+                "start_to_start": [x.split(":")[0] for x in (r.get("predecessors") or "").split(";")
+                                   if x.endswith(":SS")],
+                "msp_uid": r.get("msp_uid") or None,
                 "manual_pct": None, "actual_start": None, "actual_finish": None,
             }
         for r in _read_csv(seed_dir / "boq.csv"):
@@ -383,16 +387,20 @@ class Project:
             pct = self.activity_pct(aid)
             planned_days = len(workdays(a["planned_start"], a["planned_finish"])) or 1
             rate = 100.0 / (planned_days * a["crew_planned"])  # % per crew-day
-            pred_finish = max((out[p]["forecast_finish"] for p in a["predecessors"]), default=None)
             earliest = a["planned_start"]
-            if pred_finish is not None and pred_finish >= earliest:
-                earliest = next_workday(pred_finish)
+            for pred in a["predecessors"]:
+                if pred in a["start_to_start"]:  # SS: may start once the predecessor has started
+                    earliest = max(earliest, out[pred]["forecast_start"])
+                elif out[pred]["forecast_finish"] >= earliest:  # FS
+                    earliest = next_workday(out[pred]["forecast_finish"])
             if pct >= 100:
                 finish = date.fromisoformat(finished[aid]) if finished.get(aid) else a["planned_finish"]
+                start = date.fromisoformat(a["actual_start"]) if a["actual_start"] else a["planned_start"]
             else:
                 d = max(earliest, today) if pct == 0 else today
                 if not is_workday(d):
                     d = next_workday(d)
+                start = date.fromisoformat(a["actual_start"]) if (pct > 0 and a["actual_start"]) else d
                 remaining, finish, guard = 100.0 - pct, d, 0
                 while remaining > 1e-6 and guard < 400:
                     crew = max(0.0, a["crew_planned"] - self.absent_on(a["trade_id"], d))
@@ -406,7 +414,7 @@ class Project:
                 "id": aid, "name": a["name"], "wbs": a["wbs"], "trade": self.trades[a["trade_id"]]["name"],
                 "pct": pct, "planned_pct": ppct,
                 "planned_start": a["planned_start"], "baseline_finish": a["planned_finish"],
-                "forecast_finish": finish,
+                "forecast_start": start, "forecast_finish": finish,
                 "delay_d": workday_diff(a["planned_finish"], finish),
                 "bac_eur": bac, "pv_eur": round(bac * ppct / 100, 2), "ev_eur": round(bac * pct / 100, 2),
                 "crew_planned": a["crew_planned"], "crew_today": a["crew_planned"] - self.absent_on(a["trade_id"], today),
@@ -480,6 +488,7 @@ class Project:
                 "open_defects": len([e for e in self.events if e["type"] == "defect"]),
             },
             "activities": [{**r, "planned_start": r["planned_start"].isoformat(),
+                            "forecast_start": r["forecast_start"].isoformat(),
                             "baseline_finish": r["baseline_finish"].isoformat(),
                             "forecast_finish": r["forecast_finish"].isoformat(),
                             "red": r["delay_d"] > 0 and r["pct"] < 100,
