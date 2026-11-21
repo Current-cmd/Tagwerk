@@ -2,37 +2,326 @@
 <html lang="de">
 <head>
 <meta charset="utf-8">
-<title>Tagwerk · Bauleiter dashboard</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tagwerk · Bauleiter-Dashboard</title>
+<script src="https://cdn.jsdelivr.net/npm/echarts@5/dist/echarts.min.js"></script>
 <style>
-  body { font-family: system-ui, sans-serif; margin: 24px; color: #1d1d1f; }
-  table { border-collapse: collapse; width: 100%; max-width: 900px; }
-  th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid #e5e5e5; }
-  .late { color: #c62828; font-weight: 600; }
+  :root {
+    --bg: #f5f6f8; --card: #fff; --ink: #1c1f24; --muted: #6b7280; --line: #e6e8ec;
+    --accent: #2457c5; --green: #2e9d5b; --amber: #e0a020; --red: #d0453a; --grey: #d5d8de;
+    --radius: 12px;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; font: 15px/1.45 system-ui, -apple-system, "Segoe UI", sans-serif; color: var(--ink); background: var(--bg); }
+  header { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; padding: 16px 28px;
+           background: var(--card); border-bottom: 1px solid var(--line); position: sticky; top: 0; z-index: 5; }
+  header h1 { font-size: 20px; margin: 0; font-weight: 650; }
+  header .date { color: var(--muted); }
+  .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--red); display: inline-block; }
+  .dot.on { background: var(--green); }
+  .server { display: flex; align-items: center; gap: 6px; color: var(--muted); font-size: 13px; }
+  nav { margin-left: auto; display: flex; gap: 8px; flex-wrap: wrap; }
+  nav a { text-decoration: none; color: var(--ink); border: 1px solid var(--line); border-radius: 8px;
+          padding: 7px 12px; font-size: 13px; background: #fafbfc; }
+  nav a:hover { border-color: var(--accent); color: var(--accent); }
+  nav a.primary { background: var(--accent); color: #fff; border-color: var(--accent); }
+  main { padding: 20px 28px 40px; display: grid; gap: 20px; grid-template-columns: repeat(12, 1fr); }
+  section { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 18px 20px; min-width: 0; }
+  section h2 { font-size: 15px; margin: 0 0 12px; font-weight: 650; }
+  section h2 small { color: var(--muted); font-weight: 400; margin-left: 6px; }
+  .span-12 { grid-column: span 12; } .span-8 { grid-column: span 8; } .span-7 { grid-column: span 7; }
+  .span-5 { grid-column: span 5; } .span-4 { grid-column: span 4; } .span-3 { grid-column: span 3; }
+  @media (max-width: 1100px) { .span-8, .span-7, .span-5, .span-4, .span-3 { grid-column: span 12; } main { padding: 16px; } header { padding: 12px 16px; } }
+
+  .kpis { display: grid; grid-template-columns: repeat(6, 1fr); gap: 14px; }
+  @media (max-width: 1100px) { .kpis { grid-template-columns: repeat(2, 1fr); } }
+  .kpi { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 14px 16px; }
+  .kpi .label { color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: .04em; }
+  .kpi .value { font-size: 28px; font-weight: 650; margin-top: 2px; font-variant-numeric: tabular-nums; }
+  .kpi .sub { color: var(--muted); font-size: 13px; }
+  .kpi.bad .value { color: var(--red); } .kpi.good .value { color: var(--green); }
+  @media (max-width: 600px) { .kpi .value { font-size: 21px; } .kpis { gap: 10px; } }
+  .scroll-x { overflow-x: auto; }
+  .scroll-x table { min-width: 860px; }
+
+  .capture { border-top: 1px solid var(--line); padding: 12px 0; }
+  .capture:first-of-type { border-top: 0; padding-top: 0; }
+  .capture .meta { color: var(--muted); font-size: 13px; }
+  .capture blockquote { margin: 6px 0; padding-left: 10px; border-left: 3px solid var(--line); font-style: italic; }
+  .chips { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+  .chip { font-size: 12px; padding: 3px 9px; border-radius: 999px; border: 1px solid var(--line); background: #fafbfc; }
+  .chip.confirmed { background: #e8f5ee; border-color: #bfe3cd; color: #1e6b3e; }
+  .chip.proposed { background: #fff; border-style: dashed; color: var(--muted); }
+  .photos { display: flex; gap: 8px; margin-top: 8px; flex-wrap: wrap; }
+  .photos img { height: 110px; border-radius: 8px; border: 1px solid var(--line); object-fit: cover; }
+  details summary { cursor: pointer; color: var(--accent); font-size: 14px; margin-top: 8px; }
+  .empty { color: var(--muted); font-size: 14px; }
+
+  table { border-collapse: collapse; width: 100%; font-variant-numeric: tabular-nums; }
+  th { text-align: left; font-size: 12px; color: var(--muted); font-weight: 500; padding: 6px 8px; border-bottom: 1px solid var(--line); }
+  td { padding: 8px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  tr.red td { background: #fdf1f0; }
+  tr.red td:first-child { box-shadow: inset 3px 0 0 var(--red); }
+  .cause { color: var(--red); font-size: 12px; margin-top: 2px; }
+  .num { text-align: right; white-space: nowrap; }
+  .bar { position: relative; height: 10px; background: #eef0f3; border-radius: 5px; min-width: 120px; margin-top: 5px; }
+  .bar .fill { position: absolute; left: 0; top: 0; bottom: 0; border-radius: 5px; background: var(--accent); }
+  .bar .plan { position: absolute; top: -3px; bottom: -3px; width: 2px; background: var(--ink); }
+  .late { color: var(--red); font-weight: 600; }
+
+  .event { display: flex; gap: 10px; padding: 8px 0; border-bottom: 1px solid var(--line); }
+  .event:last-child { border-bottom: 0; }
+  .sev { font-size: 11px; padding: 2px 8px; border-radius: 6px; height: fit-content; white-space: nowrap; background: #eef0f3; }
+  .sev.high { background: #fbe1df; color: #a32a20; } .sev.medium { background: #fdf0d6; color: #8a5a00; }
+  .event .meta { color: var(--muted); font-size: 12px; }
+
+  .chart { width: 100%; height: 280px; }
+  .weather { display: flex; gap: 22px; flex-wrap: wrap; }
+  .weather div { font-size: 24px; font-weight: 600; } .weather span { display: block; font-size: 12px; color: var(--muted); font-weight: 400; }
+
+  .zones { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 14px; }
+  .zone { border: 1px solid var(--line); border-radius: 10px; padding: 12px; }
+  .zone h3 { margin: 0 0 8px; font-size: 14px; }
+  .tiles { display: grid; grid-template-columns: repeat(auto-fill, minmax(104px, 1fr)); gap: 6px; }
+  .tile { border-radius: 6px; padding: 6px; font-size: 11px; line-height: 1.25; min-height: 48px; color: #1c1f24; overflow-wrap: anywhere; hyphens: auto; }
+  .tile b { display: block; font-size: 12px; }
+  .legend { display: flex; gap: 14px; font-size: 12px; color: var(--muted); margin-left: auto; }
+  .legend i { display: inline-block; width: 12px; height: 12px; border-radius: 3px; vertical-align: -2px; margin-right: 4px; }
+  .banner { grid-column: span 12; background: #fdf1f0; color: #a32a20; border: 1px solid #f3c9c4; border-radius: var(--radius); padding: 10px 14px; display: none; }
 </style>
 </head>
 <body>
-<h1>Tagesbericht <span id="date"></span></h1>
-<!-- TODO(feat/dashboard): KPI strip, today's captures, labour, weather, EV curve (ECharts), zone grid -->
-<table>
-  <thead><tr><th>Activity</th><th>% complete</th><th>Baseline finish</th><th>Forecast finish</th><th>Delay (d)</th><th>EV (€)</th></tr></thead>
-  <tbody id="rows"></tbody>
-</table>
-<h2>Events</h2>
-<ul id="events"></ul>
+<header>
+  <h1>Tagwerk · Bauleiter-Dashboard</h1>
+  <span class="date" id="date">–</span>
+  <span class="server" title="Live-Verbindung / live connection"><span class="dot" id="dot"></span><span id="dotText">offline</span></span>
+  <nav>
+    <a href="/export/p6.xml">Export P6 XML</a>
+    <a href="/export/day.ics">Outlook .ics</a>
+    <a href="/export/boq.x84">GAEB X84</a>
+    <a href="/graph">Live-Graph</a>
+    <a href="/upload" class="primary">Upload</a>
+  </nav>
+</header>
+<main>
+  <div class="banner" id="banner"></div>
+  <div class="span-12 kpis" id="kpis"></div>
+
+  <section class="span-12"><h2>Aufnahmen heute <small>today's captures</small></h2><div id="captures"></div></section>
+
+  <section class="span-12"><h2>Vorgänge <small>activities, worst first</small></h2>
+    <div class="scroll-x"><table><thead><tr><th>Vorgang</th><th>Gewerk</th><th style="width:22%">Fortschritt <small>(Strich = Soll)</small></th>
+      <th>Basis-Ende</th><th>Prognose-Ende</th><th class="num">Verzug</th><th class="num">EV</th></tr></thead>
+      <tbody id="acts"></tbody></table></div>
+  </section>
+
+  <section class="span-5"><h2>Ereignisse &amp; Mängel <small>events &amp; defects</small></h2><div id="events"></div></section>
+  <section class="span-4"><h2>Personal je Gewerk <small>present vs planned</small></h2><div id="labour" class="chart"></div></section>
+  <section class="span-3"><h2>Wetter <small>weather</small></h2><div id="weather"></div></section>
+
+  <section class="span-12"><h2>Plan / Ist / Kosten <small>planned value, earned value, actual cost</small></h2><div id="curve" class="chart" style="height:320px"></div></section>
+
+  <section class="span-12">
+    <h2 style="display:flex;align-items:center">Zonen <small>elements by state</small>
+      <span class="legend"><span><i style="background:var(--grey)"></i>0 %</span><span><i style="background:var(--amber)"></i>1–99 %</span><span><i style="background:var(--green)"></i>100 %</span></span>
+    </h2>
+    <div class="zones" id="zones"></div>
+  </section>
+</main>
 <script>
-fetch('/api/dashboard').then(r => r.json()).then(d => {
-  document.getElementById('date').textContent = d.date;
-  const rows = document.getElementById('rows');
-  d.activities.forEach(a => {
-    const tr = document.createElement('tr');
-    [a.name, a.pct + ' %', a.baseline_finish, a.forecast_finish, a.delay_d, a.ev_eur.toLocaleString('de-DE')]
-      .forEach((v, i) => { const td = document.createElement('td'); td.textContent = v;
-                           if (i === 4 && a.delay_d > 0) td.className = 'late'; tr.appendChild(td); });
-    rows.appendChild(tr);
-  });
-  const ul = document.getElementById('events');
-  d.events.forEach(e => { const li = document.createElement('li'); li.textContent = `[${e.severity}] ${e.type}: ${e.text}`; ul.appendChild(li); });
-});
+const $ = id => document.getElementById(id);
+function h(tag, attrs, ...kids) {
+  const el = document.createElement(tag);
+  for (const [k, v] of Object.entries(attrs || {})) {
+    if (v == null || v === false) continue;
+    if (k === 'class') el.className = v; else if (k === 'style') el.style.cssText = v; else el.setAttribute(k, v);
+  }
+  for (const kid of kids.flat()) if (kid != null && kid !== false) el.append(kid instanceof Node ? kid : String(kid));
+  return el;
+}
+const eur = v => v == null ? '–' : Math.round(v).toLocaleString('de-DE') + ' €';
+const pct = v => v == null ? '–' : (+v).toLocaleString('de-DE', { maximumFractionDigits: 1 }) + ' %';
+const dmy = s => { if (!s) return '–'; const [y, m, d] = s.slice(0, 10).split('-'); return `${d}.${m}.${y}`; };
+const dm = s => s ? dmy(s).slice(0, 6) : '–';
+const time = s => s && s.length > 11 ? s.slice(11, 16) : '';
+const days = n => n == null ? '–' : (n > 0 ? '+' : '') + n + ' AT';
+
+let data = null, elementNames = {}, zoneNames = {};
+const charts = {};
+function chart(id) {
+  if (!window.echarts) { $(id).replaceChildren(h('p', { class: 'empty' }, 'Diagramm nicht verfügbar (ECharts nicht geladen).')); return null; }
+  return charts[id] || (charts[id] = echarts.init($(id)));
+}
+window.addEventListener('resize', () => Object.values(charts).forEach(c => c.resize()));
+
+function renderKpis(k) {
+  const card = (label, value, sub, cls) => h('div', { class: 'kpi ' + (cls || '') }, h('div', { class: 'label' }, label), h('div', { class: 'value' }, value), sub ? h('div', { class: 'sub' }, sub) : null);
+  const behind = k.pct_actual < k.pct_planned;
+  $('kpis').replaceChildren(
+    card('Fortschritt Ist / Soll', `${pct(k.pct_actual)}`, `Soll ${pct(k.pct_planned)}`, behind ? 'bad' : 'good'),
+    card('SPI', k.spi == null ? '–' : k.spi.toLocaleString('de-DE', { minimumFractionDigits: 2 }), 'Schedule Performance Index', k.spi != null && k.spi < 0.95 ? 'bad' : 'good'),
+    card('Earned Value', eur(k.ev_eur), `PV ${eur(k.pv_eur)} · BAC ${eur(k.bac_eur)}`),
+    card('Ist-Kosten (AC)', eur(k.ac_eur), k.ac_note || null),
+    card('Prognose-Ende', dmy(k.forecast_finish), `Basis ${dmy(k.baseline_finish)} · Verzug ${days(k.delay_d)} · Prognose aus heutigen Befunden`, k.delay_d > 0 ? 'bad' : 'good'),
+    card('Offene Mängel', k.open_defects ?? 0, 'open defects', k.open_defects > 0 ? 'bad' : null),
+  );
+}
+
+function captureCard(c) {
+  const zone = zoneNames[c.zone_id] || c.zone_id;
+  const changes = (c.changes || []).map(ch => h('span', { class: 'chip ' + ch.action, title: ch.quote || '' },
+    `${elementNames[ch.element_id] || ch.element_id}: ${ch.state}`, ch.action === 'proposed' ? ' (Vorschlag)' : ''));
+  const photos = (c.photos || []).map(p => h('a', { href: `/media/${encodeURIComponent(c.capture_id)}/${encodeURIComponent(p)}`, target: '_blank' },
+    h('img', { src: `/media/${encodeURIComponent(c.capture_id)}/${encodeURIComponent(p)}`, alt: p, loading: 'lazy', onerror: 'this.parentNode.remove()' })));
+  return h('div', { class: 'capture' },
+    h('div', { class: 'meta' }, `${dmy(c.ts)} ${time(c.ts)} · ${zone}`, c.note ? ` · ${c.note}` : ''),
+    (c.quotes || []).map(q => h('blockquote', {}, `„${q}“`)),
+    changes.length ? h('div', { class: 'chips' }, changes) : null,
+    photos.length ? h('div', { class: 'photos' }, photos) : null);
+}
+function renderCaptures(d) {
+  const todayIds = new Set(d.today_capture_ids || []);
+  const caps = d.captures || [];
+  const today = caps.filter(c => todayIds.has(c.capture_id)), earlier = caps.filter(c => !todayIds.has(c.capture_id));
+  const box = $('captures');
+  box.replaceChildren(today.length ? h('div', {}, today.map(captureCard)) : h('p', { class: 'empty' }, 'Heute noch keine Aufnahmen. No captures today yet.'));
+  if (earlier.length) {
+    const det = h('details', {}, h('summary', {}, `Frühere Aufnahmen (${earlier.length})`), earlier.map(captureCard));
+    box.append(det);
+  }
+}
+
+function renderActivities(acts) {
+  $('acts').replaceChildren(...(acts || []).map(a => {
+    const p = Math.max(0, Math.min(100, a.pct || 0)), pp = Math.max(0, Math.min(100, a.planned_pct || 0));
+    return h('tr', { class: a.red ? 'red' : '' },
+      h('td', {}, h('b', {}, a.name), h('div', { class: 'meta', style: 'color:var(--muted);font-size:12px' }, a.id), a.red && a.cause ? h('div', { class: 'cause' }, a.cause) : null),
+      h('td', {}, a.trade || '–'),
+      h('td', {}, `${pct(a.pct)} / ${pct(a.planned_pct)}`,
+        h('div', { class: 'bar', title: `Ist ${pct(a.pct)} · Soll ${pct(a.planned_pct)}` },
+          h('div', { class: 'fill', style: `width:${p}%;background:${p >= 100 ? 'var(--green)' : a.red ? 'var(--red)' : 'var(--accent)'}` }),
+          h('div', { class: 'plan', style: `left:calc(${pp}% - 1px)` }))),
+      h('td', {}, dmy(a.baseline_finish)),
+      h('td', { class: a.delay_d > 0 ? 'late' : '' }, dmy(a.forecast_finish)),
+      h('td', { class: 'num ' + (a.delay_d > 0 ? 'late' : '') }, days(a.delay_d)),
+      h('td', { class: 'num' }, eur(a.ev_eur)));
+  }));
+}
+
+function renderEvents(evs) {
+  const box = $('events');
+  if (!evs || !evs.length) { box.replaceChildren(h('p', { class: 'empty' }, 'Keine Ereignisse.')); return; }
+  const typeDe = { defect: 'Mangel', delay: 'Verzögerung', absence: 'Abwesenheit', weather: 'Wetter', accident: 'Unfall', delivery: 'Lieferung' };
+  box.replaceChildren(...evs.map(e => h('div', { class: 'event' },
+    h('span', { class: 'sev ' + (e.severity || '') }, typeDe[e.type] || e.type || 'Ereignis'),
+    h('div', {}, e.text || '–', h('div', { class: 'meta' }, dmy(e.date), e.severity ? ` · ${e.severity}` : '', e.count ? ` · ${e.count} Pers.` : '')))));
+}
+
+function renderLabour(l) {
+  const present = (l && l.present) || {}, planned = (l && l.planned) || {};
+  const trades = [...new Set([...Object.keys(planned), ...Object.keys(present)])];
+  if (!trades.length) { charts.labour?.dispose(); delete charts.labour; $('labour').replaceChildren(h('p', { class: 'empty' }, 'Kein Personal geplant oder gemeldet.')); return; }
+  if (!charts.labour) $('labour').replaceChildren();
+  const c = chart('labour'); if (!c) return;
+  c.setOption({
+    grid: { left: 90, right: 16, top: 28, bottom: 24 }, legend: { top: 0, right: 0 }, tooltip: { trigger: 'axis' },
+    xAxis: { type: 'value', minInterval: 1 }, yAxis: { type: 'category', data: trades },
+    series: [
+      { name: 'Anwesend', type: 'bar', data: trades.map(t => present[t] ?? 0), itemStyle: { color: '#2457c5' } },
+      { name: 'Geplant', type: 'bar', data: trades.map(t => planned[t] ?? 0), itemStyle: { color: '#c9d3e6' } },
+    ],
+  }, true);
+}
+
+function renderWeather(w) {
+  const box = $('weather');
+  if (!w || (w.tempC == null && w.precipMm == null && w.windKmh == null)) { box.replaceChildren(h('p', { class: 'empty' }, 'Keine Wetterdaten für heute.')); return; }
+  const v = (x, u) => x == null ? '–' : `${(+x).toLocaleString('de-DE', { maximumFractionDigits: 1 })} ${u}`;
+  box.replaceChildren(h('div', { class: 'weather' },
+    h('div', {}, v(w.tempC, '°C'), h('span', {}, 'Temperatur')),
+    h('div', {}, v(w.precipMm, 'mm'), h('span', {}, 'Niederschlag')),
+    h('div', {}, v(w.windKmh, 'km/h'), h('span', {}, 'Wind'))),
+    w.source ? h('p', { class: 'empty', style: 'margin-top:10px' }, `Quelle: ${w.source}`) : null);
+}
+
+function renderCurve(curve, today) {
+  const c = chart('curve'); if (!c) return;
+  const pts = curve || [];
+  c.setOption({
+    grid: { left: 70, right: 24, top: 36, bottom: 30 }, legend: { top: 0 },
+    tooltip: { trigger: 'axis', valueFormatter: v => v == null ? '–' : eur(v) },
+    xAxis: { type: 'category', data: pts.map(p => dm(p.date)), boundaryGap: false },
+    yAxis: { type: 'value', axisLabel: { formatter: v => (v / 1000).toLocaleString('de-DE') + ' k€' } },
+    series: [
+      { name: 'Plan (PV)', type: 'line', data: pts.map(p => p.pv), showSymbol: false, lineStyle: { type: 'dashed', color: '#8a94a6' }, itemStyle: { color: '#8a94a6' } },
+      { name: 'Ist-Leistung (EV)', type: 'line', data: pts.map(p => p.ev), connectNulls: false, lineStyle: { width: 3, color: '#2457c5' }, itemStyle: { color: '#2457c5' },
+        markLine: today ? { symbol: 'none', label: { formatter: 'heute' }, lineStyle: { color: '#1c1f24', type: 'solid', opacity: .4 }, data: [{ xAxis: dm(today) }] } : undefined },
+      { name: 'Ist-Kosten (AC)', type: 'line', data: pts.map(p => p.ac), connectNulls: false, lineStyle: { color: '#d0453a' }, itemStyle: { color: '#d0453a' } },
+    ],
+  }, true);
+}
+
+function tileColor(p) {
+  if (!p) return 'var(--grey)';
+  if (p >= 100) return 'var(--green)';
+  const t = p / 100; // light amber -> deep amber
+  return `hsl(${48 - 14 * t}, ${70 + 20 * t}%, ${82 - 28 * t}%)`;
+}
+function renderZones(zones) {
+  const box = $('zones');
+  if (!zones || !zones.length) { box.replaceChildren(h('p', { class: 'empty' }, 'Keine Zonen.')); return; }
+  box.replaceChildren(...zones.map(z => h('div', { class: 'zone' },
+    h('h3', {}, z.name || z.zone_id),
+    h('div', { class: 'tiles' }, (z.elements || []).map(e => h('div', { class: 'tile', style: `background:${tileColor(e.pct)}${e.pct >= 100 ? ';color:#fff' : ''}`, title: `${e.name}: ${e.state || 'nicht begonnen'} (${e.pct ?? 0} %)` },
+      h('b', {}, e.name), `${e.state || '–'} · ${e.pct ?? 0} %`))))));
+}
+
+function render(d) {
+  data = d;
+  zoneNames = {}; elementNames = {};
+  (d.zones || []).forEach(z => { zoneNames[z.zone_id] = z.name; (z.elements || []).forEach(e => elementNames[e.id] = e.name); });
+  $('date').textContent = dmy(d.date);
+  renderKpis(d.kpi || {});
+  renderCaptures(d);
+  renderActivities(d.activities);
+  renderEvents(d.events);
+  renderLabour(d.labour);
+  renderWeather(d.weather);
+  renderCurve(d.curve, d.date);
+  renderZones(d.zones);
+}
+
+async function load() {
+  try {
+    const r = await fetch('/api/overview', { cache: 'no-store' });
+    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+    render(await r.json());
+    $('banner').style.display = 'none';
+  } catch (e) {
+    $('banner').textContent = `Daten konnten nicht geladen werden (${e.message}).`;
+    $('banner').style.display = 'block';
+  }
+}
+
+let refreshTimer = null;
+const scheduleRefresh = () => { clearTimeout(refreshTimer); refreshTimer = setTimeout(load, 500); };
+function setDot(on) { $('dot').classList.toggle('on', on); $('dotText').textContent = on ? 'live' : 'offline'; }
+let backoff = 1000;
+function connect() {
+  let ws;
+  try { ws = new WebSocket(`${location.protocol === 'https:' ? 'wss' : 'ws'}://${location.host}/events`); }
+  catch { setDot(false); setTimeout(connect, backoff); return; }
+  ws.onopen = () => { setDot(true); backoff = 1000; };
+  ws.onmessage = ev => {
+    let m; try { m = JSON.parse(ev.data); } catch { return; }
+    if (m.type === 'update' || (m.type === 'status' && m.props && m.props.step === 'done')) scheduleRefresh();
+  };
+  ws.onclose = () => { setDot(false); setTimeout(connect, backoff); backoff = Math.min(backoff * 2, 15000); };
+  ws.onerror = () => ws.close();
+}
+
+load();
+connect();
 </script>
 </body>
 </html>
