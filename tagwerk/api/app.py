@@ -66,7 +66,9 @@ def zones() -> list[dict]:
 
 
 def _kind(upload: UploadFile) -> str:
-    ctype = upload.content_type or mimetypes.guess_type(upload.filename or "")[0] or ""
+    ctype = upload.content_type or ""
+    if not ctype.startswith(("video", "audio", "image")):  # e.g. application/octet-stream: trust the extension
+        ctype = mimetypes.guess_type(upload.filename or "")[0] or ""
     if ctype.startswith("video"):
         return "video"
     if ctype.startswith("audio"):

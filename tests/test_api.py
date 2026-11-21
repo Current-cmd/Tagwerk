@@ -109,3 +109,13 @@ def test_replay_of_cached_capture(client):
     assert r.status_code == 200, r.text
     assert r.json()["status"] == "processed"
     assert client.post("/captures", data={"zone_id": "Z-AUDIENCE", "capture_id": "x", "replay_of": "nope"}).status_code == 404
+
+
+def test_upload_kind_falls_back_to_extension():
+    from starlette.datastructures import Headers, UploadFile
+
+    from tagwerk.api.app import _kind
+
+    up = UploadFile(file=None, filename="walk.mp4", headers=Headers({"content-type": "application/octet-stream"}))
+    assert _kind(up) == "video"
+    assert _kind(UploadFile(file=None, filename="x.jpg", headers=Headers({"content-type": "image/jpeg"}))) == "photo"
