@@ -120,7 +120,8 @@ async def create_capture(
     return {"capture_id": cid, "status": "processed",
             "transcript": " ".join(s["text"] for s in result["transcript"]["segments"]),
             "changes": [c for c in result["changes"] if c["action"] in ("confirmed", "proposed", "unchanged")],
-            "absences": result["structured"]["absences"], "events": result["structured"]["special_events"]}
+            "absences": result["structured"]["absences"], "events": result["structured"]["special_events"],
+            "material": result["structured"]["material_delivered"], "labour": result["structured"]["labour_present"]}
 
 
 ID_RE = re.compile(r"^[A-Za-z0-9_-]{1,64}$")
