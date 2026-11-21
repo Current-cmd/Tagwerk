@@ -44,7 +44,10 @@ def _model():
     key = (os.environ.get("WHISPER_MODEL", "small"), _device())
     if key not in _models:
         log.info("loading whisper %s on %s (int8)", *key)
-        _models[key] = WhisperModel(key[0], device=key[1], compute_type="int8")
+        try:  # the cache first: a plain load asks the HF hub for model info and hangs when the hub is unreachable
+            _models[key] = WhisperModel(key[0], device=key[1], compute_type="int8", local_files_only=True)
+        except Exception:  # noqa: BLE001 - not cached yet: download once
+            _models[key] = WhisperModel(key[0], device=key[1], compute_type="int8")
     return _models[key]
 
 

@@ -185,8 +185,10 @@ _UMLAUT = {"au": "äu", "a": "ä", "o": "ö", "u": "ü"}
 @lru_cache(maxsize=4096)
 def _plural_forms(word: str) -> tuple[str, ...]:
     """Word plus likely German plurals (+n/en/e/er/s, umlaut on the last a/o/u/au + e/er): Wand -> Wände,
-    Stuhl -> Stühle, Dach -> Dächer. Short words (< 4 letters) are not inflected."""
-    if len(word) < 4:
+    Stuhl -> Stühle, Dach -> Dächer. 3-letter words only get -en (Tür -> Türen); shorter ones are not inflected."""
+    if len(word) == 3:
+        return (word, word + "en")
+    if len(word) < 3:
         return (word,)
     forms = {word, *(word + x for x in ("n", "en", "e", "er", "s"))}
     m = _UMLAUT_TAIL.search(word)

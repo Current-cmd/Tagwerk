@@ -57,6 +57,7 @@ def work(p, text):
     ("Die Leuchten hängen.", "S-LIGHT-FIXTURE", 2, "mounted"),
     ("Die Tische stehen.", "S-DINING-TABLE", 1, "installed"),
     ("Die Fenster sind eingesetzt.", "S-WINDOW", 2, "installed"),
+    ("Die Türen sind eingebaut.", "S-DOOR", 1, "installed"),
 ])
 def test_german_plurals_match_singular_names(room, text, prefix, count, state):
     w = work(room, text)
@@ -86,6 +87,7 @@ def test_plural_forms():
     assert {"wände", "wand", "wänder"} <= set(f("wand")) and "stühle" in f("stuhl") and "dächer" in f("dach")
     assert "räume" in f("raum") and "steckdosen" in f("steckdose") and "leuchten" in f("leuchte")
     assert f("ab") == ("ab",)  # too short to inflect
+    assert f("tür") == ("tür", "türen")  # 3 letters: only the -en plural (Türen), nothing that could collide
 
 
 def test_absence_trade_groups(room):

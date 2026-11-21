@@ -193,8 +193,11 @@ async def scan_video(files: list[UploadFile] = File(...), make_project: str | No
         name = Path(best.get("media_path") or "").name
         if name and (folder / "derived" / "frames" / name).exists():
             item["thumb"] = f"/media/{sid}/derived/frames/{name}"
-    if make_project:
-        name = re.sub(r"[^a-z0-9_-]", "", make_project.lower())[:40] or sid
+    if make_project and not inv["element_count"]:  # a project without elements has no activities: dashboard/P6 break
+        inv["project_error"] = "Keine Bauteile erkannt: Projekt nicht angelegt. Näher heran, mehr Licht, nochmal scannen."
+    elif make_project:
+        slug = make_project.lower().replace("ä", "ae").replace("ö", "oe").replace("ü", "ue").replace("ß", "ss")
+        name = re.sub(r"[^a-z0-9_-]", "", re.sub(r"\s+", "-", slug.strip()))[:40] or sid
         from tagwerk.project import SEED_DIR
 
         out = SEED_DIR / "projects" / name

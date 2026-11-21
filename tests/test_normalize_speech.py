@@ -78,3 +78,40 @@ def test_real_whisper_on_gpu(tmp_path):
     text = " ".join(s["text"] for s in out["segments"]).lower()
     assert "traverse" in text and out["lang"] == "de"
     assert all(0 <= s["start"] <= s["end"] for s in out["segments"])
+
+
+def test_whisper_loads_from_local_cache_without_network(monkeypatch):
+    """faster-whisper asks the HF hub for model info on every load; an unreachable hub hung the GPU worker for
+    minutes. Load with local_files_only first and download only when the model is not cached."""
+    import sys
+    import types
+
+    from tagwerk.pipeline import speech
+
+    calls = []
+
+    class FakeModel:
+        def __init__(self, name, device, compute_type, local_files_only=False):
+            calls.append(local_files_only)
+            if not local_files_only and not cached:
+                calls.append("downloaded")
+
+    mod = types.ModuleType("faster_whisper")
+    mod.WhisperModel = FakeModel
+    monkeypatch.setitem(sys.modules, "faster_whisper", mod)
+    monkeypatch.setattr(speech, "_models", {})
+    cached = True
+    speech._model()
+    assert calls == [True]  # cached: never touched the network
+
+    class NotCached(FakeModel):
+        def __init__(self, name, device, compute_type, local_files_only=False):
+            calls.append(local_files_only)
+            if local_files_only:
+                raise OSError("not in cache")
+
+    mod.WhisperModel = NotCached
+    monkeypatch.setattr(speech, "_models", {})
+    calls.clear()
+    speech._model()
+    assert calls == [True, False]  # not cached: falls back to the normal (downloading) load

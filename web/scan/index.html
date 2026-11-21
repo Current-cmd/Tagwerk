@@ -126,6 +126,7 @@ function render(inv) {
   result.replaceChildren();
   result.append(el('div', { class: 'summary',
     text: `${inv.frames} Bilder · ${inv.element_count} Bauteile · bis zu ${inv.people_max} Personen` }));
+  if (inv.project_error) result.append(el('div', { class: 'error', role: 'alert', text: inv.project_error }));
   if (inv.project) {
     const p = inv.project;
     result.append(el('div', { class: 'project' },
