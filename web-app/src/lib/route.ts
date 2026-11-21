@@ -1,8 +1,8 @@
 // Hash routing:
-//   #/dashboard?d=2026-11-26&rec=cap-e2e-2   #/graph?d=2026-11-26   #/scan/<cid>?d=…   #/report/2026-11-26
+//   #/dashboard?d=2026-11-26&rec=cap-e2e-2   #/graph?d=2026-11-26   #/scan/<cid>?d=…   #/report/2026-11-26   #/bim?d=…
 import { useCallback, useSyncExternalStore } from 'react'
 
-export type View = 'dashboard' | 'graph' | 'scan' | 'report'
+export type View = 'dashboard' | 'graph' | 'scan' | 'report' | 'bim'
 
 export interface Route {
   view: View
@@ -15,7 +15,7 @@ function parse(hash: string): Route {
   const [path, query = ''] = hash.replace(/^#\/?/, '').split('?')
   const [head, ...rest] = path.split('/')
   const q = new URLSearchParams(query)
-  const view: View = head === 'graph' || head === 'scan' || head === 'report' ? head : 'dashboard'
+  const view: View = head === 'graph' || head === 'scan' || head === 'report' || head === 'bim' ? head : 'dashboard'
   const param = rest.length ? decodeURIComponent(rest.join('/')) : null
   const date = view === 'report' && param ? param : q.get('d')
   return { view, param, date, rec: q.get('rec') }

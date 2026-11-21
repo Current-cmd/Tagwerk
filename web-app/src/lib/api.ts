@@ -116,3 +116,33 @@ export async function fetchReport(date: string): Promise<Loaded<Report>> {
     return { data: mockReport(date), demo: true, error: (e as Error).message }
   }
 }
+
+// ---------- BIM model (IFC tessellated by scripts/ifc_to_bim.py) ----------
+export interface BimIndex {
+  source: string
+  elements: { gid: string; cls: string; name: string; v: [number, number]; i: [number, number] }[]
+  bbox: [[number, number, number], [number, number, number]]
+  vertices: number
+  triangles: number
+}
+export interface BimModel { index: BimIndex; buffer: ArrayBuffer }
+export interface BimState {
+  gid: string; element_id: string; name: string; pct: number; done: boolean; state: string | null; state_de: string
+  activity_id: string | null; activity_name: string | null; zone: string | null
+}
+let bimModel: Promise<BimModel> | null = null
+/** The model is large (several MB) and the same for every day: load it once per page. */
+export function fetchBimModel(): Promise<BimModel> {
+  bimModel ??= Promise.all([
+    getJson<BimIndex>('/api/v2/bim/model.json'),
+    fetch('/api/v2/bim/model.bin').then(r => {
+      if (!r.ok) throw new Error(`/api/v2/bim/model.bin: HTTP ${r.status}`)
+      return r.arrayBuffer()
+    }),
+  ]).then(([index, buffer]) => ({ index, buffer }))
+  bimModel.catch(() => { bimModel = null })
+  return bimModel
+}
+export function fetchBim(date: string): Promise<{ available: boolean; elements: BimState[] }> {
+  return getJson(`/api/v2/bim?date=${encodeURIComponent(date)}`)
+}

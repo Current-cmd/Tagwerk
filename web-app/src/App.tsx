@@ -20,6 +20,7 @@ import { cn } from '@/lib/utils'
 const LiveGraph = lazy(() => import('@/components/graph/LiveGraph').then(m => ({ default: m.LiveGraph })))
 // three.js likewise only for the 3D scan page
 const ScanView = lazy(() => import('@/components/scan/ScanView').then(m => ({ default: m.ScanView })))
+const BimView = lazy(() => import('@/components/bim/BimView').then(m => ({ default: m.BimView })))
 const ReportView = lazy(() => import('@/components/report/ReportView').then(m => ({ default: m.ReportView })))
 const spinner = <div className="flex flex-1 items-center justify-center"><Loader2 className="size-6 animate-spin text-muted-foreground" /></div>
 
@@ -143,10 +144,11 @@ export default function App() {
             </Tooltip>
           )}
 
-          <Tabs activationMode="manual" value={route.view === 'dashboard' || route.view === 'graph' ? route.view : ''} onValueChange={v => navigate({ view: v as View, rec: null })} className="mx-auto">
+          <Tabs activationMode="manual" value={route.view === 'dashboard' || route.view === 'graph' || route.view === 'bim' ? route.view : ''} onValueChange={v => navigate({ view: v as View, rec: null })} className="mx-auto">
             <TabsList>
               <TabsTrigger value="dashboard" className="px-4" data-testid="tab-dashboard">Dashboard</TabsTrigger>
               <TabsTrigger value="graph" className="px-4" data-testid="tab-graph">Live-Graph</TabsTrigger>
+              {day?.project.bim && <TabsTrigger value="bim" className="px-4" data-testid="tab-bim">BIM-Modell</TabsTrigger>}
             </TabsList>
           </Tabs>
 
@@ -175,7 +177,7 @@ export default function App() {
 
       <main className={cn('flex min-h-0 flex-1 flex-col gap-3 overflow-auto p-3', route.view !== 'report' && 'xl:overflow-hidden')}>
         {error && <ErrorCard msg={error} onRetry={() => date && loadDay(date)} inline />}
-        {day && (route.view === 'dashboard' || route.view === 'graph') && <KpiStrip day={day} />}
+        {day && (route.view === 'dashboard' || route.view === 'graph' || route.view === 'bim') && <KpiStrip day={day} />}
         {day && route.view === 'dashboard' && (
           <Dashboard
             day={day}
@@ -200,6 +202,11 @@ export default function App() {
         {graph && route.view === 'graph' && (
           <Suspense fallback={spinner}>
             <LiveGraph graph={graph} onSelectActivity={setActivity} />
+          </Suspense>
+        )}
+        {route.view === 'bim' && date && (
+          <Suspense fallback={spinner}>
+            <BimView date={date} onOpenActivity={setActivity} />
           </Suspense>
         )}
       </main>

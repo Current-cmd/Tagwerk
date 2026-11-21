@@ -16,7 +16,7 @@ from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.responses import FileResponse, HTMLResponse, PlainTextResponse, Response
 from pydantic import BaseModel
 
-from tagwerk import report, v2
+from tagwerk import bim, report, v2
 from tagwerk.config import get_settings
 from tagwerk.contracts import validate
 from tagwerk.events import broker
@@ -376,6 +376,22 @@ def v2_report(date: str | None = None) -> dict:
 def export_report(date: str | None = None) -> HTMLResponse:
     """Print-ready German A4 Bautagebuch page (print to PDF in the browser)."""
     return HTMLResponse(report.report_html(_v2_date(date)))
+
+
+@app.get("/api/v2/bim")
+def v2_bim(date: str | None = None) -> dict:
+    """Element states as of the day keyed by IFC GlobalId, for the BIM viewer (available: false without a model)."""
+    return bim.states(_v2_date(date))
+
+
+@app.get("/api/v2/bim/model.{ext}")
+def v2_bim_model(ext: str) -> FileResponse:
+    """The tessellated IFC model (scripts/ifc_to_bim.py): model.json (element index) and model.bin (geometry)."""
+    f = bim.model_file(f"bim.{ext}") if ext in ("json", "bin") else None
+    if f is None:
+        raise HTTPException(404, "no BIM model for this project")
+    return FileResponse(f, media_type="application/json" if ext == "json" else "application/octet-stream",
+                        headers={"Cache-Control": "public, max-age=3600"})
 
 
 @app.get("/api/v2/scan3d/{capture_id}")
