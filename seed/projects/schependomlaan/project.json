@@ -1,0 +1,45 @@
+{
+ "id": "P-SP",
+ "name": "Schependomlaan Nijmegen (10 Appartementen)",
+ "client": "Hendriks Bouw en Ontwikkeling",
+ "site": "Schependomlaan, Nijmegen",
+ "building": "10 Appartementen Schependomlaan",
+ "lat": 51.8426,
+ "lon": 5.8378,
+ "data_date": "2015-07-24",
+ "lang": "nl",
+ "storeys": [
+  {
+   "id": "ST-Z-FUND",
+   "name": "Fundering",
+   "elevation": -1.0
+  },
+  {
+   "id": "ST-Z-BG",
+   "name": "Begane grond",
+   "elevation": 0.0
+  },
+  {
+   "id": "ST-Z-1",
+   "name": "Eerste verdieping",
+   "elevation": 3.0
+  },
+  {
+   "id": "ST-Z-2",
+   "name": "Tweede verdieping",
+   "elevation": 6.0
+  },
+  {
+   "id": "ST-Z-3",
+   "name": "Derde verdieping",
+   "elevation": 9.0
+  },
+  {
+   "id": "ST-Z-DAK",
+   "name": "Dak",
+   "elevation": 12.0
+  }
+ ],
+ "source": "github.com/openBIMstandards/Archive-DataSetSchependomlaan (CC BY 4.0, (C) original owners; academic use)",
+ "progress_evidence": "Synchro 4D as-planned snapshots (no as-built data in the dataset)"
+}

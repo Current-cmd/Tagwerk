@@ -1,0 +1,7 @@
+zone_id,name_de,name_en,kind,storey,aliases
+Z-FUND,Fundering,Foundation,storey,ST-Z-FUND,fundering|foundation|kelder
+Z-BG,Begane grond,Ground floor,storey,ST-Z-BG,begane grond|bg|ground floor
+Z-1,Eerste verdieping,First floor,storey,ST-Z-1,eerste verdieping|1e verdieping|first floor
+Z-2,Tweede verdieping,Second floor,storey,ST-Z-2,tweede verdieping|2e verdieping|second floor
+Z-3,Derde verdieping,Third floor,storey,ST-Z-3,derde verdieping|3e verdieping|third floor
+Z-DAK,Dak,Roof,storey,ST-Z-DAK,dak|roof|zolder
