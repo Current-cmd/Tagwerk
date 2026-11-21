@@ -250,3 +250,14 @@ def test_floor_plane_corrects_the_pitch_of_a_phone_held_slightly_down():
     a = sfm.align_model(m)
     floor = a["points"][:300, 1]  # the first 300 points of _model are the floor
     assert np.ptp(floor) < 0.05 and np.ptp(a["pos"][:, 1]) < 0.05
+
+
+def test_surfaces_are_one_instance_per_section():
+    """Floor, ceiling and wall are surfaces, not countable things: one instance each (the report said '49x Boden')."""
+    dets = [det("floor", (x, 0, 0), oid=f"f{x}", frame=f"{x + 1:04d}.jpg") for x in range(0, 50, 5)]
+    dets += [det("door", (0, 0, 0), oid="d1"), det("door", (40, 0, 0), oid="d2")]
+    objs = sfm.build_objects(dets, [], scale=50.0, cid="c")
+    labels = sorted(o["label"] for o in objs)
+    assert labels == ["door", "door", "floor"]
+    floor = next(o for o in objs if o["label"] == "floor")
+    assert floor["detections"] == 10

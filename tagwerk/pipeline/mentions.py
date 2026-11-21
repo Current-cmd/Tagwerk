@@ -110,6 +110,20 @@ def _hits(text: str, vocab: dict[str, dict]) -> list[dict]:
     return hits
 
 
+def _closest(inst: list[dict], t: float | None) -> list[dict]:
+    """No sighting near t: the instances seen closest in time, within one section (sections are separate pieces of
+    the walk, so 'the floor' means the floor of the nearest piece, not every floor of the walk)."""
+    timed = [o for o in inst if o.get("first_t") is not None]
+    if t is None or not timed:
+        return inst
+
+    def dist(o: dict) -> float:
+        return max(0.0, o["first_t"] - t, t - (o.get("last_t") or o["first_t"]))
+
+    best = min(timed, key=dist)
+    return [o for o in timed if o.get("section") == best.get("section") and dist(o) <= dist(best) + WINDOW_S]
+
+
 def _phrase_time(seg: dict, hit: dict, text: str) -> float | None:
     """Second the phrase is said: its Whisper word timestamp, else interpolated by its position in the segment text
     (segments can be 90 s long)."""
@@ -159,7 +173,7 @@ def link_mentions(sfm: dict, transcript: dict | None, elements: dict[str, dict] 
                 continue
             near = [o for o in inst if o.get("first_t") is not None and t is not None
                     and o["first_t"] - WINDOW_S <= t <= (o.get("last_t") or o["first_t"]) + WINDOW_S]
-            chosen = near or inst
+            chosen = near or _closest(inst, t)
             eid = next((o["element_id"] for o in chosen if o.get("element_id")), None)
             mentions.append({"t": t, "t_start": t0, "t_end": t1, "text": text, "phrase": h["phrase"], "label": h["label"],
                              "name_de": h["name"], "object_ids": [o["id"] for o in chosen], "element_id": eid,

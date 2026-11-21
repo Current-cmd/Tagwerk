@@ -37,6 +37,7 @@ MAX_FRAMES_LONG, FPS_LONG, LONG_SIDE_LONG = 380, 3.0, 1024  # 1024 = SIFT's work
 LONG_CLIP_S = 90  # above this the 80-frame plan is too sparse (< 0.9 fps) and the dense plan is used
 DETECT_RESERVE_S = 30  # kept free for the detection pass after the reconstruction
 MAX_FRAMES, FPS, LONG_SIDE, MAX_POINTS = 80, 2.5, 1280, 20000
+SURFACES = {"floor", "ceiling", "wall"}  # not countable: one instance per section
 MERGE_FACTOR = 0.08  # same label and closer than 8 % of the scene size = one instance
 MAX_RELATIONS = 8
 UNITS = "relative (SfM scale is arbitrary)"
@@ -212,7 +213,8 @@ def build_objects(dets: list[dict], triplets: list[dict], scale: float, cid: str
     """Merge 3D detections into object instances (contract `objects`); ids obj-<id_offset + n>."""
     objs, det_inst = [], {}
     used = set() if used is None else used
-    groups = merge_instances(dets, scale)
+    groups = merge_instances([d for d in dets if d["label"] not in SURFACES], scale)
+    groups += [g for g in ([d for d in dets if d["label"] == s] for s in sorted(SURFACES)) if g]
     groups.sort(key=lambda g: (-len(g), g[0]["label"]))
     for n, g in enumerate(groups, 1):
         label = g[0]["label"]

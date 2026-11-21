@@ -44,9 +44,9 @@ def test_named_items_link_to_objects_with_time_phrase_and_state():
     assert res["unseen_mentions"] == []
 
 
-def test_label_named_outside_any_sighting_window_links_all_its_instances():
+def test_label_named_outside_any_sighting_window_links_the_closest_in_time():
     res = link_mentions(SFM, {"segments": [_seg(70.0, 72.0, "Insgesamt zwölf Stühle im Raum.")]}, {})
-    assert res["mentions"][0]["object_ids"] == ["obj-2", "obj-3"]
+    assert res["mentions"][0]["object_ids"] == ["obj-3"]  # seen 40-44 s, the other chair 10-14 s
 
 
 def test_building_items_said_but_not_seen_are_unseen_mentions():
@@ -188,3 +188,14 @@ def test_word_timestamps_place_the_phrase_exactly():
     res = link_mentions(sfm, {"segments": [seg]}, {})
     assert res["mentions"][0]["t"] == 51.2 and res["mentions"][0]["object_ids"] == ["obj-1"]
     assert res["unseen_mentions"][0]["t"] == 93.5
+
+
+def test_without_a_sighting_near_t_the_closest_section_is_named_not_every_instance():
+    """Sections leave gaps (no section covers 89-98 s of the venue walk): 'slab' at 93 s must not light up all 49
+    floors of the walk, only the closest-in-time ones of one section."""
+    objs = [{**_obj("obj-1", "floor", "Boden", 6.0, 18.0), "section": 0},
+            {**_obj("obj-2", "floor", "Boden", 80.0, 89.0), "section": 3},
+            {**_obj("obj-3", "floor", "Boden", 81.0, 88.0), "section": 3},
+            {**_obj("obj-4", "floor", "Boden", 103.0, 108.0), "section": 8}]
+    res = link_mentions({"capture_id": "c", "ok": True, "objects": objs}, {"segments": [_seg(95.0, 96.0, "slab")]}, {})
+    assert res["mentions"][0]["object_ids"] == ["obj-2", "obj-3"]
