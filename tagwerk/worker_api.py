@@ -31,7 +31,7 @@ def health() -> dict:
     return {"status": "ok", **_gpu_info()}
 
 
-async def _prepare(capture_json: str, media: list[UploadFile]) -> tuple[dict, dict]:
+async def _save(capture_json: str, media: list[UploadFile]) -> tuple[dict, Path]:
     capture = validate("capture", json.loads(capture_json))
     workdir = Path(tempfile.mkdtemp(prefix=f"tagwerk-{capture['capture_id']}-"))
     by_name = {}
@@ -41,6 +41,11 @@ async def _prepare(capture_json: str, media: list[UploadFile]) -> tuple[dict, di
         by_name[dest.name] = str(dest)
     for m in capture["media"]:  # repoint media at the local copies
         m["path"] = by_name.get(Path(m["path"]).name, m["path"])
+    return capture, workdir
+
+
+async def _prepare(capture_json: str, media: list[UploadFile]) -> tuple[dict, dict]:
+    capture, workdir = await _save(capture_json, media)
     return capture, normalize.normalize(capture, workdir / "derived")
 
 
@@ -54,3 +59,16 @@ async def run_speech(capture: str = Form(...), media: list[UploadFile] = File(de
 async def run_vision(capture: str = Form(...), media: list[UploadFile] = File(default=[])) -> dict:
     cap, derived = await _prepare(capture, media)
     return validate("vision", vision.analyse(cap, derived))
+
+
+@app.post("/sfm")
+async def run_sfm(capture: str = Form(...), media: list[UploadFile] = File(default=[])) -> dict:
+    """3D reconstruction + objects lifted into it (pipeline/sfm.py). Never fails: ok=false carries a German reason.
+    Runs in a thread (pycolmap itself in a subprocess with a 150 s limit) so health checks keep answering."""
+    import asyncio
+
+    from tagwerk.pipeline import sfm
+
+    cap, workdir = await _save(capture, media)
+    return await asyncio.to_thread(sfm.analyse, cap, workdir / "sfm")
+

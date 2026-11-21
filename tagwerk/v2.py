@@ -248,7 +248,8 @@ def _recording(p: Project, c: dict) -> dict:
     return {"capture_id": cid, "time": c["ts"][11:16], "zone_id": c["zone_id"], "zone_name": zone.get("name_de"),
             "kind": kind, "transcript": _transcript(cid), "note": c.get("note"), "video": video, "photos": photos,
             "changes": changes, "proposals": proposals, "absences": absences, "events": events,
-            "material": list(s.get("material_delivered", [])), "labour": list(s.get("labour_present", []))}
+            "material": list(s.get("material_delivered", [])), "labour": list(s.get("labour_present", [])),
+            "has_3d": (Path(get_settings().cache_dir) / cid / "sfm.json").is_file()}
 
 
 # ---------- payloads ----------

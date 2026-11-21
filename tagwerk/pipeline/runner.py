@@ -20,7 +20,7 @@ from tagwerk.contracts import validate
 from tagwerk.events import broker
 from tagwerk.graph.store import get_store
 from tagwerk.graph.sync import sync_capture
-from tagwerk.pipeline import context, normalize, speech, structure, vision
+from tagwerk.pipeline import context, normalize, sfm, speech, structure, vision
 from tagwerk.state import get_project, save_result, today
 
 log = logging.getLogger(__name__)
@@ -120,6 +120,46 @@ async def _local(stage: str, capture: dict, derived: dict | None) -> dict:
     return await asyncio.to_thread(fn, capture, derived)
 
 
+def _video_of(capture: dict) -> Path | None:
+    return next((Path(m["path"]) for m in capture.get("media", []) if m.get("type") == "video"), None)
+
+
+async def sfm_stage(capture: dict, project, replay: bool = False) -> dict | None:
+    """Scan 3D for a capture with a video (cache/<cid>/sfm.json). Cached result is reused; a replay without one skips
+    the stage (nothing heavy during a demo replay). Never raises: failures become ok=false with a German reason."""
+    cid, s = capture["capture_id"], get_settings()
+    video = _video_of(capture)
+    if video is None:
+        return None
+    res = _cached(cid, "sfm")
+    if res is None:
+        if replay or s.replay_mode:
+            return None
+        try:
+            if s.gpu_worker_url:
+                try:
+                    res = await _remote("sfm", capture)
+                except Exception as exc:  # worker down or too old (no /sfm): run it in this process
+                    log.warning("GPU worker sfm failed (%s); running in-process", exc)
+            if res is None:
+                res = await asyncio.to_thread(sfm.analyse, capture, Path(s.data_dir) / "work" / cid / "sfm")
+            if res.get("frames_used"):  # keyframes next to the cache so /media serves thumbs and camera images
+                dest = structure.cache_path(cid, "x").parent / "media" / "sfm"
+                await asyncio.to_thread(sfm.ensure_frames, video, dest, res.get("fps") or sfm.FPS, res["frames_used"])
+            sfm.attach_elements(res, [{"id": e, "name_de": el["name_de"], "aliases": el["aliases"]}
+                                      for e, el in project.elements.items()])
+        except Exception as exc:  # noqa: BLE001
+            log.exception("sfm stage failed for %s", cid)
+            res = sfm._empty(cid, f"3D-Rekonstruktion fehlgeschlagen: {type(exc).__name__}")
+        _store_cache(cid, "sfm", res)
+    try:
+        await _status(cid, "sfm", ok=bool(res.get("ok")), frames_registered=res.get("frames_registered", 0),
+                      objects=len(res.get("objects", [])), reason=res.get("reason"))
+    except Exception:  # noqa: BLE001
+        pass
+    return res
+
+
 async def _status(capture_id: str, step: str, **props) -> None:
     await broker.publish({"type": "status", "label": "Capture", "id": capture_id, "props": {"step": step, **props}})
 
@@ -188,6 +228,7 @@ async def run_capture(capture: dict, replay: bool = False, sync_t0: float | None
         await _status(cid, "done")
     except Exception:  # noqa: BLE001
         pass
+    await sfm_stage(capture, project, replay)  # after "done": the dashboard already shows the result while this runs
     return {"capture": capture, "transcript": transcript, "vision": vis, "context": ctx, "structured": structured,
             "changes": changes}
 

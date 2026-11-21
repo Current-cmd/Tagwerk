@@ -200,6 +200,10 @@ async def scan_video(files: list[UploadFile] = File(...), make_project: str | No
         name = Path(best.get("media_path") or "").name
         if name and (folder / "derived" / "frames" / name).exists():
             item["thumb"] = f"/media/{sid}/derived/frames/{name}"
+    sf = await runner.sfm_stage(capture, get_project())  # 3D reconstruction of the same clip (<= 150 s, never raises)
+    if sf is not None:
+        inv["scan3d"] = {"ok": sf["ok"], "reason": sf["reason"], "frames_registered": sf["frames_registered"],
+                         "objects": len(sf["objects"]), "url": f"/api/v2/scan3d/{sid}"}
     if make_project and not inv["element_count"]:  # a project without elements has no activities: dashboard/P6 break
         inv["project_error"] = "Keine Bauteile erkannt: Projekt nicht angelegt. Näher heran, mehr Licht, nochmal scannen."
     elif make_project:
@@ -357,6 +361,32 @@ def v2_day(date: str | None = None) -> dict:
 @app.get("/api/v2/taskgraph")
 def v2_taskgraph(date: str | None = None) -> dict:
     return v2.taskgraph(_v2_date(date))
+
+
+@app.get("/api/v2/scan3d/{capture_id}")
+def v2_scan3d(capture_id: str) -> dict:
+    """cache/<id>/sfm.json (Scan 3D); 404 when the capture has none."""
+    from tagwerk import report
+
+    _check_id(capture_id, "capture_id")
+    scan = report.load_scan(capture_id)
+    if scan is None:
+        raise HTTPException(404, "no 3D scan for this capture")
+    return scan
+
+
+@app.get("/api/v2/report")
+def v2_report(date: str | None = None) -> dict:
+    from tagwerk import report
+
+    return report.report(_v2_date(date))
+
+
+@app.get("/export/report.html", response_class=HTMLResponse)
+def export_report(date: str | None = None) -> HTMLResponse:
+    from tagwerk import report
+
+    return HTMLResponse(report.render_html(report.report(_v2_date(date))))
 
 
 @app.get("/export/day.ics", response_class=PlainTextResponse)
