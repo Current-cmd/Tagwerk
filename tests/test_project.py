@@ -108,3 +108,10 @@ def test_repeated_absence_reports_do_not_add_up(p):
     p.apply_structured(*_cap("c5", absences=ab))
     p.apply_structured(*_cap("c6", absences=ab))
     assert p.forecast(TODAY)["A1080"]["crew_today"] == 1
+
+
+def test_untracked_activity_follows_predecessors(p):
+    fc = p.forecast(TODAY)
+    a = fc["A1090"]  # Abnahme: no elements, no manual pct
+    assert a["tracked"] is False
+    assert a["forecast_start"] > fc["A1080"]["forecast_finish"]

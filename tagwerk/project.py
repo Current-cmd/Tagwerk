@@ -348,6 +348,11 @@ class Project:
             visit(aid)
         return order
 
+    def is_tracked(self, activity_id: str) -> bool:
+        """Progress is measurable: it has linked elements or a manual percentage."""
+        return self.activities[activity_id]["manual_pct"] is not None or any(
+            lk["element_id"] for lk in self._by_act.get(activity_id, []))
+
     def _finish_dates(self) -> dict[str, str | None]:
         """Per activity: first day on which every linked element reached the activity's target state."""
         hist: dict[str, list[tuple[str | None, int]]] = defaultdict(list)
@@ -393,7 +398,14 @@ class Project:
                     earliest = max(earliest, out[pred]["forecast_start"])
                 elif out[pred]["forecast_finish"] >= earliest:  # FS
                     earliest = next_workday(out[pred]["forecast_finish"])
-            if pct >= 100:
+            tracked = self.is_tracked(aid)
+            if not tracked:  # no evidence possible: assume planned duration from its earliest start
+                start = earliest if is_workday(earliest) else next_workday(earliest)
+                finish = start
+                for _ in range(planned_days - 1):
+                    finish = next_workday(finish)
+                pct = 100.0 if finish < today else 0.0
+            elif pct >= 100:
                 finish = date.fromisoformat(finished[aid]) if finished.get(aid) else a["planned_finish"]
                 start = date.fromisoformat(a["actual_start"]) if a["actual_start"] else a["planned_start"]
             else:
@@ -414,7 +426,7 @@ class Project:
                 "id": aid, "name": a["name"], "wbs": a["wbs"], "trade": self.trades[a["trade_id"]]["name"],
                 "pct": pct, "planned_pct": ppct,
                 "planned_start": a["planned_start"], "baseline_finish": a["planned_finish"],
-                "forecast_start": start, "forecast_finish": finish,
+                "forecast_start": start, "forecast_finish": finish, "tracked": tracked,
                 "delay_d": workday_diff(a["planned_finish"], finish),
                 "bac_eur": bac, "pv_eur": round(bac * ppct / 100, 2), "ev_eur": round(bac * pct / 100, 2),
                 "crew_planned": a["crew_planned"], "crew_today": a["crew_planned"] - self.absent_on(a["trade_id"], today),
@@ -460,6 +472,10 @@ class Project:
         iso = today.isoformat()
 
         curve = self.curve(today, max(today, baseline_finish))
+        if not bac:  # unpriced schedule: % from the element-count-weighted curve
+            now = next((c for c in reversed(curve) if c["ev_pct"] is not None), None)
+            if now:
+                ev, pv, bac = now["ev_pct"], now["pv_pct"], 100.0
 
         labour_today: dict[str, int] = defaultdict(int)
         for lp in self.labour:
@@ -482,6 +498,7 @@ class Project:
             "kpi": {
                 "pct_actual": round(100 * ev / bac, 1) if bac else 0, "pct_planned": round(100 * pv / bac, 1) if bac else 0,
                 "spi": round(ev / pv, 2) if pv else None, "ev_eur": round(ev), "pv_eur": round(pv), "bac_eur": round(bac),
+                "priced": any(lk["value"] for lk in self.links),
                 "ac_eur": round(self.actual_cost(today)), "ac_note": "labour hours x invented trade rates",
                 "forecast_finish": project_finish.isoformat(), "baseline_finish": baseline_finish.isoformat(),
                 "delay_d": workday_diff(baseline_finish, project_finish),
@@ -491,7 +508,7 @@ class Project:
                             "forecast_start": r["forecast_start"].isoformat(),
                             "baseline_finish": r["baseline_finish"].isoformat(),
                             "forecast_finish": r["forecast_finish"].isoformat(),
-                            "red": r["delay_d"] > 0 and r["pct"] < 100,
+                            "red": r["delay_d"] > 0 and r["pct"] < 100 and r["tracked"],
                             "done": r["pct"] >= 100,
                             "cause": self._cause(r, today, fc)} for r in sorted(acts, key=lambda r: (-r["delay_d"], r["pct"]))],
             "captures": sorted([{"capture_id": c["capture_id"], "zone_id": c["zone_id"], "ts": c["ts"],
