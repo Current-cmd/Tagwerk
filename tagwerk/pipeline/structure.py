@@ -15,8 +15,8 @@ import copy
 import json
 import logging
 import re
-from functools import lru_cache
 import unicodedata
+from functools import lru_cache
 from pathlib import Path
 
 from tagwerk.config import get_settings
