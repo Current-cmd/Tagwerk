@@ -95,3 +95,16 @@ def test_p6_and_gaeb_export_parse(p):
 def test_history_has_only_valid_changes(p):
     bad = [ch for c in p.captures.values() for ch in c["changes"] if ch["action"] == "invalid"]
     assert not bad
+
+
+def test_finished_activity_keeps_its_real_finish(p):
+    fc = p.forecast(TODAY)
+    assert fc["A1020"]["pct"] == 100 and fc["A1020"]["delay_d"] == 0  # initial snapshot = on plan
+    assert fc["A1040"]["pct"] == 100 and fc["A1040"]["forecast_finish"].isoformat() == "2026-11-24"
+
+
+def test_repeated_absence_reports_do_not_add_up(p):
+    ab = [{"trade": "Trockenbau", "count": 2, "reason": "krank"}]
+    p.apply_structured(*_cap("c5", absences=ab))
+    p.apply_structured(*_cap("c6", absences=ab))
+    assert p.forecast(TODAY)["A1080"]["crew_today"] == 1

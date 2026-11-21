@@ -183,7 +183,7 @@ class Project:
             el = self.elements[eid]
             el["pct"], el["state"], el["updated"] = weight(el["type"], state), state, d0
             self.history_log.append({"date": d0, "element_id": eid, "state": state, "pct": el["pct"],
-                                     "capture_id": None})
+                                     "capture_id": None, "initial": True})
         for aid, pct in init.get("manual_pct", {}).items():
             self.activities[aid]["manual_pct"] = float(pct)
         for day in hist.get("days", []):
@@ -324,9 +324,10 @@ class Project:
         return round(100.0 * done / len(days), 1)
 
     def absent_on(self, trade_id: str, d: date) -> float:
+        """Highest absence count reported for that trade on day d (repeated reports do not add up)."""
         name = self.trades[trade_id]["name"].lower()
-        return sum(e["count"] for e in self.events
-                   if e["type"] == "absence" and e["date"] == d.isoformat() and e["trade"].lower() == name)
+        return max((e["count"] for e in self.events
+                    if e["type"] == "absence" and e["date"] == d.isoformat() and e["trade"].lower() == name), default=0)
 
     def topo_order(self) -> list[str]:
         order, seen = [], set()
@@ -343,12 +344,29 @@ class Project:
             visit(aid)
         return order
 
-    def _last_change(self) -> dict[str, str]:
-        last: dict[str, str] = {}
+    def _finish_dates(self) -> dict[str, str | None]:
+        """Per activity: first day on which every linked element reached the activity's target state."""
+        hist: dict[str, list[tuple[str | None, int]]] = defaultdict(list)
         for h in self.history_log:
-            if h["date"] and h["date"] > last.get(h["element_id"], ""):
-                last[h["element_id"]] = h["date"]
-        return last
+            if h["date"]:  # initial snapshot states have no known date: assume reached on plan (None)
+                hist[h["element_id"]].append((None if h.get("initial") else h["date"], h["pct"]))
+        out: dict[str, str | None] = {}
+        for aid, links in self._by_act.items():
+            days = []
+            for lk in links:
+                if not lk["element_id"]:
+                    continue
+                el = self.elements[lk["element_id"]]
+                hi = weight(el["type"], lk["to_state"]) if lk["to_state"] else 100
+                hits = [d for d, pct in hist.get(el["id"], []) if pct >= hi]
+                if not hits:
+                    days.append(None)
+                    continue
+                dated = sorted(d for d in hits if d)
+                days.append(dated[0] if len(dated) == len(hits) else
+                            self.activities[aid]["planned_finish"].isoformat())
+            out[aid] = max(days) if days and all(days) else None
+        return out
 
     def forecast(self, today: date) -> dict[str, dict]:
         """Projection from today's evidence.
@@ -359,7 +377,7 @@ class Project:
         (finish-to-start), so a delay passes on through the network.
         """
         out: dict[str, dict] = {}
-        last = self._last_change()
+        finished = self._finish_dates()
         for aid in self.topo_order():
             a = self.activities[aid]
             pct = self.activity_pct(aid)
@@ -370,8 +388,7 @@ class Project:
             if pred_finish is not None and pred_finish >= earliest:
                 earliest = next_workday(pred_finish)
             if pct >= 100:
-                days = [last[e] for e in self.elements_of(aid) if e in last]
-                finish = date.fromisoformat(max(days)) if days else a["planned_finish"]
+                finish = date.fromisoformat(finished[aid]) if finished.get(aid) else a["planned_finish"]
             else:
                 d = max(earliest, today) if pct == 0 else today
                 if not is_workday(d):
@@ -465,7 +482,8 @@ class Project:
             "activities": [{**r, "planned_start": r["planned_start"].isoformat(),
                             "baseline_finish": r["baseline_finish"].isoformat(),
                             "forecast_finish": r["forecast_finish"].isoformat(),
-                            "red": r["delay_d"] > 0,
+                            "red": r["delay_d"] > 0 and r["pct"] < 100,
+                            "done": r["pct"] >= 100,
                             "cause": self._cause(r, today, fc)} for r in sorted(acts, key=lambda r: (-r["delay_d"], r["pct"]))],
             "captures": sorted([{"capture_id": c["capture_id"], "zone_id": c["zone_id"], "ts": c["ts"],
                                  "note": c.get("note"), "quotes": c["quotes"],
@@ -529,6 +547,8 @@ class Project:
     def _cause(self, row: dict, today: date, fc: dict[str, dict]) -> str | None:
         if row["delay_d"] <= 0:
             return None
+        if row["pct"] >= 100:
+            return f"finished {row['delay_d']} working days after baseline"
         reasons = []
         a = self.activities[row["id"]]
         absent = self.absent_on(a["trade_id"], today)

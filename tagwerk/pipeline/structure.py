@@ -223,8 +223,6 @@ def rules_structure(capture: dict, transcript: dict, vision: dict, context: dict
                           if w["element_ids"] and w["element_ids"][0] in trade_of_element), "unbekannt")
             reason = "krank" if any(_has(s, w) for w in ("krank", "sick")) else "abwesend"
             out["absences"].append({"trade": trade, "count": count, "reason": reason})
-            out["special_events"].append({"type": "delay", "severity": "medium",
-                                          "text": f"{count}× {trade} {reason}: {sent.strip()}"})
             continue
         if trade:
             mentioned_trades.append(trade)

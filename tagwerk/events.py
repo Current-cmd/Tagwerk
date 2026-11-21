@@ -23,6 +23,8 @@ class Broker:
     async def publish(self, event: dict) -> None:
         validate("graph_event", event)
         self.history.append(event)
+        if len(self.history) > 400:  # late joiners get the recent past, not the whole day
+            del self.history[:-400]
         dead = []
         for ws in list(self._clients):
             try:

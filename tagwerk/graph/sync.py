@@ -7,7 +7,17 @@ def sync_seed(store, p: Project) -> None:
         _sync_seed(store, p)
 
 
+def _forecast(p: Project) -> dict:
+    from tagwerk.state import today
+
+    try:
+        return p.forecast(today())
+    except Exception:  # noqa: BLE001 - graph props are decoration
+        return {}
+
+
 def _sync_seed(store, p: Project) -> None:
+    fc = _forecast(p)
     m = p.meta
     pid = m.get("id", "P-HS")
     store.merge_node("Project", pid, {"name": m.get("name", ""), "client": m.get("client", "")})
@@ -39,7 +49,7 @@ def _sync_seed(store, p: Project) -> None:
     for b in p.boq.values():
         store.merge_node("BoQPosition", b["oz"], {**b, "name": f"{b['oz']} {b['short_text']}"})
     for a in p.activities.values():
-        store.merge_node("Activity", a["id"], activity_props(p, a["id"]))
+        store.merge_node("Activity", a["id"], activity_props(p, a["id"], fc))
         store.merge_edge(a["id"], "IN_WBS", f"WBS-{a['wbs']}")
         for pred in a["predecessors"]:
             store.merge_edge(pred, "PRECEDES", a["id"], {"type": "FS", "lag_d": 0})
@@ -62,9 +72,12 @@ def element_props(e: dict) -> dict:
             "states": [s for s, _ in states_for(e["type"])]}
 
 
-def activity_props(p: Project, aid: str) -> dict:
+def activity_props(p: Project, aid: str, fc: dict | None = None) -> dict:
     a = p.activities[aid]
-    return {"name": a["name"], "p6_object_id": aid, "wbs": a["wbs"], "planned_start": a["planned_start"].isoformat(),
+    extra = {}
+    if fc and aid in fc:
+        extra = {"delay_d": fc[aid]["delay_d"], "forecast_finish": fc[aid]["forecast_finish"].isoformat()}
+    return {**extra, "name": a["name"], "p6_object_id": aid, "wbs": a["wbs"], "planned_start": a["planned_start"].isoformat(),
             "planned_finish": a["planned_finish"].isoformat(), "pct": p.activity_pct(aid),
             "trade": p.trades[a["trade_id"]]["name"]}
 
@@ -105,8 +118,10 @@ def _sync_capture(store, p: Project, capture_id: str, vision: dict | None = None
             store.merge_edge(capture_id, "RAISED", e["id"])
             if e.get("activity_id"):
                 store.merge_edge(e["id"], "AFFECTS", e["activity_id"])
+    fc = _forecast(p)
     for aid in {a for ch in c["changes"] for a in p.activities_of(ch["element_id"])}:
-        store.merge_node("Activity", aid, {"pct": p.activity_pct(aid)})
+        store.merge_node("Activity", aid, {"pct": p.activity_pct(aid), **({"delay_d": fc[aid]["delay_d"],
+                         "forecast_finish": fc[aid]["forecast_finish"].isoformat()} if aid in fc else {})})
     if vision:
         for frame in vision.get("frames", []):
             for o in frame["objects"]:

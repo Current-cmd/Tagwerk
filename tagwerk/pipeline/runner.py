@@ -88,7 +88,8 @@ async def run_capture(capture: dict, replay: bool = False) -> dict:
     project = get_project()
 
     await broker.publish({"type": "node", "label": "Capture", "id": cid,
-                          "props": {"zone_id": capture["zone_id"], "name": f"Capture {capture['ts_server'][11:16]}"}})
+                          "props": {"zone_id": capture["zone_id"], "name": f"Capture {capture['ts_server'][11:16]}",
+                                    "ts": capture["ts_server"], "date": capture["ts_server"][:10]}})
     await broker.publish({"type": "edge", "label": "IN_ZONE", "id": f"{cid}->{capture['zone_id']}",
                           "props": {"src": cid, "dst": capture["zone_id"]}})
 
@@ -147,9 +148,10 @@ async def run_capture(capture: dict, replay: bool = False) -> dict:
                                         "forecast_finish": r["forecast_finish"].isoformat()}})
     for e in project.events:
         if e["capture_id"] == cid:
+            short = e["text"] if len(e["text"]) <= 48 else e["text"][:48].rsplit(" ", 1)[0] + " …"
             await broker.publish({"type": "node", "label": "Event", "id": e["id"],
-                                  "props": {"name": e["text"][:40], "type": e["type"], "capture": cid,
-                                            "activity_id": e.get("activity_id")}})
+                                  "props": {"name": short, "text": e["text"], "type": e["type"], "capture": cid,
+                                            "severity": e["severity"], "activity_id": e.get("activity_id")}})
     await _status(cid, "done")
     return {"capture": capture, "transcript": transcript, "vision": vis, "context": ctx, "structured": structured,
             "changes": changes}

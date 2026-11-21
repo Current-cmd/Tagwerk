@@ -45,7 +45,7 @@ def test_demo_sentence(p):
     assert (("E-ROW-A",), "installed", "voice") in wd
     assert (("E-TRUSS-2",), "wired", "voice") in wd
     assert s["absences"] == [{"trade": "Trockenbau", "count": 2, "reason": "krank"}]
-    assert any(e["type"] == "delay" for e in s["special_events"])
+    assert not s["special_events"]  # the absence is its own event, no duplicate delay
 
 
 def test_row_ranges_and_marker_both(p):
