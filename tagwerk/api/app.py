@@ -163,6 +163,8 @@ def _prepare_replay(src: str, dst: str) -> None:
         data = json.loads(f.read_text(encoding="utf-8"))
         data["capture_id"] = dst
         (dst_dir / f.name).write_text(json.dumps(data, ensure_ascii=False), encoding="utf-8")
+    if (src_dir / "media").is_dir():  # the kept video/photos, so the replay shows as a video with its frames
+        shutil.copytree(src_dir / "media", dst_dir / "media")
 
 
 @app.post("/api/scan")
@@ -174,8 +176,16 @@ async def scan_video(files: list[UploadFile] = File(...), make_project: str | No
 
     from tagwerk.pipeline.runner import _gpu_stage
     from tagwerk.pipeline.scan import inventory, seed_from_scan
+    from tagwerk.project import SEED_DIR
 
     sid = f"scan-{uuid.uuid4().hex[:8]}"
+    name = out = None
+    if make_project:  # check the name before the (slow) vision pass
+        slug = make_project.lower().replace("ä", "ae").replace("ö", "oe").replace("ü", "ue").replace("ß", "ss")
+        name = re.sub(r"[^a-z0-9_-]", "", re.sub(r"\s+", "-", slug.strip()))[:40] or sid
+        out = SEED_DIR / "projects" / name
+        if name in ("hoersaal", "schependomlaan") or (out / "history.json").exists():  # never clobber real projects
+            raise HTTPException(409, f"project {name} exists; choose another name")
     folder = Path(get_settings().data_dir) / "captures" / sid
     folder.mkdir(parents=True, exist_ok=True)
     media = []
@@ -207,13 +217,6 @@ async def scan_video(files: list[UploadFile] = File(...), make_project: str | No
     if make_project and not inv["element_count"]:  # a project without elements has no activities: dashboard/P6 break
         inv["project_error"] = "Keine Bauteile erkannt: Projekt nicht angelegt. Näher heran, mehr Licht, nochmal scannen."
     elif make_project:
-        slug = make_project.lower().replace("ä", "ae").replace("ö", "oe").replace("ü", "ue").replace("ß", "ss")
-        name = re.sub(r"[^a-z0-9_-]", "", re.sub(r"\s+", "-", slug.strip()))[:40] or sid
-        from tagwerk.project import SEED_DIR
-
-        out = SEED_DIR / "projects" / name
-        if name in ("hoersaal", "schependomlaan") or (out / "history.json").exists():  # never clobber real projects
-            raise HTTPException(409, f"project {name} exists; choose another name")
         inv["project"] = seed_from_scan(inv, out, name, today(), zone_name)
     return inv
 
@@ -381,10 +384,14 @@ def v2_scan3d(capture_id: str) -> dict:
     import json
 
     _check_id(capture_id, "capture_id")
+    from tagwerk.pipeline.sfm import drop_person_pairs
+
     try:
-        return json.loads((Path(get_settings().cache_dir) / capture_id / "sfm.json").read_text(encoding="utf-8"))
+        data = json.loads((Path(get_settings().cache_dir) / capture_id / "sfm.json").read_text(encoding="utf-8"))
     except (OSError, ValueError):
         raise HTTPException(404, "no scan3d for this capture") from None
+    drop_person_pairs(data.get("objects") or [])
+    return data
 
 
 @app.get("/export/day.ics", response_class=PlainTextResponse)

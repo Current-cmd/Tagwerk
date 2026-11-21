@@ -120,13 +120,26 @@ def match_element(label: str, elements: list[dict], used: set[str]) -> str | Non
     return None
 
 
+def person_pair(a: dict, b: dict) -> bool:
+    """Person <-> person relations ("Person hinter Person") are most of the RelateAnything noise on walkthroughs."""
+    return a.get("label") == "person" and b.get("label") == "person"
+
+
+def drop_person_pairs(objs: list[dict]) -> list[dict]:
+    """Remove person <-> person relations from finished objects (also for sfm.json files written before the filter)."""
+    by_id = {o["id"]: o for o in objs}
+    for o in objs:
+        o["relations"] = [r for r in o.get("relations", []) if not person_pair(o, by_id.get(r.get("target"), {}))]
+    return objs
+
+
 def _relations_for(objs: list[dict], triplets: list[dict], det_inst: dict[str, str]) -> None:
-    """Attach aggregated, German relations to each object (in place)."""
+    """Attach aggregated, German relations to each object (in place); person <-> person pairs are dropped."""
     by_id = {o["id"]: o for o in objs}
     agg: dict[tuple, dict] = {}
     for t in triplets:
         a, b = det_inst.get(t["s"]), det_inst.get(t["o"])
-        if not a or not b or a == b:
+        if not a or not b or a == b or person_pair(by_id[a], by_id[b]):
             continue
         r = agg.setdefault((a, t["rel"], b), {"count": 0, "score": 0.0, "source": t.get("source", "model")})
         r["count"] += 1

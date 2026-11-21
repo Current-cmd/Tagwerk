@@ -248,7 +248,8 @@ def seed_from_scan(inv: dict, out: Path, name: str, start: date, zone_name: str 
             mine = [e for e in elems if e["category"] == a["cat"]]
             for e in mine:
                 w.writerow([f"S.{a['id']}", a["id"], e["element_id"], round(1 / len(mine), 6), "", ""])
-    meta = {"id": f"P-{name.upper()[:6]}", "name": f"Scan: {name}", "data_date": start.isoformat(), "lat": lat,
+    meta = {"id": f"P-{name.upper()[:6]}", "name": f"Scan: {name}", "client": None, "site": None,  # not the Hörsaal defaults
+            "data_date": start.isoformat(), "lat": lat,
             "lon": lon, "source": f"generated from scan of capture {inv.get('capture_id')}",
             "scan_summary": inv["summary"], "people_max": inv["people_max"]}
     (out / "project.json").write_text(json.dumps(meta, ensure_ascii=False, indent=1), encoding="utf-8")

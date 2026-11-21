@@ -143,8 +143,8 @@ def _inventory_of(cid: str) -> list[dict]:
     items: dict[str, dict] = {}
     if sfm and sfm.get("objects"):
         for o in sfm["objects"]:
-            if CATALOG.get(o.get("label", ""), ("",))[0] in NO_INVENTORY:
-                continue
+            if CATALOG.get(o.get("label", ""), ("other",))[0] in NO_INVENTORY | {"other"}:
+                continue  # people, and COCO labels outside the catalog ("broccoli", "skis", "tie")
             it = items.setdefault(o["name_de"], {"name_de": o["name_de"], "count": 0, "relations": [], "thumb": None})
             it["count"] += 1
             it["thumb"] = it["thumb"] or o.get("thumb")
@@ -160,7 +160,7 @@ def _inventory_of(cid: str) -> list[dict]:
         counts: dict[str, int] = {}
         for label in labels.values():
             name, cat = _name_de(label)
-            if cat in NO_INVENTORY:
+            if cat in NO_INVENTORY | {"other"}:
                 continue
             counts[name] = counts.get(name, 0) + 1
             it = items.setdefault(name, {"name_de": name, "count": 0, "relations": [], "thumb": None})
