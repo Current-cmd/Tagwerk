@@ -14,10 +14,10 @@ def p():
     return proj
 
 
-def _cap(cid, work=(), absences=(), day="2026-11-26"):
+def _cap(cid, work=(), absences=(), day="2026-11-26", events=()):
     return ({"capture_id": cid, "zone_id": "Z-AUDIENCE", "ts": f"{day}T09:00:00Z"},
             {"capture_id": cid, "labour_present": [], "absences": list(absences), "material_delivered": [],
-             "work_done": list(work), "special_events": [], "unmatched": []})
+             "work_done": list(work), "special_events": list(events), "unmatched": []})
 
 
 def test_workdays():
@@ -142,3 +142,34 @@ def test_exports_for_imported_project():
     assert len(x84.findall(".//{*}Item")) == len(sp.boq)
     xml = p6_xml(sp, date.fromisoformat(sp.meta["data_date"]))
     assert "Schependomlaan" in xml and "Start to Start" in xml
+
+
+def _events(p, kind, day="2026-11-26"):
+    return [e for e in p.events if e["type"] == kind and e["date"] == day]
+
+
+def test_same_day_absence_from_two_captures_is_one_event(p):
+    ab = {"trade": "Trockenbau", "count": 2, "reason": "krank"}
+    p.apply_structured(*_cap("d1", absences=[ab]))
+    p.apply_structured(*_cap("d2", absences=[ab]))
+    assert len(_events(p, "absence")) == 1
+    p.apply_structured(*_cap("d3", absences=[{**ab, "trade": "trockenbau", "count": 3}]))
+    (ev,) = _events(p, "absence")
+    assert ev["count"] == 3 and ev["text"].startswith("3×")
+    assert p.absent_on("T-TROCKENBAU", TODAY) == 3
+    assert {"d1", "d2", "d3"} <= set(p.captures)  # the captures themselves are still recorded
+
+
+def test_same_day_defect_with_different_casing_is_one_event(p):
+    before = p.overview(TODAY)["kpi"]["open_defects"]
+    p.apply_structured(*_cap("d4", events=[{"type": "defect", "text": "Scheur in de vloer bij de lift.", "severity": "low"}]))
+    p.apply_structured(*_cap("d5", events=[{"type": "defect", "text": "scheur in de  vloer bij de lift", "severity": "low"}]))
+    assert len([e for e in _events(p, "defect") if "scheur" in e["text"].lower()]) == 1
+    assert p.overview(TODAY)["kpi"]["open_defects"] == before + 1
+
+
+def test_same_defect_on_another_day_is_kept(p):
+    ev = {"type": "defect", "text": "Scheur in de vloer bij de lift.", "severity": "low"}
+    p.apply_structured(*_cap("d6", events=[ev]))
+    p.apply_structured(*_cap("d7", events=[ev], day="2026-11-27"))
+    assert len([e for e in p.events if e["type"] == "defect" and "scheur" in e["text"].lower()]) == 2
