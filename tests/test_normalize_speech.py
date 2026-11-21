@@ -151,3 +151,42 @@ def test_concat_line_escapes_apostrophes(tmp_path):
     p = tmp_path / "Peter's walk.wav"
     assert concat_line(p) == "file '" + str(p.resolve()).replace("'", "'\\''") + "'\n"
     assert "Peter'\\''s walk.wav'" in concat_line(p)
+
+
+def _write_wav(path, samples):
+    import numpy as np
+
+    with wave.open(str(path), "wb") as w:
+        w.setnchannels(1)
+        w.setframerate(16000)
+        w.setsampwidth(2)
+        w.writeframes((np.clip(samples, -1, 1) * 32767).astype("<i2").tobytes())
+
+
+def test_quiet_voice_is_levelled_before_whisper(tmp_path, monkeypatch):
+    """A phone filming a venue records the speaker at ~-36 dB: the VAD then drops almost every sentence.
+    Quiet audio (mean < QUIET_DB) is levelled (ffmpeg dynaudnorm) before Whisper; normal audio is untouched."""
+    import numpy as np
+
+    t = np.arange(16000 * 4) / 16000
+    quiet = 0.01 * np.sin(2 * np.pi * 220 * t)  # about -43 dBFS
+    loud = 0.3 * np.sin(2 * np.pi * 220 * t)  # about -13 dBFS
+    assert speech.mean_db(quiet.astype(np.float32)) < speech.QUIET_DB < speech.mean_db(loud.astype(np.float32))
+    seen = []
+
+    class Fake:
+        def transcribe(self, audio, **kw):
+            seen.append(speech.mean_db(audio))
+            return iter([]), type("I", (), {"language": "en"})()
+
+    monkeypatch.setattr(speech, "_model", lambda: Fake())
+    import sys
+    import types
+
+    monkeypatch.setitem(sys.modules, "faster_whisper", types.ModuleType("faster_whisper"))
+    for name, sig in (("quiet.wav", quiet), ("loud.wav", loud)):
+        _write_wav(tmp_path / name, sig)
+        speech.transcribe({"capture_id": "c", "lang": "en"}, {"audio": str(tmp_path / name)})
+    if shutil.which("ffmpeg"):
+        assert seen[0] > speech.QUIET_DB  # levelled
+    assert abs(seen[1] - speech.mean_db(loud.astype(np.float32))) < 0.5  # untouched

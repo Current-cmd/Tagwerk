@@ -1,7 +1,8 @@
 """Scan 3D: structure from motion + objects lifted into the model (docs/UI-V2-CONTRACT.md, "Scan 3D").
 
 analyse(capture, workdir) -> the sfm.json dict (cache/<cid>/sfm.json):
-  1. ffmpeg: 40-80 frames (2.5 fps, fewer for long clips), longest side 1280 px
+  1. ffmpeg: clips up to 90 s 2.5 fps (<= 80 frames, 1280 px); long walks 3 fps, the sharpest of 2 per slot, 1024 px,
+     <= MAX_FRAMES_LONG frames (0.66 fps left a 2-minute venue walk with 0 registered images)
   2. pycolmap in a SUBPROCESS (tagwerk.pipeline.sfm_colmap): SIFT + sequential matching + incremental mapping, the
      largest model wins; the whole stage has a 150 s limit and never raises (ok false + German reason instead)
   3. YOLO / YOLO-World / RelateAnything run on the SfM keyframes themselves (same images as the model, so every box
@@ -27,7 +28,10 @@ from tagwerk.pipeline.scan import CATALOG, CATEGORY_DE
 
 log = logging.getLogger(__name__)
 
-TIME_LIMIT_S = 150
+TIME_LIMIT_S = 150  # short clips; long clips get up to MAX_TIME_LIMIT_S (time_limit_for)
+MAX_TIME_LIMIT_S = 240
+MAX_FRAMES_LONG, FPS_LONG, LONG_SIDE_LONG = 380, 3.0, 1024  # 1024 = SIFT's working size (portrait: 576 x 1024)
+LONG_CLIP_S = 90  # above this the 80-frame plan is too sparse (< 0.9 fps) and the dense plan is used
 DETECT_RESERVE_S = 30  # kept free for the detection pass after the reconstruction
 MAX_FRAMES, FPS, LONG_SIDE, MAX_POINTS = 80, 2.5, 1280, 20000
 MERGE_FACTOR = 0.08  # same label and closer than 8 % of the scene size = one instance
@@ -46,9 +50,52 @@ def rel_de(rel: str) -> str:
 
 # ---------------------------------------------------------------- pure logic (unit tested without pycolmap)
 
-def frame_plan(duration_s: float) -> float:
-    """Frames per second: 2.5 for clips up to ~32 s, fewer for longer ones so at most 80 frames are used."""
-    return FPS if not duration_s or duration_s * FPS <= MAX_FRAMES else MAX_FRAMES / duration_s
+def frame_plan(duration_s: float) -> dict:
+    """Clips up to LONG_CLIP_S: 2.5 fps, fewer above 32 s so at most 80 frames, 1280 px (the rehearsed demo clips).
+    Longer walks need dense, sharp frames to overlap ("dense": also the phone focal prior and relaxed mapper):
+    3 fps where each frame is the sharpest of `pick` candidates, 1024 px, at most MAX_FRAMES_LONG frames."""
+    if not duration_s or duration_s * FPS <= MAX_FRAMES:
+        return {"fps": FPS, "pick": 1, "long_side": LONG_SIDE, "max_frames": MAX_FRAMES, "dense": False}
+    if duration_s <= LONG_CLIP_S:
+        return {"fps": MAX_FRAMES / duration_s, "pick": 1, "long_side": LONG_SIDE, "max_frames": MAX_FRAMES,
+                "dense": False}
+    return {"fps": min(FPS_LONG, MAX_FRAMES_LONG / duration_s), "pick": 2, "long_side": LONG_SIDE_LONG,
+            "max_frames": MAX_FRAMES_LONG, "dense": True}
+
+
+def time_limit_for(duration_s: float) -> float:
+    """150 s up to LONG_CLIP_S, then 3 s more per video second (the dense plan), at most 240 s."""
+    return float(min(MAX_TIME_LIMIT_S, TIME_LIMIT_S + 3 * max(0.0, (duration_s or 0) - LONG_CLIP_S)))
+
+
+def camera_prior(width: int, height: int) -> str:
+    """SIMPLE_RADIAL "f,cx,cy,k" for a phone main camera (~26 mm equivalent: f = 0.6 x image diagonal). COLMAP's
+    default guess (1.2 x long side) is a narrow lens and makes initialisation on wide phone footage fragile."""
+    return f"{0.6 * float(np.hypot(width, height)):.1f},{width / 2:g},{height / 2:g},0"
+
+
+def sharpness(path: Path) -> float:
+    import cv2
+
+    g = cv2.imread(str(path), cv2.IMREAD_GRAYSCALE)
+    if g is None:
+        return -1.0
+    scale = 480 / max(g.shape)
+    if scale < 1:
+        g = cv2.resize(g, None, fx=scale, fy=scale, interpolation=cv2.INTER_AREA)
+    return float(cv2.Laplacian(g, cv2.CV_64F).var())
+
+
+def pick_sharpest(src: Path, out: Path, k: int) -> int:
+    """Keep the sharpest (Laplacian variance) of every k consecutive frames of src as out/0001.jpg ... (frame n
+    belongs to the slot starting at (n-1)/fps). Deterministic, so the cache can rebuild the same keyframes."""
+    names = sorted(Path(src).glob("*.jpg"))
+    out.mkdir(parents=True, exist_ok=True)
+    n = 0
+    for i in range(0, len(names), k):
+        n += 1
+        shutil.copyfile(max(names[i:i + k], key=sharpness), out / f"{n:04d}.jpg")
+    return n
 
 
 def lift_box(bbox, kp_xy: np.ndarray, kp_xyz: np.ndarray, grow=(1.0, 1.3), min_pts: int = 3) -> dict | None:
@@ -245,25 +292,48 @@ def probe_duration(video: Path) -> float:
         return 0.0
 
 
-def extract_frames(video: Path, out: Path, fps: float, limit: int = MAX_FRAMES) -> int:
-    """0001.jpg ... at `fps` (frame n is at (n-1)/fps seconds), longest side 1280. Returns how many were written."""
+def extract_frames(video: Path, out: Path, fps: float, limit: int = MAX_FRAMES, pick: int = 1,
+                   long_side: int = LONG_SIDE) -> int:
+    """0001.jpg ... at `fps` (frame n is at (n-1)/fps seconds), longest side `long_side`; with pick > 1 each frame is
+    the sharpest of `pick` frames decoded at pick x fps. Returns how many were written."""
     shutil.rmtree(out, ignore_errors=True)
     out.mkdir(parents=True)
-    vf = f"fps={fps:.4f},scale='if(gt(iw,ih),{LONG_SIDE},-2)':'if(gt(iw,ih),-2,{LONG_SIDE})'"
-    subprocess.run(["ffmpeg", "-y", "-v", "error", "-i", str(video), "-vf", vf, "-frames:v", str(limit), "-q:v", "3",
-                    str(out / "%04d.jpg")], capture_output=True, timeout=120, check=True)
-    return len(list(out.glob("*.jpg")))
+    scale = f"scale='if(gt(iw,ih),{long_side},-2)':'if(gt(iw,ih),-2,{long_side})'"
+    if pick <= 1:
+        subprocess.run(["ffmpeg", "-y", "-v", "error", "-i", str(video), "-vf", f"fps={fps:.4f},{scale}",
+                        "-frames:v", str(limit), "-q:v", "3", str(out / "%04d.jpg")],
+                       capture_output=True, timeout=120, check=True)
+        return len(list(out.glob("*.jpg")))
+    cand = out.parent / f"{out.name}_candidates"
+    shutil.rmtree(cand, ignore_errors=True)
+    cand.mkdir(parents=True)
+    try:
+        subprocess.run(["ffmpeg", "-y", "-v", "error", "-i", str(video), "-vf", f"fps={fps * pick:.4f},{scale}",
+                        "-frames:v", str(limit * pick), "-q:v", "3", str(cand / "%05d.jpg")],
+                       capture_output=True, timeout=180, check=True)
+        return pick_sharpest(cand, out, pick)
+    finally:
+        shutil.rmtree(cand, ignore_errors=True)
 
 
-def run_colmap(frames: Path, work: Path, timeout_s: float) -> tuple[dict | None, str | None]:
+def run_colmap(frames: Path, work: Path, timeout_s: float, limit_s: float = TIME_LIMIT_S, dense: bool = False
+               ) -> tuple[dict | None, str | None]:
     """Reconstruction in a subprocess; (arrays, None) or (None, German reason)."""
     out = work / "model.npz"
     out.unlink(missing_ok=True)
+    args = [sys.executable, "-m", "tagwerk.pipeline.sfm_colmap", str(frames), str(work / "colmap"), str(out)]
+    first = next(iter(sorted(Path(frames).glob("*.jpg"))), None) if dense else None
+    if first is not None:
+        import cv2
+
+        img = cv2.imread(str(first))
+        if img is not None:
+            args.append(camera_prior(img.shape[1], img.shape[0]))
     try:
-        r = subprocess.run([sys.executable, "-m", "tagwerk.pipeline.sfm_colmap", str(frames), str(work / "colmap"), str(out)],
+        r = subprocess.run(args,
                            capture_output=True, text=True, timeout=max(10.0, timeout_s))
     except subprocess.TimeoutExpired:
-        return None, f"Zeitlimit von {TIME_LIMIT_S} s überschritten"
+        return None, f"Zeitlimit von {limit_s:.0f} s überschritten"
     except OSError as exc:
         return None, f"pycolmap konnte nicht gestartet werden ({exc})"
     if r.returncode == 3 or (r.returncode == 0 and not out.exists()):
@@ -302,7 +372,7 @@ def detect_frames(frames: Path, names: list[str]) -> tuple[list[dict], list[dict
     return out, triplets
 
 
-def analyse(capture: dict, workdir: Path, elements: list[dict] | None = None, time_limit: float = TIME_LIMIT_S) -> dict:
+def analyse(capture: dict, workdir: Path, elements: list[dict] | None = None, time_limit: float | None = None) -> dict:
     """The whole stage; never raises. `workdir` receives frames/ and the colmap files."""
     cid = capture["capture_id"]
     t0 = time.perf_counter()
@@ -314,16 +384,21 @@ def analyse(capture: dict, workdir: Path, elements: list[dict] | None = None, ti
     try:
         workdir = Path(workdir)
         frames = workdir / "frames"
-        fps = frame_plan(probe_duration(video))
-        n = extract_frames(video, frames, fps)
+        duration = probe_duration(video)
+        plan = frame_plan(duration)
+        fps = plan["fps"]
+        time_limit = time_limit or time_limit_for(duration)
+        n = extract_frames(video, frames, fps, plan["max_frames"], plan["pick"], plan["long_side"])
         if n < 8:
             return _empty(cid, "Das Video ist zu kurz oder nicht lesbar (weniger als 8 Bilder).", time.perf_counter() - t0,
                           fps=fps)
         names = sorted(p.name for p in frames.glob("*.jpg"))
-        model, reason = run_colmap(frames, workdir, time_limit - DETECT_RESERVE_S - (time.perf_counter() - t0))
+        model, reason = run_colmap(frames, workdir, time_limit - DETECT_RESERVE_S - (time.perf_counter() - t0), time_limit,
+                                   plan["dense"])
         det_names = ([str(x) for x in model["names"]] if model else names[:: max(1, len(names) // 40)])
         det_frames, triplets = detect_frames(frames, det_names)
-        res = _empty(cid, reason or "", time.perf_counter() - t0, fps=round(fps, 4))
+        res = _empty(cid, reason or "", time.perf_counter() - t0, fps=round(fps, 4), pick=plan["pick"],
+                     long_side=plan["long_side"], time_limit=time_limit)
         res["frames_used"] = n
         if model is None:
             fr = [{"name": f["name"], "t": round((frame_index(f["name"]) - 1) / fps, 2), "dets": f["objects"]}
@@ -362,12 +437,12 @@ def lift_detections(det_frames: list[dict], model: dict, fps: float) -> list[dic
     return out
 
 
-def ensure_frames(video: Path, dest: Path, fps: float, count: int) -> None:
+def ensure_frames(video: Path, dest: Path, fps: float, count: int, pick: int = 1, long_side: int = LONG_SIDE) -> None:
     """Make cache/<cid>/media/sfm/ hold the same keyframes as the worker used (same fps, same numbering), so /media can
     serve thumbs and camera images even when the reconstruction ran in another process."""
     if re.search(r"\d{4}\.jpg", " ".join(p.name for p in dest.glob("*.jpg"))) and len(list(dest.glob("*.jpg"))) >= count:
         return
-    extract_frames(video, dest, fps, count)
+    extract_frames(video, dest, fps, count, pick, long_side)
 
 
 def attach_elements(res: dict, elements: list[dict]) -> dict:

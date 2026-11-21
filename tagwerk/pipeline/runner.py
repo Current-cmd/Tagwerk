@@ -145,7 +145,8 @@ async def sfm_stage(capture: dict, project, replay: bool = False) -> dict | None
                 res = await asyncio.to_thread(sfm.analyse, capture, Path(s.data_dir) / "work" / cid / "sfm")
             if res.get("frames_used"):  # keyframes next to the cache so /media serves thumbs and camera images
                 dest = structure.cache_path(cid, "x").parent / "media" / "sfm"
-                await asyncio.to_thread(sfm.ensure_frames, video, dest, res.get("fps") or sfm.FPS, res["frames_used"])
+                await asyncio.to_thread(sfm.ensure_frames, video, dest, res.get("fps") or sfm.FPS, res["frames_used"],
+                                        res.get("pick") or 1, res.get("long_side") or sfm.LONG_SIDE)
             sfm.attach_elements(res, [{"id": e, "name_de": el["name_de"], "aliases": el["aliases"]}
                                       for e, el in project.elements.items()])
         except Exception as exc:  # noqa: BLE001

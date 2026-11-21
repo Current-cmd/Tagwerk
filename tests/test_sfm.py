@@ -100,9 +100,44 @@ def test_points_downsample_and_cameras():
     assert cams[1] == {"t": 0.8, "position": [0.0, 0.0, 0.0], "look": [0.0, 0.0, 1.0], "frame": "/media/c1/sfm/0003.jpg"}
 
 
-def test_frame_plan_keeps_between_40_and_80_frames():
-    assert sfm.frame_plan(20.0) == 2.5 and sfm.frame_plan(30.0) == 2.5
-    assert sfm.frame_plan(70.0) == pytest.approx(80 / 70, abs=0.01) and sfm.frame_plan(0) == 2.5
+def test_frame_plan_short_clips_unchanged_long_clips_dense_with_sharp_pick():
+    """Short demo clips keep 2.5 fps / 1280 px. A 2-minute venue walk at 0.66 fps (80 frames) left too little overlap
+    (0 registered): long clips get 3 fps (sharpest of 2 per slot) at 960 px, capped at MAX_FRAMES_LONG frames."""
+    assert sfm.frame_plan(20.0) == {"fps": 2.5, "pick": 1, "long_side": 1280, "max_frames": 80, "dense": False}
+    assert sfm.frame_plan(0)["fps"] == 2.5 and sfm.frame_plan(30.0)["pick"] == 1
+    # up to LONG_CLIP_S the rehearsed plan (80 frames) stays: user_walk (70 s) registers 30 frames with it and times
+    # out with the dense plan
+    assert sfm.frame_plan(70.0) == {"fps": pytest.approx(80 / 70), "pick": 1, "long_side": 1280, "max_frames": 80,
+                                    "dense": False}
+    p = sfm.frame_plan(121.3)
+    assert p["fps"] == 3.0 and p["pick"] == 2 and p["long_side"] == 1024 and 121.3 * 3 <= p["max_frames"] and p["dense"]
+    p = sfm.frame_plan(600.0)
+    assert p["fps"] == pytest.approx(sfm.MAX_FRAMES_LONG / 600.0) and p["max_frames"] == sfm.MAX_FRAMES_LONG
+
+
+def test_time_limit_scales_with_clip_length():
+    assert sfm.time_limit_for(0) == sfm.TIME_LIMIT_S == 150 and sfm.time_limit_for(70.0) == 150
+    assert sfm.time_limit_for(121.3) == sfm.MAX_TIME_LIMIT_S == 240 and 150 < sfm.time_limit_for(100.0) < 240
+
+
+def test_pick_sharpest_keeps_the_sharper_frame_of_each_slot(tmp_path):
+    cv2 = pytest.importorskip("cv2")
+    rng = np.random.default_rng(0)
+    sharp = (rng.random((90, 160)) * 255).astype(np.uint8)
+    blur = cv2.GaussianBlur(sharp, (15, 15), 5)
+    src = tmp_path / "all"
+    src.mkdir()
+    for i, img in enumerate([blur, sharp, sharp, blur, blur], 1):  # slots of 2: (blur, sharp) (sharp, blur) (blur)
+        cv2.imwrite(str(src / f"{i:05d}.jpg"), img)
+    out = tmp_path / "fr"
+    assert sfm.pick_sharpest(src, out, 2) == 3
+    got = [cv2.imread(str(out / f"{i:04d}.jpg"), cv2.IMREAD_GRAYSCALE) for i in (1, 2, 3)]
+    assert [round(float(cv2.Laplacian(g, cv2.CV_64F).var())) > 1000 for g in got] == [True, True, False]
+
+
+def test_camera_prior_is_a_phone_main_lens():
+    f, cx, cy, k = (float(x) for x in sfm.camera_prior(960, 1706).split(","))
+    assert (cx, cy, k) == (480.0, 853.0, 0.0) and 1100 < f < 1250  # ~26 mm equivalent, not COLMAP's 1.2 x long side
 
 
 def test_analyse_without_video_or_missing_file_is_a_german_failure_not_an_exception(tmp_path):
@@ -115,5 +150,13 @@ def test_analyse_without_video_or_missing_file_is_a_german_failure_not_an_except
 def test_pycolmap_api_we_use_exists():
     pycolmap = pytest.importorskip("pycolmap")
     for name in ("extract_features", "match_sequential", "incremental_mapping", "SequentialPairingOptions",
-                 "FeatureExtractionOptions", "FeatureMatchingOptions", "CameraMode"):
+                 "FeatureExtractionOptions", "FeatureMatchingOptions", "CameraMode", "IncrementalPipelineOptions",
+                 "ImageReaderOptions"):
         assert hasattr(pycolmap, name), name
+    o = pycolmap.IncrementalPipelineOptions()
+    for name in ("min_num_matches", "ba_refine_principal_point"):
+        assert hasattr(o, name), name
+    for name in ("init_min_num_inliers", "abs_pose_min_num_inliers", "abs_pose_min_inlier_ratio", "init_min_tri_angle"):
+        assert hasattr(o.mapper, name), name
+    r = pycolmap.ImageReaderOptions()
+    assert hasattr(r, "camera_params") and hasattr(r, "camera_model")
