@@ -168,9 +168,10 @@ async def scan_video(files: list[UploadFile] = File(...), make_project: str | No
     # frames locally too (same 1 fps numbering as the worker), so the page can show where each label was seen
     derived = await asyncio.to_thread(normalize.normalize, capture, folder / "derived")
     async with _lock:
-        vis = validate("vision", await _gpu_stage("vision", capture,
-                                                  None if get_settings().gpu_worker_url else derived))
-    inv = inventory(vis)
+        stage_derived = None if get_settings().gpu_worker_url else derived
+        vis = validate("vision", await _gpu_stage("vision", capture, stage_derived))
+        tr = validate("transcript", await _gpu_stage("speech", capture, stage_derived))
+    inv = inventory(vis, transcript=tr)
     inv["scan_id"] = sid
     for item in inv["items"]:
         best = item.get("best") or {}

@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import csv
 import json
+import re
 from collections import defaultdict
 from datetime import date, timedelta
 from pathlib import Path
@@ -79,8 +80,57 @@ CATEGORY_DE = {"structure": "Rohbau", "openings": "Öffnungen", "finishes": "Aus
 ACTIVITY_ORDER = ["structure", "openings", "services", "finishes", "furniture"]
 MAX_INSTANCES = 12  # per label, so one busy frame cannot flood the project
 
+# German building stems found inside compound nouns ("Betonfassade", "Leibungsblech", "Holzrahmen-Elemente")
+# -> (category, IFC class, element type). Order matters: first matching stem wins.
+SPEECH_STEMS: list[tuple[str, str, str, str]] = [
+    ("fassade", "finishes", "IfcCovering", "wall"), ("dämmung", "finishes", "IfcCovering", "default"),
+    ("schaum", "finishes", "IfcCovering", "default"), ("putz", "finishes", "IfcCovering", "wall"),
+    ("estrich", "finishes", "IfcCovering", "floor"), ("belag", "finishes", "IfcCovering", "floor"),
+    ("fliese", "finishes", "IfcCovering", "default"), ("blech", "finishes", "IfcCovering", "default"),
+    ("beschichtung", "finishes", "IfcCovering", "default"), ("verkleidung", "finishes", "IfcCovering", "default"),
+    ("fenster", "openings", "IfcWindow", "default"), ("tür", "openings", "IfcDoor", "default"),
+    ("leibung", "openings", "IfcCovering", "default"), ("laibung", "openings", "IfcCovering", "default"),
+    ("wand", "structure", "IfcWall", "wall"), ("wände", "structure", "IfcWall", "wall"),
+    ("decke", "structure", "IfcSlab", "default"), ("dach", "structure", "IfcRoof", "default"),
+    ("stütze", "structure", "IfcColumn", "default"), ("träger", "structure", "IfcBeam", "default"),
+    ("fundament", "structure", "IfcFooting", "default"), ("treppe", "structure", "IfcStair", "default"),
+    ("balkon", "structure", "IfcSlab", "default"), ("brüstung", "structure", "IfcWall", "wall"),
+    ("rahmen", "structure", "IfcMember", "default"), ("element", "structure", "IfcElementAssembly", "default"),
+    ("schalung", "structure", "IfcElementAssembly", "default"), ("bewehrung", "structure", "IfcReinforcingBar", "default"),
+    ("leitung", "services", "IfcFlowSegment", "default"), ("rohr", "services", "IfcFlowSegment", "default"),
+    ("kabel", "services", "IfcCableSegment", "default"), ("heizung", "services", "IfcSpaceHeater", "default"),
+    ("lüftung", "services", "IfcFlowSegment", "default"), ("boden", "finishes", "IfcCovering", "floor"),
+]
+NOT_ELEMENTS = {"zustand", "endzustand", "bestand", "stockwerk", "zeit", "seite", "oberfläche"}
 
-def inventory(vision: dict, min_conf: float = 0.3, min_frames: int = 2) -> dict:
+
+def speech_terms(transcript: dict | None) -> list[dict]:
+    """Building terms named in the transcript, one item per distinct term (first mention wins)."""
+    import re
+
+    out: dict[str, dict] = {}
+    for seg in (transcript or {}).get("segments", []):
+        for m in re.finditer(r"\b([A-ZÄÖÜ][a-zäöüß]+(?:-[A-ZÄÖÜ]?[a-zäöüß]+)*)\b", seg["text"]):
+            word = m.group(1)
+            low = word.lower().replace("-", "")
+            if len(low) < 5 or low in NOT_ELEMENTS:
+                continue
+            stem = next((s for s in SPEECH_STEMS if s[0] in low), None)
+            if not stem:
+                continue
+            key = low.rstrip("n").rstrip("e") if low.endswith(("en", "e")) and len(low) > 7 else low
+            if key in out:
+                out[key]["mentions"] += 1
+                continue
+            cat, ifc, etype = stem[1], stem[2], stem[3]
+            out[key] = {"label": word.lower(), "category": cat, "category_de": CATEGORY_DE[cat], "ifc_class": ifc,
+                        "name_de": word, "type": etype, "frames": 0, "instances": 1, "first_t": seg["start"],
+                        "last_t": seg["end"], "best_conf": 1.0, "best": None, "sources": ["speech"],
+                        "mentions": 1, "quote": seg["text"].strip()[:160]}
+    return list(out.values())
+
+
+def inventory(vision: dict, min_conf: float = 0.3, min_frames: int = 2, transcript: dict | None = None) -> dict:
     """Group detections by label. A label must be seen in >= min_frames frames (or be a marker) to count."""
     per_label: dict[str, dict] = defaultdict(lambda: {"frames": 0, "max_per_frame": 0, "first_t": None,
                                                       "last_t": None, "best_conf": 0.0, "best": None,
@@ -114,12 +164,15 @@ def inventory(vision: dict, min_conf: float = 0.3, min_frames: int = 2) -> dict:
                       "instances": min(rec["max_per_frame"], MAX_INSTANCES), "first_t": rec["first_t"],
                       "last_t": rec["last_t"], "best_conf": round(rec["best_conf"], 3), "best": rec["best"],
                       "sources": sorted(rec["sources"])})
+    seen_labels = {i["label"] for i in items}
+    items += [t for t in speech_terms(transcript) if t["label"] not in seen_labels]
     items.sort(key=lambda i: (list(CATEGORY_DE).index(i["category"]), -i["frames"]))
     people = next((i["instances"] for i in items if i["label"] == "person"), 0)
     by_cat: dict[str, list[str]] = defaultdict(list)
     for i in items:
         by_cat[i["category_de"]].append(f"{i['instances']}× {i['name_de']}")
     return {"capture_id": vision.get("capture_id"), "frames": n_frames, "items": items,
+            "transcript": " ".join(s["text"] for s in (transcript or {}).get("segments", [])) or None,
             "summary": dict(by_cat), "people_max": people,
             "element_count": sum(i["instances"] for i in items if i["ifc_class"])}
 
@@ -136,8 +189,11 @@ def seed_from_scan(inv: dict, out: Path, name: str, start: date, zone_name: str 
             continue
         for k in range(1, item["instances"] + 1):
             slug = item["label"].upper().replace(" ", "-")
+            label = item["name_de"] if item["instances"] == 1 else f"{item['name_de']} {k}"
+            slug = re.sub(r"[^A-Z0-9-]", "", slug.replace("Ä", "AE").replace("Ö", "OE").replace("Ü", "UE")
+                          .replace("ß", "SS"))
             elems.append({"element_id": f"S-{slug}-{k}", "ifc_class": item["ifc_class"],
-                          "name_de": f"{item['name_de']} {k}", "name_en": f"{item['label']} {k}",
+                          "name_de": label, "name_en": f"{item['label']} {k}",
                           "type": item["type"] or "default", "category": item["category"],
                           "aliases": [item["label"], item["name_de"]]})
     with (out / "zones.csv").open("w", newline="", encoding="utf-8") as fh:

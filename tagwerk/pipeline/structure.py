@@ -73,11 +73,15 @@ STATE_WORDS: list[tuple[str, list[str]]] = [
     ("covered", ["verlegt", "belegt", "versiegelt", "covered", "laid"]),
     ("removed", ["demontiert", "ausgebaut", "rückgebaut", "entfernt", "removed"]),
     ("mounted", ["montiert", "hängt", "hängen", "aufgehängt", "mounted", "hung"]),
-    ("installed", ["montiert", "eingebaut", "installiert", "steht", "installed", "fitted", "geplaatst",
+    ("installed", ["montiert", "eingebaut", "installiert", "steht", "eingefüllt", "verfüllt", "eingesetzt",
+                   "angebracht", "vorgefertigt", "installed", "fitted", "geplaatst",
                    "gemonteerd", "gemetseld", "gestort", "gelegd", "aangebracht", "staat"]),
     ("started", ["begonnen", "angefangen", "started", "gestart", "mee bezig"]),
 ]
-DONE_WORDS = ["fertig", "erledigt", "komplett", "done", "finished", "complete", "completed", "klaar", "gereed"]
+DONE_WORDS = ["fertig", "erledigt", "komplett", "done", "finished", "complete", "completed", "klaar", "gereed",
+              "endzustand", "fertiggestellt"]
+FUTURE_WORDS = ["wird noch", "werden noch", "kommt noch", "muss noch", "müssen noch", "soll noch", "später",
+                "in der nächsten zeit", "nächste woche", "morgen", "will be", "still to", "next week"]
 
 EVENT_WORDS = [
     ("safety", "high", ["unfall", "verletzt", "sicherheit", "absturz", "gefahr", "accident", "injured", "safety", "hazard"]),
@@ -279,6 +283,9 @@ def rules_structure(capture: dict, transcript: dict, vision: dict, context: dict
                 out["special_events"].append({"type": etype, "text": sent.strip(), "severity": sev})
                 break
 
+        if els and (s.rstrip().endswith("?") or any(_has(s, w) for w in FUTURE_WORDS)):
+            out["unmatched"].append(sent.strip())  # question or future work: not evidence of progress
+            continue
         if els:
             groups: dict[str, list[str]] = {}
             for e in els:

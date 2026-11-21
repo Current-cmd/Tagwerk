@@ -88,3 +88,10 @@ def test_whisper_comma_run_on(p):
 def test_row_list_with_commas(p):
     s = run(p, "Reihe C, D und E sind montiert")
     assert {"E-ROW-C", "E-ROW-D", "E-ROW-E"} <= {e for w in s["work_done"] for e in w["element_ids"]}
+
+
+def test_future_and_questions_are_not_progress(p):
+    s = run(p, "Die Leinwand wird noch angeschlossen. Ist der Beamer montiert? Der Vorhang ist montiert.",
+            zone="Z-STAGE")
+    ids = {e for w in s["work_done"] for e in w["element_ids"]}
+    assert "E-CURTAIN" in ids and "E-SCREEN" not in ids and "E-PROJECTOR" not in ids

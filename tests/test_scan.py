@@ -51,3 +51,18 @@ def test_seed_from_scan_loads_and_detections_propose(tmp_path, monkeypatch):
     assert len(walls) == 3 and all(w["evidence"] == "vision" for w in walls)
     ch = p.apply_structured({"capture_id": "c1", "zone_id": "Z-SITE", "ts": "2026-11-26T09:00:00Z"}, s)
     assert ch and all(c["action"] == "proposed" for c in ch)
+
+
+def test_speech_terms_become_elements():
+    from tagwerk.pipeline.scan import speech_terms
+
+    tr = {"segments": [{"start": 3.0, "end": 9.0, "text": "Das ist die dünne Betonfassade, dahinter ist der "
+                                                           "Mineralschaum eingefüllt worden."},
+                       {"start": 20.0, "end": 25.0, "text": "Die Holzrahmen-Elemente wurden vorgefertigt, das ist "
+                                                            "der Endzustand im Stockwerk."}]}
+    terms = {t["name_de"]: t for t in speech_terms(tr)}
+    assert {"Betonfassade", "Mineralschaum", "Holzrahmen-Elemente"} <= set(terms)
+    assert "Endzustand" not in terms and "Stockwerk" not in terms
+    assert terms["Betonfassade"]["category"] == "finishes" and terms["Betonfassade"]["sources"] == ["speech"]
+    inv = inventory({"capture_id": "x", "frames": []}, transcript=tr)
+    assert inv["element_count"] == 3 and inv["transcript"]
