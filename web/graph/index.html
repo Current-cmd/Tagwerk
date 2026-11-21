@@ -55,7 +55,7 @@ const net = new vis.Network(document.getElementById('net'), { nodes, edges }, {
   nodes: { font: { color: '#e6edf3', size: 13 }, borderWidth: 0 },
   edges: { arrows: { to: { enabled: true, scaleFactor: .4 } }, color: { color: '#30363d', highlight: '#8b949e' },
            smooth: { type: 'continuous' } },
-  physics: { stabilization: { iterations: 150 }, barnesHut: { gravitationalConstant: -5000, springLength: 110 } },
+  physics: { stabilization: { iterations: 300 }, barnesHut: { gravitationalConstant: -14000, springLength: 170, springConstant: 0.03, avoidOverlap: 0.6 } },
   interaction: { hover: true, tooltipDelay: 120 },
 });
 
@@ -87,7 +87,21 @@ function visNode(n) {
            color: { background: color, border: color, highlight: { background: color, border: '#e6edf3' } },
            font: { color: n.label === 'BoQPosition' ? '#0d1117' : '#e6edf3' } };
 }
-function visible(n) { return document.getElementById('details').checked || MAIN.has(n.label); }
+let TODAY = null;
+fetch('/health').then(r => r.json()).then(h => { TODAY = h.data_date; redraw(); });
+function oldEvidence(n) {  // earlier days' captures (and what hangs off them) only in detail mode
+  const p = n.props || {};
+  if (n.label === 'Capture') return TODAY && p.date && p.date !== TODAY;
+  if (n.label === 'Event' || n.label === 'Proposal') {
+    const cap = all.nodes.get(p.capture || n.id.split(':')[0]);
+    return cap ? oldEvidence(cap) : false;
+  }
+  return false;
+}
+function visible(n) {
+  if (document.getElementById('details').checked) return true;
+  return MAIN.has(n.label) && !oldEvidence(n);
+}
 function edgeVisible(e) {
   const a = all.nodes.get(e.src), b = all.nodes.get(e.dst);
   if (!a || !b || !visible(a) || !visible(b)) return false;
@@ -177,6 +191,7 @@ function connect() {
   };
 }
 snapshot().then(connect);
+net.once('stabilizationIterationsDone', () => net.fit({ animation: { duration: 500 } }));
 </script>
 </body>
 </html>
