@@ -114,3 +114,61 @@ days with recordings), tabs Dashboard | Live-Graph, link to the old pages.
   ▶ Abspielen starts the video, then POSTs `replay_of` + `sync=1` when the video fires `playing`; captions from the
   entry's segments; an "Erfasst" list fed by the websocket. On `done`, refetch day + taskgraph.
 - Must work offline: no CDN, fonts bundled (or system font stack).
+
+## Scan 3D + Tagesbericht (added 2026-11-21)
+Demo flow (3 min): film the room with voice (~30 s), upload, pitch for ~2 min while it processes, then show the 3D room,
+the tagged objects and the auto-filled daily report in `/app`.
+
+### Pipeline
+- New stage `sfm` for captures with a video (and for `/api/scan` uploads), run after vision on the GPU worker process
+  (`worker_api.py`, same `_gpu_stage` pattern and cache): extract ~2-3 fps (40-80 frames, longest side 1280 px), pycolmap
+  (installed in the laptop venv, 4.2.1, CPU) SIFT + sequential matching + incremental mapping. Hard time limit 150 s; on
+  failure or timeout return `ok: false` with a German `reason`, never fail the capture. Replays read the cached `sfm.json`.
+- 3D objects: for every detection (vision frames: YOLO/YOLO-World objects, markers excluded) take the triangulated 3D
+  points whose 2D observation in that frame falls inside the box; object position = median, extent = 10-90 % range.
+  Frames used for SfM and for vision must be matched by time (vision uses ~1 fps; map by nearest timestamp or run
+  vision detections on the SfM frames). Merge detections of the same label whose 3D positions are close (relative to
+  the scene size) into one object instance.
+- Relations: RelateAnything triplets (vision `frames[].triplets`, source "model" or "geometry") are attached to the
+  merged objects (map frame obj_id to instance), aggregated with counts/max score, German predicate labels.
+
+### cache/<cid>/sfm.json  and  GET /api/v2/scan3d/{cid}  (404 when there is none)
+```json
+{"capture_id": "uw-video", "ok": true, "reason": null, "seconds": 74.2, "frames_used": 61, "frames_registered": 55,
+ "points": [[0.1, 0.2, 1.3, 180, 170, 160]],
+ "cameras": [{"t": 0.0, "position": [0, 0, 0], "look": [0, 0, 1], "frame": "/media/uw-video/sfm/0001.jpg"}],
+ "objects": [{"id": "obj-1", "label": "door", "name_de": "Tür", "category_de": "Öffnungen", "position": [0.4, 0.1, 2.0],
+              "extent": [0.9, 2.0, 0.1], "detections": 12, "first_t": 3.0, "last_t": 9.5, "conf": 0.81,
+              "thumb": "/media/uw-video/sfm/0004.jpg", "bbox_in_thumb": [x1, y1, x2, y2],
+              "element_id": "E-DOOR-1",
+              "relations": [{"rel": "next to", "rel_de": "neben", "target": "obj-2", "target_name": "Wand",
+                             "score": 0.52, "count": 4, "source": "model"}]}],
+ "units": "relative (SfM scale is arbitrary)"}
+```
+`points` downsampled to <= 20000. `element_id`: the project element this object most likely is (same CATALOG label /
+alias as the scan project or the seed), else null.
+
+### GET /api/v2/report?date=D   (Tagesbericht / Bautagebuch, German)
+```json
+{"date": "2026-11-26", "project": {"name": "…", "site": "…", "client": "…"},
+ "weather": {"tempC": 6.1, "precipMm": 0.0, "windKmh": 12.0},
+ "recordings": [{"capture_id": "…", "time": "10:42", "zone_name": "…", "kind": "video", "has_3d": true}],
+ "work_done": [{"activity_id": "A1080", "activity_name": "…", "element_name": "Stuhlreihe A", "state_de": "montiert",
+                "quote": "…", "capture_id": "…"}],
+ "workforce": {"present": [{"trade": "Elektro", "count": 3}], "absent": [{"trade": "Trockenbau", "count": 2, "reason": "krank"}]},
+ "inventory": [{"name_de": "Tür", "count": 1, "relations": ["neben Wand", "unter Leuchte"], "thumb": "…", "capture_id": "…"}],
+ "events": [{"type": "defect", "text": "…", "severity": "low"}],
+ "photos": ["/media/…"],
+ "delays": [{"activity_id": "…", "activity_name": "…", "delay_d": 4, "cause": "…"}],
+ "lookahead": [{"date": "…", "activities": ["…"]}]}
+```
+Also `GET /export/report.html?date=D` (print-ready, German, A4) for a PDF via the browser.
+
+### Frontend additions
+- `#/scan/<cid>`: 3D viewer (three.js from npm, bundled; OrbitControls): coloured point cloud, camera path as a line with
+  small frustums, one labelled marker per object (name_de, click shows thumb with box, detections, relations as chips
+  "neben Wand"), category colours; side list of objects grouped by category. "Rekonstruktion nicht möglich: <reason>"
+  card when ok is false, still listing objects/relations from 2D.
+- `#/report/<date>`: the Tagesbericht laid out like a German Bautagebuch page (shadcn Cards/Table), print button
+  (window.print with print CSS) and link to `/export/report.html`.
+- Recording accordion items with `has_3d` get a "3D ansehen" button; the dashboard header gets "Tagesbericht".
