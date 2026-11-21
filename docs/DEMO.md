@@ -98,6 +98,40 @@ Hörsaal (:8080) and Schependomlaan (:8081) demos are not touched.
    Only elements the scan found exist: say what is in the project (Wand, Tür, Fenster, Decke, Boden, Steckdose,
    Leuchte, Heizkörper, Kabel, Bildschirm, Stuhl, Tisch, Sofa, ...). Each element only moves up, a repeat shows "unchanged".
 
+## 3-Minuten-Demo (Raum filmen, hochladen, 3D + Tagesbericht)
+Project: the scan project `userwalk` on **:8082** (`~/tw-scanproject.sh userwalk`). The Mac opens the laptop through
+the SSH tunnel as `http://localhost:8082/...` (without the tunnel: `http://100.118.181.69:8082/...`). Rehearsed
+2026-11-21 on the deployed main (276ca5c): `user_walk.mp4` (70 s, with voice) done after 8 s, 3D after 61 s (30 frames
+registered, 21 objects); `screeding_walls_ghana_60s.mp4` (19 s) done after 13 s, 3D after 73 s (48 frames, 20 objects).
+
+Before the slot: reset (see "Reset" below), open in the browser tabs: `/app` (Dashboard, today 26.11.) and `/upload`.
+
+1. **0:00-0:30 Film.** Phone: film the room for about 30 s, slowly, and say what you see, e.g. "Die Tür ist
+   eingebaut, die Wände sind gestrichen, zwei Mann vom Elektriker sind krank, Kratzer an der Tür."
+2. **0:30 Upload.** Tab `/upload`: zone "Rohbau (Video)", pick the video, *Hochladen*. (From the phone directly:
+   `http://100.118.181.69:8082/upload`.) Leave the tab; the request returns when the 3D step is done (about 1 min).
+3. **0:30-2:30 Pitch.** Switch to `/app`: the recording appears under "Aufnahmen des Tages" within ~10 s (transcript,
+   changes, absence), the Gantt and KPIs update live. Open **Live-Graph**: recording -> activity / event edges.
+4. **~1:30 "3D ansehen".** In the recording's accordion item press **3D ansehen** (shown once `has_3d`, after
+   ~60-75 s): point cloud, camera path, labelled objects; click a label for the thumbnail and relations
+   ("neben Wand"). Direct: `/app#/scan/<capture_id>`.
+5. **2:30-3:00 Tagesbericht.** Header button **Tagesbericht** (`/app#/report/2026-11-26`): work done, crew,
+   inventory from the 3D scan with relations, events, delays, lookahead. *Drucken / PDF* or *Druckversion (HTML)*
+   (`/export/report.html`) for the A4 page with signature line.
+
+Fallbacks:
+- 3D not ready in time or "Rekonstruktion nicht möglich": keep talking about the report (it uses the 2D detections),
+  then open the cached scan `/app#/scan/uw-video` (ok, 30 frames, 22 objects).
+- Upload fails (network): upload `~/Developer/hacka/demo-media/user_walk.mp4` from the laptop
+  (`/upload` on :8082) or replay it: `curl -X POST localhost:8082/captures -F replay_of=uw-video -F zone_id=Z-SITE`.
+- 8082 down: `~/tw-scanproject.sh userwalk`. Everything down: `~/tw-restart.sh && ~/tw-scanproject.sh userwalk` (~30 s).
+- Hörsaal story instead (:8080): `/app`, replay picker on the old `/graph` (▶ Abspielen, `cap-e2e-2`).
+
+Reset (clean state, caches kept), on the laptop in `~/Developer/hacka/Tagwerk`:
+`PYTHONPATH=$PWD .venv/bin/python scripts/reset_demo.py`;
+`DATA_DIR=./data-sp CACHE_DIR=./cache-sp NEO4J_URI= PROJECT=schependomlaan PYTHONPATH=$PWD .venv/bin/python scripts/reset_demo.py`;
+`rm -rf data-scan-userwalk`; then `~/tw-restart.sh && ~/tw-scanproject.sh userwalk`.
+
 ## Tagesbericht (Bautagebuch)
 `http://<laptop-ip>:8080/export/report.html` (today = data date) or `…/export/report.html?date=2026-11-25` is the
 auto-filled German daily report; the JSON for `/app` is `/api/v2/report?date=…`. It fills itself from that day's
@@ -108,7 +142,7 @@ Weather comes from the stored readings (no network call for past days). Bericht-
 start. For a PDF: open it in the browser, Ctrl+P, "Als PDF speichern", A4 (the page has print CSS). Schependomlaan:
 same URL on :8081.
 
-
+## Fallbacks
 1. Live upload fails: stay on replay.
 2. GPU worker down: the API runs speech/vision in-process automatically (slower).
 3. Everything down: backup screen recording.
