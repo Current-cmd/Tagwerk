@@ -133,6 +133,19 @@ Reset (clean state, caches kept), on the laptop in `~/Developer/hacka/Tagwerk`:
 `DATA_DIR=./data-sp CACHE_DIR=./cache-sp NEO4J_URI= PROJECT=schependomlaan PYTHONPATH=$PWD .venv/bin/python scripts/reset_demo.py`;
 `rm -rf data-scan-userwalk`; then `~/tw-restart.sh && ~/tw-scanproject.sh userwalk`.
 
+## BIM-Modell (Schependomlaan, :8081)
+`/app` on :8081 has a **BIM-Modell** tab (only projects with a model): the IFC design model (3504 elements, 2081
+linked to activities) coloured by state on the chosen day: green = target state reached, amber = begun, grey = not
+begun, faint = no activity (context; "Kontext ausblenden" hides it). Move the day slider (e.g. 08.07. -> 24.07.2015)
+to watch the building grow; click an element for its state, zone and activity, "Vorgang öffnen" opens the activity.
+The model files are `seed/projects/schependomlaan/bim.{json,bin}`, made by
+`python scripts/ifc_to_bim.py "<datasets>/schependomlaan/Design model IFC/IFC Schependomlaan.ifc" seed/projects/schependomlaan`.
+
+## Auth and flags on the laptop
+The laptop `.env` sets `TAGWERK_DEV=1` (no API token, the demo works as before) and `ALLOW_PROJECT_CREATE=1` (/scan
+may create projects). For a token: set `API_TOKEN=<long random>`, remove `TAGWERK_DEV`, restart, and open each page
+once with `?token=<API_TOKEN>` (cookie for localhost covers all ports); curl needs `-H "Authorization: Bearer …"`.
+
 ## Tagesbericht (Bautagebuch)
 `http://<laptop-ip>:8080/export/report.html` (today = data date) or `…/export/report.html?date=2026-11-25` is the
 auto-filled German daily report; the JSON for `/app` is `/api/v2/report?date=…`. It fills itself from that day's
