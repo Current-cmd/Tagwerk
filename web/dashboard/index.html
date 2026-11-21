@@ -33,7 +33,27 @@
   .span-5 { grid-column: span 5; } .span-4 { grid-column: span 4; } .span-3 { grid-column: span 3; }
   @media (max-width: 1100px) { .span-8, .span-7, .span-5, .span-4, .span-3 { grid-column: span 12; } main { padding: 16px; } header { padding: 12px 16px; } }
 
-  .kpis { display: grid; grid-template-columns: repeat(6, 1fr); gap: 14px; }
+  .kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 14px; }
+  h1 .project { font-weight: 500; color: var(--muted); font-size: .8em; margin-left: 6px; }
+  .pager { display: flex; gap: 8px; align-items: center; justify-content: flex-end; margin-top: 10px; font-size: 13px; color: var(--muted); }
+  .pager button { font: inherit; border: 1px solid var(--line); background: var(--card); border-radius: 6px; padding: 4px 10px; cursor: pointer; color: inherit; }
+  .pager button[disabled] { opacity: .4; cursor: default; }
+  .pager button.on { background: var(--accent); color: #fff; border-color: var(--accent); }
+  tr.untracked td { color: var(--muted); }
+  .storeys { display: grid; gap: 12px; }
+  .storey { border: 1px solid var(--line); border-radius: 10px; padding: 10px 14px; }
+  .storey summary { cursor: pointer; display: grid; grid-template-columns: 220px 1fr 160px; gap: 14px; align-items: center; list-style: none; }
+  .storey summary::-webkit-details-marker { display: none; }
+  .storey summary b::before { content: '▸ '; color: var(--muted); }
+  .storey[open] summary b::before { content: '▾ '; }
+  .sbar { display: flex; height: 18px; border-radius: 5px; overflow: hidden; background: #eef0f3; }
+  .sbar span { display: block; height: 100%; }
+  .scount { font-size: 13px; color: var(--muted); text-align: right; }
+  .skeys { display: flex; flex-wrap: wrap; gap: 12px; font-size: 13px; color: var(--muted); margin: 10px 0 0; }
+  .skeys i { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 4px; vertical-align: -1px; }
+  .elist { margin-top: 10px; max-height: 360px; overflow: auto; border-top: 1px solid var(--line); }
+  .elist input { margin: 8px 0; width: 280px; font: inherit; padding: 6px 10px; border: 1px solid var(--line); border-radius: 6px; }
+  .elist table td { padding: 3px 8px; font-size: 13px; }
   @media (max-width: 1100px) { .kpis { grid-template-columns: repeat(2, 1fr); } }
   .kpi { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 14px 16px; }
   .kpi .label { color: var(--muted); font-size: 12px; text-transform: uppercase; letter-spacing: .04em; }
@@ -94,7 +114,7 @@
 </head>
 <body>
 <header>
-  <h1>Tagwerk · Bauleiter-Dashboard</h1>
+  <h1>Tagwerk · Bauleiter-Dashboard <span id="project" class="project"></span></h1>
   <span class="date" id="date">–</span>
   <span class="server" title="Live-Verbindung / live connection"><span class="dot" id="dot"></span><span id="dotText">offline</span></span>
   <nav>
@@ -113,19 +133,20 @@
 
   <section class="span-12"><h2>Vorgänge <small>activities, worst first</small></h2>
     <div class="scroll-x"><table><thead><tr><th>Vorgang</th><th>Gewerk</th><th style="width:22%">Fortschritt <small>(Strich = Soll)</small></th>
-      <th>Basis-Ende</th><th>Prognose-Ende</th><th class="num">Verzug</th><th class="num">EV</th></tr></thead>
+      <th>Basis-Ende</th><th>Prognose-Ende</th><th class="num">Verzug</th><th class="num" id="evHead">EV</th></tr></thead>
       <tbody id="acts"></tbody></table></div>
+    <div class="pager" id="pager"></div>
   </section>
 
   <section class="span-5"><h2>Ereignisse &amp; Mängel <small>events &amp; defects</small></h2><div id="events"></div></section>
   <section class="span-4"><h2>Personal je Gewerk <small>present vs planned</small></h2><div id="labour" class="chart"></div></section>
   <section class="span-3"><h2>Wetter <small>weather</small></h2><div id="weather"></div></section>
 
-  <section class="span-12"><h2>Plan / Ist / Kosten <small>planned value, earned value, actual cost</small></h2><div id="curve" class="chart" style="height:320px"></div></section>
+  <section class="span-12"><h2 id="curveHead">Plan / Ist / Kosten <small>planned value, earned value, actual cost</small></h2><div id="curve" class="chart" style="height:320px"></div></section>
 
   <section class="span-12">
     <h2 style="display:flex;align-items:center">Zonen <small>elements by state</small>
-      <span class="legend"><span><i style="background:var(--grey)"></i>0 %</span><span><i style="background:var(--amber)"></i>1–99 %</span><span><i style="background:var(--green)"></i>100 %</span></span>
+      <span class="legend" id="zoneLegend"><span><i style="background:var(--grey)"></i>0 %</span><span><i style="background:var(--amber)"></i>1–99 %</span><span><i style="background:var(--green)"></i>100 %</span></span>
     </h2>
     <div class="zones" id="zones"></div>
   </section>
@@ -153,7 +174,9 @@ const STATE_DE = { removed: 'demontiert', substructure: 'Unterkonstruktion', ins
 const de = s => s ? (STATE_DE[s] || s) : 'nicht begonnen';
 const days = n => n == null ? '–' : (n > 0 ? '+' : '') + n + ' AT';
 
-let data = null, elementNames = {}, zoneNames = {};
+let data = null, elementNames = {}, zoneNames = {}, PRICED = true, actPage = 0;
+const PAGE = 20, LARGE_AT = 150;
+const pctOnly = v => v == null ? '–' : (+v).toLocaleString('de-DE', { maximumFractionDigits: 1 }) + ' %';
 const charts = {};
 function chart(id) {
   if (!window.echarts) { $(id).replaceChildren(h('p', { class: 'empty' }, 'Diagramm nicht verfügbar (ECharts nicht geladen).')); return null; }
@@ -164,26 +187,28 @@ window.addEventListener('resize', () => Object.values(charts).forEach(c => c.res
 function renderKpis(k) {
   const card = (label, value, sub, cls) => h('div', { class: 'kpi ' + (cls || '') }, h('div', { class: 'label' }, label), h('div', { class: 'value' }, value), sub ? h('div', { class: 'sub' }, sub) : null);
   const behind = k.pct_actual < k.pct_planned;
-  $('kpis').replaceChildren(
+  $('kpis').replaceChildren(...[
     card('Fortschritt Ist / Soll', `${pct(k.pct_actual)}`, `Soll ${pct(k.pct_planned)}`, behind ? 'bad' : 'good'),
     card('SPI', k.spi == null ? '–' : k.spi.toLocaleString('de-DE', { minimumFractionDigits: 2 }), 'Schedule Performance Index', k.spi != null && k.spi < 0.95 ? 'bad' : 'good'),
-    card('Earned Value', eur(k.ev_eur), `PV ${eur(k.pv_eur)} · BAC ${eur(k.bac_eur)}`),
-    card('Ist-Kosten (AC)', eur(k.ac_eur), k.ac_note || null),
+    PRICED ? card('Earned Value', eur(k.ev_eur), `PV ${eur(k.pv_eur)} · BAC ${eur(k.bac_eur)}`)
+           : card('Ist %', pctOnly(k.ev_eur), `Soll % ${pctOnly(k.pv_eur)} · ohne Preise (unpriced)`),
+    PRICED ? card('Ist-Kosten (AC)', eur(k.ac_eur), k.ac_note || null) : null,
     card('Prognose-Ende', dmy(k.forecast_finish), `Basis ${dmy(k.baseline_finish)} · Verzug ${days(k.delay_d)} · Prognose aus heutigen Befunden`, k.delay_d > 0 ? 'bad' : 'good'),
     card('Offene Mängel', k.open_defects ?? 0, 'open defects', k.open_defects > 0 ? 'bad' : null),
-  );
+  ].filter(Boolean));
 }
 
 function captureCard(c) {
   const zone = zoneNames[c.zone_id] || c.zone_id;
-  const changes = (c.changes || []).map(ch => h('span', { class: 'chip ' + ch.action, title: ch.quote || '' },
+  const CH_CAP = 16, allCh = c.changes || [];
+  const changes = allCh.slice(0, CH_CAP).map(ch => h('span', { class: 'chip ' + ch.action, title: ch.quote || '' },
     `${elementNames[ch.element_id] || ch.element_id}: ${de(ch.state)}`, ch.action === 'proposed' ? ' (Vorschlag)' : ''));
   const photos = (c.photos || []).map(p => h('a', { href: `/media/${encodeURIComponent(c.capture_id)}/${encodeURIComponent(p)}`, target: '_blank' },
     h('img', { src: `/media/${encodeURIComponent(c.capture_id)}/${encodeURIComponent(p)}`, alt: p, loading: 'lazy', onerror: 'this.parentNode.remove()' })));
   return h('div', { class: 'capture' + (seenCaps && !seenCaps.has(c.capture_id) ? ' fresh' : '') },
     h('div', { class: 'meta' }, `${dmy(c.ts)} ${time(c.ts)} · ${zone}`, c.note ? ` · ${c.note}` : ''),
     (c.quotes || []).map(q => h('blockquote', {}, `„${q}“`)),
-    changes.length ? h('div', { class: 'chips' }, changes) : null,
+    changes.length ? h('div', { class: 'chips' }, changes, allCh.length > CH_CAP ? h('span', { class: 'chip' }, `+${allCh.length - CH_CAP} weitere`) : null) : null,
     photos.length ? h('div', { class: 'photos' }, photos) : null);
 }
 let seenCaps = null;
@@ -200,8 +225,25 @@ function renderCaptures(d) {
   }
 }
 
-function renderActivities(acts) {
-  $('acts').replaceChildren(...(acts || []).map(a => {
+function renderActivities(all) {
+  all = all || [];
+  const pages = Math.max(1, Math.ceil(all.length / PAGE));
+  actPage = Math.min(actPage, pages - 1);
+  const acts = all.slice(actPage * PAGE, actPage * PAGE + PAGE);
+  $('evHead').style.display = PRICED ? '' : 'none';
+  const pager = $('pager');
+  if (pages > 1) {
+    const btn = (label, page, attrs = {}) => { const b = h('button', attrs, label); b.onclick = () => { actPage = page; renderActivities(all); }; return b; };
+    pager.replaceChildren(h('span', {}, `${actPage * PAGE + 1}–${Math.min(all.length, actPage * PAGE + PAGE)} von ${all.length}`),
+      btn('‹', actPage - 1, { disabled: actPage === 0 || null }),
+      ...Array.from({ length: pages }, (_, i) => btn(String(i + 1), i, { class: i === actPage ? 'on' : null })),
+      btn('›', actPage + 1, { disabled: actPage >= pages - 1 || null }));
+  } else pager.replaceChildren();
+  $('acts').replaceChildren(...acts.map(a => {
+    if (a.tracked === false) return h('tr', { class: 'untracked' },
+      h('td', {}, h('b', {}, a.name), h('div', { class: 'meta', style: 'font-size:12px' }, a.id)), h('td', {}, a.trade || '–'),
+      h('td', {}, 'nicht verfolgt', h('div', { class: 'meta', style: 'font-size:12px' }, 'keine verknüpften Bauteile')),
+      h('td', {}, dmy(a.baseline_finish)), h('td', {}, '–'), h('td', { class: 'num' }, '–'), PRICED ? h('td', { class: 'num' }, '–') : null);
     const p = Math.max(0, Math.min(100, a.pct || 0)), pp = Math.max(0, Math.min(100, a.planned_pct || 0));
     return h('tr', { class: a.red ? 'red' : '' },
       h('td', {}, h('b', {}, a.name), h('div', { class: 'meta', style: 'color:var(--muted);font-size:12px' }, a.id), a.red && a.cause ? h('div', { class: 'cause' }, a.cause) : null),
@@ -213,7 +255,7 @@ function renderActivities(acts) {
       h('td', {}, dmy(a.baseline_finish)),
       h('td', { class: a.delay_d > 0 ? 'late' : '' }, dmy(a.forecast_finish)),
       h('td', { class: 'num ' + (a.delay_d > 0 ? 'late' : '') }, days(a.delay_d)),
-      h('td', { class: 'num' }, eur(a.ev_eur)));
+      PRICED ? h('td', { class: 'num' }, eur(a.ev_eur)) : null);
   }));
 }
 
@@ -256,6 +298,21 @@ function renderWeather(w) {
 function renderCurve(curve, today) {
   const c = chart('curve'); if (!c) return;
   const pts = curve || [];
+  $('curveHead').firstChild.textContent = PRICED ? 'Plan / Ist / Kosten ' : 'Plan / Ist (in %) ';
+  $('curveHead').querySelector('small').textContent = PRICED ? 'planned value, earned value, actual cost' : 'planned vs actual progress, quantity-weighted';
+  if (!PRICED) {
+    c.setOption({
+      grid: { left: 60, right: 24, top: 36, bottom: 30 }, legend: { top: 0 }, tooltip: { trigger: 'axis', valueFormatter: pctOnly },
+      xAxis: { type: 'category', data: pts.map(p => dm(p.date)), boundaryGap: false },
+      yAxis: { type: 'value', max: 100, axisLabel: { formatter: '{value} %' } },
+      series: [
+        { name: 'Soll %', type: 'line', data: pts.map(p => p.pv_pct ?? p.pv), showSymbol: false, lineStyle: { type: 'dashed', color: '#8a94a6' }, itemStyle: { color: '#8a94a6' } },
+        { name: 'Ist %', type: 'line', data: pts.map(p => p.ev_pct ?? p.ev), showSymbol: false, lineStyle: { width: 3, color: '#2457c5' }, itemStyle: { color: '#2457c5' },
+          markLine: today ? { symbol: 'none', label: { formatter: 'heute' }, lineStyle: { color: '#1c1f24', opacity: .4 }, data: [{ xAxis: dm(today) }] } : undefined },
+      ],
+    }, true);
+    return;
+  }
   c.setOption({
     grid: { left: 70, right: 24, top: 36, bottom: 30 }, legend: { top: 0 },
     tooltip: { trigger: 'axis', valueFormatter: v => v == null ? '–' : eur(v) },
@@ -276,9 +333,47 @@ function tileColor(p) {
   const t = p / 100; // light amber -> deep amber
   return `hsl(${48 - 14 * t}, ${70 + 20 * t}%, ${82 - 28 * t}%)`;
 }
+const STATE_COLORS = ['#d5d8de', '#f3d38a', '#e0a020', '#c27c0e', '#7fbf7f', '#2e9d5b'];
+function renderStoreys(zones) {
+  const box = $('zones');
+  // one stacked bar per storey: element counts by state (in the order of the states lists)
+  const order = [''];
+  zones.forEach(z => z.elements.forEach(e => (e.states || []).forEach(st => { if (!order.includes(st)) order.push(st); })));
+  zones.forEach(z => z.elements.forEach(e => { if (e.state && !order.includes(e.state)) order.push(e.state); }));
+  const colour = st => st === '' ? STATE_COLORS[0] : STATE_COLORS[Math.min(STATE_COLORS.length - 1, 1 + Math.round((order.indexOf(st) - 1) * (STATE_COLORS.length - 2) / Math.max(1, order.length - 2)))];
+  const legend = $('zoneLegend'); legend.style.display = '';
+  legend.replaceChildren(...order.filter(st => zones.some(z => z.elements.some(e => (e.state || '') === st))).map(st => h('span', {}, h('i', { style: `background:${colour(st)}` }), de(st))));
+  const open = new Set([...box.querySelectorAll('details[open]')].map(d => d.dataset.zone));
+  box.className = 'storeys';
+  box.replaceChildren(...zones.map(z => {
+    const counts = {}; z.elements.forEach(e => counts[e.state || ''] = (counts[e.state || ''] || 0) + 1);
+    const n = z.elements.length, avg = n ? z.elements.reduce((s, e) => s + (e.pct || 0), 0) / n : 0;
+    const det = h('details', { class: 'storey', 'data-zone': z.zone_id },
+      h('summary', {}, h('b', {}, z.name || z.zone_id),
+        h('div', { class: 'sbar' }, order.filter(st => counts[st]).map(st => h('span', { style: `width:${100 * counts[st] / n}%;background:${colour(st)}`, title: `${de(st)}: ${counts[st]}` }))),
+        h('div', { class: 'scount' }, `${n} Bauteile · Ø ${pctOnly(avg)}`)),
+      h('div', { class: 'skeys' }, order.filter(st => counts[st]).map(st => h('span', {}, h('i', { style: `background:${colour(st)}` }), `${de(st)}: ${counts[st]}`))));
+    det.addEventListener('toggle', () => { if (det.open && !det.querySelector('.elist')) det.append(elementList(z)); });
+    if (open.has(z.zone_id)) { det.open = true; det.append(elementList(z)); }
+    return det;
+  }));
+}
+function elementList(z) {  // built only when a storey is opened; filtered client-side
+  const body = h('tbody');
+  const fill = q => body.replaceChildren(...z.elements.filter(e => !q || e.name.toLowerCase().includes(q)).slice(0, 500)
+    .map(e => h('tr', {}, h('td', {}, e.name), h('td', {}, de(e.state)), h('td', { class: 'num' }, pctOnly(e.pct)))));
+  const input = h('input', { type: 'search', placeholder: `Suche in ${z.elements.length} Bauteilen…` });
+  input.oninput = () => fill(input.value.trim().toLowerCase());
+  fill('');
+  return h('div', { class: 'elist' }, input, h('table', {}, body));
+}
+let zoneLegendHtml = null;
 function renderZones(zones) {
   const box = $('zones');
   if (!zones || !zones.length) { box.replaceChildren(h('p', { class: 'empty' }, 'Keine Zonen.')); return; }
+  if (zones.reduce((s, z) => s + (z.elements || []).length, 0) > LARGE_AT) return renderStoreys(zones);
+  box.className = 'zones';
+  if (!zoneLegendHtml) zoneLegendHtml = $('zoneLegend').innerHTML; else $('zoneLegend').innerHTML = zoneLegendHtml;
   box.replaceChildren(...zones.map(z => h('div', { class: 'zone' },
     h('h3', {}, z.name || z.zone_id),
     h('div', { class: 'tiles' }, (z.elements || []).map(e => h('div', { class: 'tile', style: `background:${tileColor(e.pct)}${e.pct >= 100 ? ';color:#fff' : ''}`, title: `${e.name}: ${de(e.state)} (${e.pct ?? 0} %)` },
@@ -287,6 +382,7 @@ function renderZones(zones) {
 
 function render(d) {
   data = d;
+  PRICED = !(d.kpi && d.kpi.priced === false);
   zoneNames = {}; elementNames = {};
   (d.zones || []).forEach(z => { zoneNames[z.zone_id] = z.name; (z.elements || []).forEach(e => elementNames[e.id] = e.name); });
   $('date').textContent = dmy(d.date);
@@ -306,6 +402,7 @@ async function load() {
     if (!r.ok) throw new Error(`HTTP ${r.status}`);
     render(await r.json());
     $('banner').style.display = 'none';
+    window.tagwerkReady = window.tagwerkReady || performance.now();
   } catch (e) {
     $('banner').textContent = `Daten konnten nicht geladen werden (${e.message}).`;
     $('banner').style.display = 'block';
@@ -329,6 +426,7 @@ function connect() {
   ws.onerror = () => ws.close();
 }
 
+fetch('/health').then(r => r.json()).then(hh => { if (hh.project) { $('project').textContent = '· ' + hh.project; document.title = `Tagwerk · ${hh.project}`; } }).catch(() => {});
 load();
 connect();
 </script>

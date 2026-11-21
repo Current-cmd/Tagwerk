@@ -77,8 +77,22 @@ const COLS = [  // world x of each column centre, box width, heading
   { label: 'Capture', x: 1530, w: 190, head: 'Aufnahme heute' },
   { label: 'Event', x: 1790, w: 230, head: 'Ereignis / Vorschlag' },
 ];
-const COL = Object.fromEntries(COLS.map(c => [c.label, c])); COL.Proposal = COL.Event;
-const HEIGHT = 860;            // world units the tallest column spreads over
+// large projects (> LARGE_AT elements): WBS -> activity -> one aggregate per (activity, storey) -> touched/opened elements
+const LCOLS = [
+  { label: 'WBS', x: 110, w: 190, head: 'Abschnitt (WBS)' },
+  { label: 'Activity', x: 420, w: 270, head: 'P6-Vorgang' },
+  { label: 'Aggregate', x: 760, w: 250, head: 'Vorgang × Geschoss' },
+  { label: 'Element', x: 1090, w: 250, head: 'Bauteil (heute / geöffnet)' },
+  { label: 'Zone', x: 1375, w: 190, head: 'Geschoss' },
+  { label: 'Capture', x: 1610, w: 180, head: 'Aufnahme heute' },
+  { label: 'Event', x: 1815, w: 200, head: 'Ereignis / Vorschlag' },
+];
+const colMap = cols => { const m = Object.fromEntries(cols.map(c => [c.label, c])); m.Proposal = m.Event; m.More = m.Element; return m; };
+const LARGE_AT = 150, AGG_CAP = 60;
+const INSTALLED = new Set(['installed', 'checked', 'done', 'finished', 'tested', 'commissioned']);
+let LARGE = false, CUR_COLS = COLS, COL = colMap(COLS);
+const BASE_H = 860;
+let HEIGHT = BASE_H;           // world units the tallest column spreads over (grows for big expanded views)
 const MAX_CAPTURES = 6;        // newest captures of today on screen
 const STATE_DE = { removed: 'demontiert', substructure: 'Unterkonstruktion', installed: 'montiert', checked: 'abgenommen',
   prepared: 'vorbereitet', primed: 'grundiert', painted: 'gestrichen', done: 'fertig', framed: 'Rahmen', boarded: 'beplankt',
@@ -116,10 +130,16 @@ function nodeLabel(n) {
   const p = n.props || {};
   const f = flashes.get(n.id);
   switch (n.label) {
-    case 'Element': return `<b>${clip(p.name_de || p.name || n.id, 20)}</b>  ${f ? `${f.from} → ${p.pct ?? 0} %` : (p.pct ?? 0) + ' %'}`;
+    case 'Element': return `<b>${clip(p.name_de || p.name || n.id, LARGE ? 21 : 20)}</b>  ${f ? `${f.from} → ${p.pct ?? 0}\u00a0%` : (p.pct ?? 0) + '\u00a0%'}`;
     case 'Activity': {
       const late = p.delay_d > 0 ? `  ·  <b>+${p.delay_d} AT</b>` : '';
-      return `<b>${clip(p.name || n.id, 24)}</b>\n${(+(p.pct ?? 0)).toFixed(0)} %${late}`;
+      if (p.tracked === false) return `<b>${clip(p.name || n.id, LARGE ? 27 : 24)}</b>\nnicht verfolgt`;
+      return `<b>${clip(p.name || n.id, LARGE ? 27 : 24)}</b>\n${(+(p.pct ?? 0)).toFixed(0)} %${late}`;
+    }
+    case 'WBS': return `<b>${wbsOpen.has(n.id) ? '▾' : '▸'} ${clip(p.name || p.code || n.id, 18)}</b>\n${p.shown}/${p.total} Vorgänge`;
+    case 'Aggregate': return `<b>${aggOpen.has(n.id) ? '▾' : '▸'} ${clip(p.zoneName, 20)}</b>\n${p.n}/${p.m} montiert · ${p.pct.toFixed(0)} %`;
+    case 'More': return `+${p.k} weitere…`;
+    case '_': {
     }
     case 'BoQPosition': return `<b>${n.id}</b>\n${clip(p.short_text || '', 25)}`;
     case 'Capture': return `<b>Aufnahme ${capTime(p)}</b>`;
@@ -134,7 +154,11 @@ function nodeStyle(n) {
   let bg = '#30363d', fg = '#e6edf3', border = bg, bw = 0, dashes = false;
   switch (n.label) {
     case 'BoQPosition': bg = '#3d2e0f'; border = '#d29922'; bw = 1; fg = '#f2cc60'; break;
-    case 'Activity': bg = '#3b2a63'; border = p.delay_d > 0 ? '#f85149' : '#a371f7'; bw = p.delay_d > 0 ? 3 : 1; break;
+    case 'Activity': bg = '#3b2a63'; border = p.delay_d > 0 ? '#f85149' : '#a371f7'; bw = p.delay_d > 0 ? 3 : 1;
+      if (p.tracked === false) { bg = '#2d333b'; border = '#484f58'; bw = 1; fg = '#8b949e'; } break;
+    case 'WBS': bg = '#1c2a3a'; border = '#58a6ff'; bw = 1; break;
+    case 'Aggregate': bg = pctColor(p.pct); fg = p.pct ? '#0d1117' : '#e6edf3'; border = aggOpen.has(n.id) ? '#fff' : bg; bw = aggOpen.has(n.id) ? 2 : 0; break;
+    case 'More': bg = '#21262d'; border = '#6e7681'; bw = 1; fg = '#c9d1d9'; dashes = true; break;
     case 'Element': bg = pctColor(p.pct); fg = p.pct ? '#0d1117' : '#e6edf3'; border = bg; break;
     case 'Zone': bg = '#12361f'; border = '#3fb950'; bw = 1; break;
     case 'Capture': bg = '#1f6feb'; border = '#79c0ff'; bw = 1; fg = '#fff'; break;
@@ -147,7 +171,7 @@ function tooltip(n) {
   const p = n.props || {};
   const el = document.createElement('div');
   el.style.cssText = 'font:13px system-ui;max-width:360px;white-space:pre-wrap';
-  const rows = Object.entries(p).filter(([k, v]) => v !== null && v !== '' && typeof v !== 'object' && !['id', 'global_id'].includes(k));
+  const rows = Object.entries(p).filter(([k, v]) => v !== null && v !== '' && typeof v !== 'object' && !['id', 'global_id', 'zone', 'act'].includes(k));
   el.textContent = `${n.label} ${n.id}\n` + rows.map(([k, v]) => `${k}: ${k === 'state' ? de(v) : v}`).join('\n');
   return el;
 }
@@ -172,6 +196,7 @@ function todaysCaptures() {
 let shownCaps = new Set();
 function captureOf(n) { return n.props.capture || n.props.capture_id || n.id.split(':')[0]; }
 function visible(n) {
+  if (LARGE) return !!(LV && LV.nodes.has(n.id));
   if (details()) return true;
   if (!MAIN.has(n.label)) return false;
   if (n.label === 'Capture') return shownCaps.has(n.id);
@@ -201,7 +226,7 @@ function spread(ids, x, top = 0, height = HEIGHT) {
   ids.forEach((id, i) => POS.set(id, { x, y: top + step * (i + 0.5) }));
 }
 function layout() {
-  POS = new Map();
+  POS = new Map(); HEIGHT = BASE_H;
   const byLabel = l => [...all.nodes.values()].filter(n => n.label === l && visible(n));
   const out = (src, rel) => [...all.edges.values()].filter(e => e.src === src && e.rel === rel).map(e => e.dst);
   const acts = byLabel('Activity').sort((a, b) => a.id.localeCompare(b.id));
@@ -240,6 +265,120 @@ function separate(items, gap) {  // keep order, enforce a minimum gap, stay insi
   if (items.length && items[0].y < gap / 2) { const d = gap / 2 - items[0].y; items.forEach(it => it.y += d); }
 }
 
+// ---------------------------------------------------------------- large projects
+let LV = null, aggOpen = new Set(), wbsOpen = new Set(), moreCap = {}, fxQueue = [], largeTimer = null;
+function scheduleLarge() {
+  clearTimeout(largeTimer);
+  largeTimer = setTimeout(() => { largeTimer = null; redrawLarge(false); const q = fxQueue; fxQueue = []; q.forEach(f => f()); }, 120);
+}
+function buildLarge() {
+  shownCaps = new Set(todaysCaptures().map(c => c.id));
+  const builds = new Map(), wbsOf = new Map(), V = new Map(), VE = [];
+  all.edges.forEach(e => {
+    if (e.rel === 'BUILDS') (builds.get(e.src) || builds.set(e.src, []).get(e.src)).push(e.dst);
+    else if (e.rel === 'IN_WBS' && all.nodes.get(e.src)?.label === 'Activity') wbsOf.set(e.src, e.dst);
+  });
+  const touched = new Set();
+  all.edges.forEach(e => { if (e.rel === 'CONFIRMED' && shownCaps.has(e.src)) touched.add(e.dst); });
+  all.nodes.forEach(n => { if (n.label === 'Proposal' && shownCaps.has(captureOf(n)) && n.props.element) touched.add(n.props.element); });
+  const zoneOrder = [...all.nodes.values()].filter(n => n.label === 'Zone').map(n => n.id);
+  const acts = [...all.nodes.values()].filter(n => n.label === 'Activity').sort((a, b) =>
+    (wbsOf.get(a.id) || '').localeCompare(wbsOf.get(b.id) || '') || (a.props.planned_start || '').localeCompare(b.props.planned_start || '') || a.id.localeCompare(b.id));
+  const focus = a => { const p = a.props, pct = p.pct || 0, fin = p.forecast_finish || p.planned_finish || '';
+    return (pct > 0 && pct < 100) || (TODAY && (p.planned_start || '9') <= TODAY && TODAY <= fin); };
+  const shownActs = acts.filter(a => focus(a) || wbsOpen.has(wbsOf.get(a.id)) || (builds.get(a.id) || []).some(el => touched.has(el)));
+  const add = n => V.set(n.id, n);
+  [...all.nodes.values()].filter(n => n.label === 'WBS').sort((a, b) => (a.props.code || a.id).localeCompare(b.props.code || b.id)).forEach(w => {
+    const total = acts.filter(a => wbsOf.get(a.id) === w.id).length;
+    if (total) add({ ...w, props: { ...w.props, total, shown: shownActs.filter(a => wbsOf.get(a.id) === w.id).length } });
+  });
+  const elShown = new Set(touched), memberEdges = [];
+  shownActs.forEach(a => {
+    add(a);
+    if (wbsOf.has(a.id) && V.has(wbsOf.get(a.id))) VE.push({ src: wbsOf.get(a.id), rel: 'IN_WBS', dst: a.id });
+    const byZone = new Map();
+    (builds.get(a.id) || []).forEach(el => { const z = all.nodes.get(el)?.props.zone; if (z) (byZone.get(z) || byZone.set(z, []).get(z)).push(el); });
+    [...byZone.keys()].sort((x, y) => zoneOrder.indexOf(x) - zoneOrder.indexOf(y)).forEach(z => {
+      const members = byZone.get(z), id = `agg:${a.id}:${z}`;
+      const els = members.map(m => all.nodes.get(m).props);
+      add({ id, label: 'Aggregate', props: { act: a.id, zone: z, zoneName: all.nodes.get(z)?.props.name || z, members, m: members.length,
+        n: els.filter(e => INSTALLED.has(e.state) || (e.pct || 0) >= 100).length, pct: els.reduce((s, e) => s + (e.pct || 0), 0) / members.length } });
+      VE.push({ src: a.id, rel: 'HAS_AGG', dst: id }, { src: id, rel: 'AGG_ZONE', dst: z });
+      if (aggOpen.has(id)) {
+        const cap = moreCap[id] || AGG_CAP;
+        members.slice(0, cap).forEach(m => elShown.add(m));
+        if (members.length > cap) { add({ id: `more:${id}`, label: 'More', props: { agg: id, k: members.length - cap } }); VE.push({ src: id, rel: 'MEMBER', dst: `more:${id}` }); }
+      }
+      members.forEach(m => memberEdges.push([id, m]));
+    });
+  });
+  elShown.forEach(id => { const n = all.nodes.get(id); if (n) add(n); });
+  memberEdges.forEach(([a, m]) => { if (elShown.has(m)) VE.push({ src: a, rel: 'MEMBER', dst: m }); });
+  all.nodes.forEach(n => {
+    if (n.label === 'Zone') add(n);
+    else if (n.label === 'Capture' && shownCaps.has(n.id)) add(n);
+    else if (n.label === 'Proposal' && shownCaps.has(captureOf(n))) add(n);
+    else if (n.label === 'Event' && shownCaps.has(captureOf(n))) add(n);
+  });
+  LV = { nodes: V, edges: VE };
+  [...V.values()].filter(n => n.label === 'Event' && duplicateEvent(n)).forEach(n => V.delete(n.id));
+  all.edges.forEach(e => {
+    if (['CONFIRMED', 'PROPOSES', 'FOR', 'IN_ZONE', 'RAISED', 'AFFECTS'].includes(e.rel) && V.has(e.src) && V.has(e.dst)) VE.push(e);
+  });
+  return { shownActs, elShown };
+}
+function layoutLarge() {
+  POS = new Map();
+  const V = LV.nodes, of = l => [...V.values()].filter(n => n.label === l);
+  const acts = of('Activity'), aggs = of('Aggregate'), els = of('Element').concat(of('More'));
+  HEIGHT = Math.max(BASE_H, acts.length * 50, aggs.length * 46, els.length * 26);
+  spread(aggs.map(n => n.id), COL.Aggregate.x);
+  const yOf = id => POS.get(id)?.y;
+  const bary = (ids, fb) => { const ys = ids.map(yOf).filter(v => v != null); return ys.length ? ys.reduce((s, v) => s + v, 0) / ys.length : fb; };
+  const outs = new Map(); LV.edges.forEach(e => (outs.get(e.src) || outs.set(e.src, []).get(e.src)).push(e));
+  const kids = (id, rel) => (outs.get(id) || []).filter(e => e.rel === rel).map(e => e.dst);
+  const actItems = acts.map(a => ({ id: a.id, y: bary(kids(a.id, 'HAS_AGG'), HEIGHT / 2) }));
+  separate(actItems, 50); actItems.forEach(a => POS.set(a.id, { x: COL.Activity.x, y: a.y }));
+  const wbs = of('WBS').map((w, i) => ({ id: w.id, y: bary(kids(w.id, 'IN_WBS'), -1) }));
+  let tail = 0; wbs.forEach(w => { if (w.y < 0) w.y = HEIGHT + 100 * tail++; });  // collapsed sections go to the bottom
+  wbs.sort((a, b) => a.y - b.y); separate(wbs, 62); wbs.forEach(w => POS.set(w.id, { x: COL.WBS.x, y: w.y }));
+  const firstAgg = new Map(); LV.edges.forEach(e => { if (e.rel === 'MEMBER' && !firstAgg.has(e.dst)) firstAgg.set(e.dst, yOf(e.src)); });
+  const elItems = els.map(n => ({ id: n.id, y: firstAgg.get(n.id) ?? HEIGHT })).sort((a, b) => a.y - b.y);
+  if (elItems.length * 26 >= HEIGHT - 26) spread(elItems.map(e => e.id), COL.Element.x);
+  else { separate(elItems, 26); elItems.forEach(e => POS.set(e.id, { x: COL.Element.x, y: e.y })); }
+  const zones = of('Zone').map(z => ({ id: z.id, y: bary(aggs.filter(a => a.props.zone === z.id).map(a => a.id), -1) }));
+  zones.forEach((z, i) => { if (z.y < 0) z.y = HEIGHT; });
+  zones.sort((a, b) => a.y - b.y); separate(zones, 56); zones.forEach(z => POS.set(z.id, { x: COL.Zone.x, y: z.y }));
+  const caps = of('Capture').map(c => ({ id: c.id, y: yOf(c.props.zone_id || (outs.get(c.id) || []).find(e => e.rel === 'IN_ZONE')?.dst) ?? HEIGHT / 2 }));
+  caps.sort((a, b) => a.y - b.y); separate(caps, 62); caps.forEach(c => POS.set(c.id, { x: COL.Capture.x, y: c.y }));
+  const side = [];
+  caps.forEach(c => {
+    const ks = [...V.values()].filter(n => (n.label === 'Event' || n.label === 'Proposal') && captureOf(n) === c.id);
+    ks.forEach((k, i) => side.push({ id: k.id, y: c.y + (i - (ks.length - 1) / 2) * 52 }));
+  });
+  side.sort((a, b) => a.y - b.y); separate(side, 50); side.forEach(s => POS.set(s.id, { x: COL.Event.x, y: s.y }));
+}
+function redrawLarge(fit) {
+  buildLarge(); layoutLarge();
+  nodes.clear(); edges.clear();
+  nodes.add([...LV.nodes.values()].map(n => visNode(n, POS.get(n.id))));
+  edges.add(LV.edges.map(e => visEdge(e.src + '|' + e.rel + '|' + e.dst, e)));
+  if (latestCap && nodes.get(latestCap)) nodes.update({ id: latestCap, shadow: { enabled: true, color: '#79c0ff', size: 18, x: 0, y: 0 } });
+  heads();
+  if (fit) fitAll(false);
+}
+net.on('click', p => {
+  if (!LARGE || !p.nodes.length || !LV) return;
+  const id = p.nodes[0], n = LV.nodes.get(id); if (!n) return;
+  if (n.label === 'Aggregate') { aggOpen.has(id) ? aggOpen.delete(id) : aggOpen.add(id); }
+  else if (n.label === 'More') { moreCap[n.props.agg] = (moreCap[n.props.agg] || AGG_CAP) + AGG_CAP; }
+  else if (n.label === 'WBS') { wbsOpen.has(id) ? wbsOpen.delete(id) : wbsOpen.add(id); }
+  else return;
+  redrawLarge(false); fitAll(true);
+});
+net.on('hoverNode', p => { const n = LV && LARGE && LV.nodes.get(p.node); document.getElementById('net').style.cursor = n && ['Aggregate', 'More', 'WBS'].includes(n.label) ? 'pointer' : ''; });
+net.on('blurNode', () => { document.getElementById('net').style.cursor = ''; });
+
 // ---------------------------------------------------------------- drawing
 function applyLayoutMode() {
   net.setOptions(details()
@@ -247,6 +386,7 @@ function applyLayoutMode() {
     : { layout: { hierarchical: { enabled: false } } });
 }
 function redraw(fit = true) {
+  if (LARGE) return redrawLarge(fit);
   shownCaps = new Set(todaysCaptures().map(c => c.id));
   layout();
   nodes.clear(); edges.clear();
@@ -258,6 +398,7 @@ function redraw(fit = true) {
   if (fit) fitAll(false);
 }
 function relayout() {  // new capture/event: re-place without rebuilding everything
+  if (LARGE) return scheduleLarge();
   const before = new Set(shownCaps);
   shownCaps = new Set(todaysCaptures().map(c => c.id));
   if ([...before].some(id => !shownCaps.has(id))) return redraw(false);
@@ -279,11 +420,15 @@ function visEdge(id, e) {
                smooth: { type: 'curvedCW', roundness: 0.15 } },
     IN_ZONE: { color: { color: '#388bfd88' }, width: 1.5 },
     CONTAINS_ELEMENT: { color: { color: '#3fb95033' } },
+    IN_WBS: { color: { color: '#58a6ff55' }, width: 1.5 },
+    HAS_AGG: { color: { color: '#a371f766' }, width: 1.5 },
+    AGG_ZONE: { color: { color: '#3fb95040' } },
+    MEMBER: { color: { color: '#8b949e44' } },
   }[e.rel] || {};
   return { id, from: e.src, to: e.dst, title: e.rel + (e.props && e.props.quote ? `\n„${e.props.quote}“` : ''), ...st };
 }
 function fitAll(animate) {
-  if (details()) return net.fit({ animation: animate ? { duration: 500 } : false });
+  if (details() && !LARGE) return net.fit({ animation: animate ? { duration: 500 } : false });
   // frame the fixed world box so the canvas never rescales as captures come and go
   const el = document.getElementById('net'), W = el.clientWidth, H = el.clientHeight;
   const scale = Math.min(W / 1930, H / (HEIGHT + 20));
@@ -291,8 +436,8 @@ function fitAll(animate) {
 }
 function heads() {
   const box = document.getElementById('heads');
-  if (details()) return box.replaceChildren();
-  box.replaceChildren(...COLS.map(c => { const d = document.createElement('div'); d.textContent = c.head; d.dataset.x = c.x; return d; }));
+  if (details() && !LARGE) return box.replaceChildren();
+  box.replaceChildren(...CUR_COLS.map(c => { const d = document.createElement('div'); d.textContent = c.head; d.dataset.x = c.x; return d; }));
   placeHeads();
 }
 function placeHeads() {
@@ -309,6 +454,7 @@ function tween(ms, step, done) {
   requestAnimationFrame(f);
 }
 function pulse(id, color = '#79c0ff', ms = 2600) {
+  if (LARGE && largeTimer) return void fxQueue.push(() => pulse(id, color, ms));
   if (!live || !nodes.get(id)) return;
   tween(ms, t => {
     const k = Math.sin(t * Math.PI * 4) * 0.5 + 0.5, fade = 1 - t;
@@ -316,11 +462,13 @@ function pulse(id, color = '#79c0ff', ms = 2600) {
   }, () => { const n = all.nodes.get(id); if (n && nodes.get(id)) nodes.update({ id, shadow: { enabled: n.label === 'Capture' && id === latestCap, color, size: 18, x: 0, y: 0 }, borderWidth: nodeStyle(n).bw }); });
 }
 function pulseEdge(id, base = 3) {
+  if (LARGE && largeTimer) return void fxQueue.push(() => pulseEdge(id, base));
   if (!live || !edges.get(id)) return;
   tween(3000, t => { const k = Math.sin(t * Math.PI * 6) * 0.5 + 0.5; edges.update({ id, width: base + 7 * k * (1 - t) }); },
         () => edges.get(id) && edges.update({ id, width: base }));
 }
 function recolour(n, prevPct) {
+  if (LARGE && largeTimer) return void fxQueue.push(() => recolour(n, prevPct));
   if (!nodes.get(n.id)) return;
   if (!live || prevPct === n.props.pct) return nodes.update(visNode(n));
   flashes.set(n.id, { from: prevPct ?? 0 });
@@ -372,15 +520,20 @@ function mark(q, cls) { if (q) { q = q.replace(/^manual:\s*/, '').trim(); if (q)
 
 // ---------------------------------------------------------------- data
 async function snapshot(fit = true) {
-  const [g, dash] = await Promise.all([fetch('/api/graph').then(r => r.json()), fetch('/api/dashboard').then(r => r.json()).catch(() => null)]);
+  const [g, dash] = await Promise.all([fetch('/api/graph').then(r => r.json()), fetch('/api/overview').then(r => r.json()).catch(() => null)]);
   all = { nodes: new Map(), edges: new Map() };
   g.nodes.forEach(n => all.nodes.set(n.id, n));
   g.edges.forEach(e => all.edges.set(e.src + '|' + e.rel + '|' + e.dst, e));
-  (dash?.activities || []).forEach(a => { const n = all.nodes.get(a.id); if (n) Object.assign(n.props, { pct: a.pct, delay_d: a.delay_d, forecast_finish: a.forecast_finish }); });
+  (dash?.activities || []).forEach(a => { const n = all.nodes.get(a.id); if (n) Object.assign(n.props, { pct: a.pct, delay_d: a.delay_d, forecast_finish: a.forecast_finish, tracked: a.tracked }); });
+  let nEl = 0; all.nodes.forEach(n => { if (n.label === 'Element') nEl++; });
+  LARGE = nEl > LARGE_AT;
+  CUR_COLS = LARGE ? LCOLS : COLS; COL = colMap(CUR_COLS);
+  document.getElementById('details').parentNode.style.display = LARGE ? 'none' : '';
   latestCap = todaysCaptures().slice(-1)[0]?.id || null;
   redraw(fit);
   if (latestCap) nodes.update({ id: latestCap, shadow: { enabled: true, color: '#79c0ff', size: 18, x: 0, y: 0 } });
 }
+  window.tagwerkReady = window.tagwerkReady || performance.now();
 let latestCap = null;
 function putNode(n) {
   const prev = all.nodes.get(n.id);
@@ -391,6 +544,7 @@ function putNode(n) {
 function putEdge(e) {
   const id = e.src + '|' + e.rel + '|' + e.dst;
   all.edges.set(id, e);
+  if (LARGE) { scheduleLarge(); return id; }
   if (edgeVisible(e)) { if (edges.get(id)) edges.update(visEdge(id, e)); else edges.add(visEdge(id, e)); }
   return id;
 }
@@ -445,6 +599,10 @@ function onEvent(ev) {
     const { merged } = putNode({ label: ev.label, id: ev.id, props: ev.props });
     if (ev.label === 'Element') {
       if (p.name && !merged.props.name_de) merged.props.name_de = p.name;
+      if (LARGE) {
+        scheduleLarge();
+        fxQueue.push(() => LV && LV.nodes.forEach(a => a.label === 'Aggregate' && a.props.members.includes(ev.id) && pulse(a.id, '#56d364', 3000)));
+      }
       recolour(merged, prevPct);
       if (live && p.via === 'CONFIRMED' && prevPct !== p.pct) toast(`✓ ${merged.props.name_de || ev.id}: ${de(p.state)} · ${prevPct ?? 0} → ${p.pct} %`);
     } else if (ev.label === 'Activity') {
