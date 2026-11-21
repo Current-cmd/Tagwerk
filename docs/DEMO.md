@@ -21,6 +21,20 @@ All commands in `~/Developer/hacka/Tagwerk`, with `export PYTHONPATH=$PWD`.
   cached). It replays the chosen one with no GPU/network; the graph animates live and a toast says "fertig: N Änderungen".
   The list is the project's `demo_replays` (`seed/project.json`, `seed/projects/<name>/project.json`), else every
   cached capture except `dt-`, `replay-`, `scan-`, `cap-ui-` ones (`GET /api/replays`).
+- Video view on `/graph`: picking a replay that has a video opens a panel on the left (about 38 %, ✕ or the
+  "🎬 Video" button hides it). ▶ Abspielen starts the video, and when it really plays the server clock starts
+  (`POST /captures` with `replay_of` + `sync=1`): every change is published at its second of the video (the item's `t`,
+  else estimated from where its words sit in the speech segment), so the graph fills in as the video reaches each
+  statement. Under the video: live captions (what is being said, recognised phrases highlighted) and "Erfasst" with
+  mm:ss. A replay without video but with a typed note (Schependomlaan) shows the note as a card instead. A new LIVE
+  upload with a video shows that video and its "Erfasst" list as soon as the capture is done.
+- New replay entry with video: upload the clip once on `/upload` (or `/api/scan`-less: any capture with a video). The
+  API copies the first video and up to 3 photos (files over 300 MB are skipped) and the typed note to
+  `cache/<capture_id>/media/` and `capture.json`, so it survives `reset_demo.py` (which deletes `data/captures/` but keeps
+  `cache/`). Then add `{"id": "<capture_id>", "label": "..."}` to `demo_replays` in `seed/project.json` (Hörsaal) or
+  `seed/projects/<name>/project.json`; without it every cached capture except `dt-/replay-/scan-/cap-ui-` is listed.
+  An older cache without media: copy the clip to `cache/<id>/media/` by hand (cap-e2e-2: `cache/cap-e2e-2/media/demo.mp4`,
+  backup `~/Developer/hacka/demo-media/demo.mp4`).
 - Live: photo + short voice note from the phone. Phrases that change the freshly reset demo state (checked by
   `tests/test_demo_phrases.py`): "Stuhlreihe A ist montiert", "Reihen F bis H Unterkonstruktion",
   "zwei Mann vom Trockenbau sind krank", "Lautsprecher links und Lautsprecher rechts angeschlossen", "die Leinwand ist in Betrieb",

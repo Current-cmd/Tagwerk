@@ -21,6 +21,7 @@ from tagwerk.contracts import validate
 from tagwerk.events import broker
 from tagwerk.graph.store import get_store
 from tagwerk.graph.sync import sync_capture, sync_seed
+from tagwerk.pipeline import runner
 from tagwerk.pipeline.export import captures_to_ics, gaeb_xml, p6_xml
 from tagwerk.pipeline.runner import run_capture
 from tagwerk.state import get_project, save_result, today
@@ -85,9 +86,11 @@ async def create_capture(
     capture_id: str | None = Form(None),  # client resends the same id on retry
     ts: str | None = Form(None),  # optional server-time override (history/replay)
     replay_of: str | None = Form(None),  # re-run an earlier capture from its cached stage outputs
+    sync: str | None = Form(None),  # replays only: publish each change at its second of the video (clock starts now)
     files: list[UploadFile] = File(default=[]),
 ) -> dict:
     project = get_project()
+    sync_t0 = runner._clock() if (replay_of and (sync or "").lower() in ("1", "true", "yes")) else None
     _check_id(capture_id, "capture_id")
     _check_id(replay_of, "replay_of")
     if replay_of and zone_id is None:
@@ -115,7 +118,7 @@ async def create_capture(
     async with _lock:
         if cid in project.captures:
             return {"capture_id": cid, "status": "exists"}
-        result = await run_capture(capture, replay=bool(replay_of))
+        result = await run_capture(capture, replay=bool(replay_of), sync_t0=sync_t0)
     _results[cid] = result
     return {"capture_id": cid, "status": "processed",
             "transcript": " ".join(s["text"] for s in result["transcript"]["segments"]),
@@ -136,8 +139,11 @@ def _check_id(value: str | None, field: str) -> None:
 def _cached_zone(src: str) -> str | None:
     import json
 
-    p = Path(get_settings().cache_dir) / src / "context.json"
-    return json.loads(p.read_text(encoding="utf-8")).get("zone_id") if p.exists() else None
+    for name in ("context.json", "capture.json"):
+        p = Path(get_settings().cache_dir) / src / name
+        if p.exists():
+            return json.loads(p.read_text(encoding="utf-8")).get("zone_id")
+    return None
 
 
 def _prepare_replay(src: str, dst: str) -> None:
@@ -217,7 +223,8 @@ HIDDEN_REPLAY_PREFIXES = ("replay-", "dt-", "scan-", "cap-ui-")
 
 
 def _replay_entry(cid: str, label: str | None = None) -> dict:
-    """{"id", "label", "zone_id", "ts"} from the cached stage outputs (best effort, nothing is required but speech.json)."""
+    """Picker entry from the cached stage outputs (best effort, nothing is required but speech.json): label, zone, time,
+    the kept video/photos (`/media/<id>/<file>`), the typed note and the speech segments for live captions."""
     import json
 
     d = Path(get_settings().cache_dir) / cid
@@ -228,12 +235,18 @@ def _replay_entry(cid: str, label: str | None = None) -> dict:
         except (OSError, ValueError):
             return {}
 
-    ctx, structured, speech = load("context.json"), load("structured.json"), load("speech.json")
+    ctx, structured, speech, cap = load("context.json"), load("structured.json"), load("speech.json"), load("capture.json")
+    segments = [{"start": g["start"], "end": g["end"], "text": g["text"]} for g in speech.get("segments", [])]
+    note = (cap.get("note") or ctx.get("note") or structured.get("note") or "").strip() or None
     if not label:
-        text = " ".join(seg.get("text", "") for seg in speech.get("segments", [])).strip() or \
-            (ctx.get("note") or structured.get("note") or "").strip()
+        text = " ".join(g["text"] for g in segments).strip() or note or ""
         label = (text[:60].rstrip() + ("…" if len(text) > 60 else "")) if text else cid
-    return {"id": cid, "label": label, "zone_id": ctx.get("zone_id"), "ts": ctx.get("ts") or structured.get("ts")}
+    files = sorted(p.name for p in (d / "media").iterdir() if p.is_file()) if (d / "media").is_dir() else []
+    video = next((f for f in files if f.lower().endswith((".mp4", ".mov", ".webm", ".m4v"))), None)
+    photos = [f"/media/{cid}/{f}" for f in files if f.lower().endswith((".jpg", ".jpeg", ".png", ".webp"))]
+    return {"id": cid, "label": label, "zone_id": cap.get("zone_id") or ctx.get("zone_id"),
+            "ts": cap.get("ts") or ctx.get("ts") or structured.get("ts"), "video": f"/media/{cid}/{video}" if video else None,
+            "photos": photos, "note": note, "segments": segments}
 
 
 @app.get("/api/replays")
@@ -260,11 +273,17 @@ def get_capture(capture_id: str) -> dict:
 
 @app.get("/media/{capture_id}/{name:path}")
 def media(capture_id: str, name: str) -> FileResponse:
-    base = (Path(get_settings().data_dir) / "captures").resolve()
-    path = (base / capture_id / name).resolve()
-    if base not in path.parents or not path.is_file():
+    """Uploads of a capture (data/captures/<id>/) or, once those are gone, the copy kept with its cache
+    (cache/<id>/media/). Both are confined to their folder."""
+    s = get_settings()
+    if not ID_RE.match(capture_id):  # ".." as the id would move the base itself
         raise HTTPException(404)
-    return FileResponse(path)
+    for root in (Path(s.data_dir) / "captures" / capture_id, Path(s.cache_dir) / capture_id / "media"):
+        base = root.resolve()
+        path = (base / name).resolve()
+        if base in path.parents and path.is_file():
+            return FileResponse(path)
+    raise HTTPException(404)
 
 
 class Confirm(BaseModel):
