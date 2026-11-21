@@ -8,3 +8,4 @@ CREATE CONSTRAINT zone_id IF NOT EXISTS FOR (n:Zone) REQUIRE n.id IS UNIQUE;
 CREATE CONSTRAINT observation_id IF NOT EXISTS FOR (n:Observation) REQUIRE n.id IS UNIQUE;
 CREATE INDEX element_aliases IF NOT EXISTS FOR (n:Element) ON (n.aliases);
 CREATE INDEX activity_name IF NOT EXISTS FOR (n:Activity) ON (n.name);
+CREATE CONSTRAINT tw_id IF NOT EXISTS FOR (n:Tw) REQUIRE n.id IS UNIQUE;

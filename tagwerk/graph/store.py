@@ -42,18 +42,20 @@ class Neo4jStore:
 
         self._driver = GraphDatabase.driver(uri, auth=(user, password))
         self._driver.verify_connectivity()
+        # every node also carries :Tw so edge MATCHes hit one unique index instead of scanning all labels
+        self._driver.execute_query("CREATE CONSTRAINT tw_id IF NOT EXISTS FOR (n:Tw) REQUIRE n.id IS UNIQUE")
 
     def merge_node(self, label: str, node_id: str, props: dict | None = None) -> None:
-        q = f"MERGE (n:{_safe(label)} {{id: $id}}) SET n += $props"
+        q = f"MERGE (n:Tw {{id: $id}}) SET n:{_safe(label)} SET n += $props"
         self._driver.execute_query(q, id=node_id, props=props or {})
 
     def merge_edge(self, src: str, rel: str, dst: str, props: dict | None = None) -> None:
-        q = f"MATCH (a {{id: $src}}), (b {{id: $dst}}) MERGE (a)-[r:{_safe(rel)}]->(b) SET r += $props"
+        q = f"MATCH (a:Tw {{id: $src}}), (b:Tw {{id: $dst}}) MERGE (a)-[r:{_safe(rel)}]->(b) SET r += $props"
         self._driver.execute_query(q, src=src, dst=dst, props=props or {})
 
     def snapshot(self) -> dict:
         nodes, _, _ = self._driver.execute_query(
-            "MATCH (n) RETURN labels(n)[0] AS label, n.id AS id, properties(n) AS props LIMIT 2000")
+            "MATCH (n:Tw) RETURN [l IN labels(n) WHERE l <> 'Tw'][0] AS label, n.id AS id, properties(n) AS props LIMIT 2000")
         edges, _, _ = self._driver.execute_query(
             "MATCH (a)-[r]->(b) RETURN a.id AS src, type(r) AS rel, b.id AS dst, properties(r) AS props LIMIT 5000")
         return {"nodes": [dict(r) for r in nodes], "edges": [dict(r) for r in edges]}
