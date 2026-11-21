@@ -89,7 +89,7 @@ function activityAt(a: BaseActivity, d: string): Activity {
     tracked: true,
     done: pct >= 100,
     cause: delay > 0 ? a.mock_cause : null,
-    recordings: recs.map(r => r.capture_id),
+    recordings: recs.map(r => ({ capture_id: r.capture_id, date: r.date, time: r.time })),
     last_recording: recs.length ? recs[recs.length - 1].date : null,
     predecessors: a.predecessors,
   }

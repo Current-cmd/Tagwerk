@@ -13,7 +13,7 @@ interface Props {
   activityId: string | null
   onClose: () => void
   onSelect: (id: string) => void
-  onJumpRecording: (captureId: string) => Promise<void>
+  onJumpRecording: (captureId: string, date: string) => Promise<void>
 }
 
 export function ActivitySheet({ day, activityId, onClose, onSelect, onJumpRecording }: Props) {
@@ -36,7 +36,7 @@ function Row({ k, children }: { k: string; children: React.ReactNode }) {
   )
 }
 
-function Body({ a, day, onSelect, onJumpRecording }: { a: Activity; day: DayResponse; onSelect: (id: string) => void; onJumpRecording: (c: string) => Promise<void> }) {
+function Body({ a, day, onSelect, onJumpRecording }: { a: Activity; day: DayResponse; onSelect: (id: string) => void; onJumpRecording: (c: string, date: string) => Promise<void> }) {
   const [busy, setBusy] = useState<string | null>(null)
   const name = new Map(day.activities.map(x => [x.id, x.name]))
   const successors = day.activities.filter(x => x.predecessors.includes(a.id))
@@ -95,16 +95,16 @@ function Body({ a, day, onSelect, onJumpRecording }: { a: Activity; day: DayResp
         </h4>
         {a.recordings.length === 0 ? <p className="text-sm text-muted-foreground">noch keine</p> : (
           <ul className="flex flex-col gap-1" data-testid="sheet-recordings">
-            {[...a.recordings].reverse().map(cid => (
+            {[...a.recordings].reverse().map(({ capture_id: cid, date, time }) => (
               <li key={cid}>
                 <button
                   type="button"
                   className="flex w-full items-center gap-2 rounded-md border px-2 py-1.5 text-left text-sm hover:bg-muted"
-                  onClick={async () => { setBusy(cid); try { await onJumpRecording(cid) } finally { setBusy(null) } }}
+                  onClick={async () => { setBusy(cid); try { await onJumpRecording(cid, date) } finally { setBusy(null) } }}
                 >
                   {busy === cid ? <Loader2 className="size-3.5 animate-spin" /> : <Film className="size-3.5 text-muted-foreground" />}
                   <span className="flex-1 truncate font-mono text-xs">{cid}</span>
-                  <span className="text-xs text-muted-foreground">zum Tag</span>
+                  <span className="text-xs text-muted-foreground tabular-nums">{fmtShort(date)} {time}</span>
                   <ArrowRight className="size-3.5 text-muted-foreground" />
                 </button>
               </li>

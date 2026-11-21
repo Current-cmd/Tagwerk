@@ -42,12 +42,13 @@ export const mmss = (s: number | null | undefined) =>
     ? '–'
     : `${String(Math.floor(s / 60)).padStart(2, '0')}:${String(Math.floor(s % 60)).padStart(2, '0')}`
 
+// same labels as the API (tagwerk/labels.py)
 const STATE_DE: Record<string, string> = {
-  removed: 'demontiert', substructure: 'Unterkonstruktion', installed: 'montiert', checked: 'abgenommen',
-  prepared: 'vorbereitet', primed: 'grundiert', painted: 'gestrichen', done: 'fertig', framed: 'Rahmen',
-  boarded: 'beplankt', finished: 'fertig', mounted: 'montiert', wired: 'verkabelt', tested: 'geprüft',
-  connected: 'angeschlossen', commissioned: 'in Betrieb', stripped: 'entfernt', levelled: 'nivelliert',
-  covered: 'belegt', started: 'begonnen', planned: 'geplant',
+  started: 'begonnen', installed: 'montiert', mounted: 'montiert', connected: 'angeschlossen', wired: 'verkabelt',
+  tested: 'geprüft', commissioned: 'in Betrieb', checked: 'abgenommen', painted: 'gestrichen', primed: 'grundiert',
+  prepared: 'vorbereitet', covered: 'verlegt', levelled: 'nivelliert', substructure: 'Unterkonstruktion',
+  framed: 'Unterkonstruktion', boarded: 'beplankt', removed: 'ausgebaut', stripped: 'entfernt', done: 'fertig',
+  finished: 'fertig', planned: 'geplant',
 }
 export const stateDe = (s: string | null | undefined) => (s ? STATE_DE[s] ?? s : 'nicht begonnen')
 

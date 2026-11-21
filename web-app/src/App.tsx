@@ -99,25 +99,11 @@ export default function App() {
   }, [navigate, route.view])
   const openScan = useCallback((cid: string) => navigate({ view: 'scan', param: cid }), [navigate])
 
-  /** Jump to the day of a recording and open it. The contract gives activity recordings as ids only, so unknown ids
-   *  are looked up day by day (days with recordings, nearest first). */
+  /** Jump to the day of a recording and open it (activity recordings and events carry their date). */
   const jumpRecording = useCallback(async (cid: string, known?: string) => {
-    let d = known ?? recDates.current.get(cid)
-    if (!d && days) {
-      const cur = date ?? days.today
-      const cands = days.days.filter(x => x.recordings > 0).map(x => x.date)
-        .sort((a, b) => Math.abs(Date.parse(a) - Date.parse(cur)) - Math.abs(Date.parse(b) - Date.parse(cur)))
-      for (const c of cands) {
-        try {
-          const dy = await fetchDay(c)
-          dy.recordings.forEach(r => recDates.current.set(r.capture_id, dy.date))
-          if (recDates.current.has(cid)) { d = c; break }
-        } catch { /* keep looking */ }
-      }
-    }
     setActivity(null)
-    navigate({ view: 'dashboard', date: d ?? date, rec: cid })
-  }, [days, date, navigate])
+    navigate({ view: 'dashboard', date: known ?? recDates.current.get(cid) ?? date, rec: cid })
+  }, [date, navigate])
 
   if (!days) {
     return (
@@ -219,7 +205,7 @@ export default function App() {
       </main>
 
       {day && (
-        <ActivitySheet day={day} activityId={activity} onClose={() => setActivity(null)} onSelect={setActivity} onJumpRecording={c => jumpRecording(c)} />
+        <ActivitySheet day={day} activityId={activity} onClose={() => setActivity(null)} onSelect={setActivity} onJumpRecording={jumpRecording} />
       )}
     </div>
   )

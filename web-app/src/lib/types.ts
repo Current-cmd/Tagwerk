@@ -105,9 +105,16 @@ export interface Activity {
   tracked: boolean
   done: boolean
   cause: string | null
-  recordings: string[]
+  recordings: ActivityRecording[]
   last_recording: string | null
   predecessors: string[]
+}
+
+/** A capture that touched the activity (any day up to D), oldest first. */
+export interface ActivityRecording {
+  capture_id: string
+  date: string
+  time: string
 }
 
 export interface LookaheadActivity {

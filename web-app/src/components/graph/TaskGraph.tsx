@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef } from 'react'
+import { useEffect, useRef } from 'react'
 import { DataSet, Network, type Edge, type Node, type Options } from 'vis-network/standalone'
 import type { TaskGraph as TG, TaskNode } from '@/lib/types'
 import { addDays } from '@/lib/format'
@@ -96,18 +96,6 @@ export function focusGraph(g: TG, all: boolean): TG {
   return { ...g, nodes: g.nodes.filter(n => keep.has(n.id)), edges: g.edges.filter(e => keep.has(e.src) && keep.has(e.dst)) }
 }
 
-/** Events/proposals the API left without an edge get a dotted link to the recording that raised them. */
-function withRaisedLinks(g: TG): TG {
-  const ids = new Set(g.nodes.map(n => n.id))
-  const linked = new Set(g.edges.flatMap(e => [e.src, e.dst]))
-  const extra = g.nodes
-    .filter(n => (n.type === 'event' || n.type === 'proposal') && !linked.has(n.id))
-    .map(n => ({ n, cid: n.type === 'proposal' ? n.id.split(':')[1] : n.id.split(':')[0] }))
-    .filter(x => x.cid && ids.has(x.cid))
-    .map(x => ({ src: x.cid, dst: x.n.id, type: 'RAISED' }))
-  return extra.length ? { ...g, edges: [...g.edges, ...extra] } : g
-}
-
 interface Props {
   graph: TG
   onSelectActivity: (id: string) => void
@@ -122,7 +110,7 @@ export function TaskGraph({ graph, onSelectActivity }: Props) {
   const onSel = useRef(onSelectActivity)
   onSel.current = onSelectActivity
 
-  const g = useMemo(() => withRaisedLinks(graph), [graph])
+  const g = graph  // RAISED edges (recording -> event/proposal) come from the API
 
   useEffect(() => {
     if (!box.current) return
