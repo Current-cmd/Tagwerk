@@ -133,6 +133,26 @@ Reset (clean state, caches kept), on the laptop in `~/Developer/hacka/Tagwerk`:
 `DATA_DIR=./data-sp CACHE_DIR=./cache-sp NEO4J_URI= PROJECT=schependomlaan PYTHONPATH=$PWD .venv/bin/python scripts/reset_demo.py`;
 `rm -rf data-scan-userwalk`; then `~/tw-restart.sh && ~/tw-scanproject.sh userwalk`.
 
+## Hackathon-Rundgang: "Gesagt" im 3D-Scan (:8082, project `hackathon`)
+`~/tw-scanproject.sh hackathon`, then open **`http://localhost:8082/app#/scan/site-hackathon`** (Tagesbericht:
+`/app#/report/2026-11-26`). Clip `~/Developer/hacka/demo-media/site_hackathon.mp4` (121 s, portrait HEVC, English,
+quiet voice). Live run 2026-11-21 on main 8b2d5d3 (`lang=en`, zone Z-SITE): transcript after 26 s, done after 50 s,
+3D after 178 s (SfM 111 s, 49/364 frames registered, 1714 points, 45 objects, 142 relations; the connected part is the
+corridor at 76-109 s, where the talking is).
+
+- Said (word timestamps): 1:32 "tables" -> 2× Tisch, 1:33 "slab" -> Boden (verlegt), 1:35 "dustbins" -> 2× Mülleimer;
+  "storage" (1:45) is listed under "Genannt, nicht im Bild".
+- Show: the amber objects with the spoken phrase, click an entry under **Gesagt**: the video jumps there and the camera
+  flies to it; play the video from 1:30: tables, slab, bins pulse in turn with the banner. Tagesbericht section 6
+  lists the three items first, marked "gesagt".
+- Replay (no GPU, cached): `curl -X POST localhost:8082/captures -F replay_of=site-hackathon -F zone_id=Z-SITE`; it is the
+  project's `demo_replays` entry (seed/projects/hackathon/project.json, not in git).
+- The kept video of this capture is an H.264 720×1280 proxy (20 MB, same duration) instead of the 210 MB HEVC upload:
+  Linux/headless Chrome cannot play HEVC and the SSH tunnel is slow. A fresh upload of the HEVC clip keeps the original.
+- Runs differ: pycolmap's mapper is not deterministic; other runs registered the hall at 50-65 s (38 frames, ~4600
+  points) instead. Whisper hears "slab" or "the lab" ("lab" is not an alias, so then no floor highlight).
+- Reset: `rm -rf data-scan-hackathon cache-scan-hackathon/site-hackathon` (deletes this capture: re-upload, ~3 min).
+
 ## BIM-Modell (Schependomlaan, :8081)
 `/app` on :8081 has a **BIM-Modell** tab (only projects with a model): the IFC design model (3504 elements, 2081
 linked to activities) coloured by state on the chosen day: green = target state reached, amber = begun, grey = not

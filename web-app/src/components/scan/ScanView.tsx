@@ -70,6 +70,11 @@ export function ScanView({ cid, onBack }: { cid: string; onBack: () => void }) {
     [mentions, vt],
   )
   const talking = useMemo(() => [...new Set(talkingMentions.flatMap(m => m.object_ids))], [talkingMentions])
+  // banner: the item named most recently (several can overlap: "tables …, slab …, dustbins" within 3 s)
+  const nowSaid = useMemo(
+    () => talkingMentions.filter(m => vt != null && (m.t ?? 0) <= vt).at(-1) ?? talkingMentions[0] ?? null,
+    [talkingMentions, vt],
+  )
   const openMention = (m: ScanMention) => {
     const id = m.object_ids[0]
     if (!id) return
@@ -118,10 +123,10 @@ export function ScanView({ cid, onBack }: { cid: string; onBack: () => void }) {
           ) : scan.ok ? (
             <>
               <SceneView scan={scan} colorOf={cOf} selected={selected} onSelect={setSelected} showPath={showPath} showLabels={showLabels} flipY={flipY} talking={talking} />
-              {talkingMentions.length > 0 && (
+              {nowSaid && (
                 <div className="pointer-events-none absolute top-3 left-1/2 max-w-[80%] -translate-x-1/2 rounded-full bg-amber-500/95 px-3 py-1 text-sm font-medium text-white shadow" data-testid="scan-talking">
-                  <MessageSquareQuote className="mr-1 inline size-4" /> „{talkingMentions[0].phrase}“ → {talkingMentions[0].name_de}
-                  {talkingMentions[0].state_de && ` · ${talkingMentions[0].state_de}`}
+                  <MessageSquareQuote className="mr-1 inline size-4" /> „{nowSaid.phrase}“ → {nowSaid.name_de}
+                  {nowSaid.state_de && ` · ${nowSaid.state_de}`}
                 </div>
               )}
               <div className="pointer-events-none absolute bottom-2 left-3 text-[11px] text-white/60">Ziehen: drehen · Rechtsklick/Shift: verschieben · Rad: zoomen · Doppelklick: Auswahl aufheben · Maßstab relativ</div>
