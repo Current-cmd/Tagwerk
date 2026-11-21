@@ -191,13 +191,16 @@ class Project:
             for pred in a["predecessors"]:
                 assert pred in self.activities, f"activity {a['id']}: unknown predecessor {pred}"
 
-    def load_history(self, path: Path | None = None) -> None:
+    def load_history(self, path: Path | None = None, upto: str | None = None) -> None:
+        """Apply seed/history.json; with upto (ISO date) only the initial snapshot and days up to that date."""
         path = path or Path(self.meta.get("seed_dir", SEED_DIR)) / "history.json"
         if not path.exists():
             return
         hist = json.loads(path.read_text(encoding="utf-8"))
         init = hist.get("initial", {})
         d0 = init.get("date")
+        if upto is not None and d0 and d0 > upto:
+            return
         for eid, state in init.get("states", {}).items():
             el = self.elements[eid]
             el["pct"], el["state"], el["updated"] = weight(el["type"], state), state, d0
@@ -207,6 +210,8 @@ class Project:
             self.activities[aid]["manual_pct"] = float(pct)
         for day in hist.get("days", []):
             for c in day["captures"]:
+                if upto is not None and c["ts"][:10] > upto:
+                    continue
                 meta = {k: c[k] for k in ("capture_id", "zone_id", "ts", "note") if k in c}
                 self.apply_structured(meta, {"capture_id": c["capture_id"], **c["structured"]})
 

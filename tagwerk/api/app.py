@@ -13,9 +13,10 @@ from pathlib import Path
 
 from fastapi import FastAPI, File, Form, HTTPException, UploadFile, WebSocket, WebSocketDisconnect
 from fastapi.middleware.gzip import GZipMiddleware
-from fastapi.responses import FileResponse, PlainTextResponse, Response
+from fastapi.responses import FileResponse, HTMLResponse, PlainTextResponse, Response
 from pydantic import BaseModel
 
+from tagwerk import v2
 from tagwerk.config import get_settings
 from tagwerk.contracts import validate
 from tagwerk.events import broker
@@ -336,6 +337,28 @@ def overview() -> dict:
     return get_project().overview(today())
 
 
+def _v2_date(value: str | None):
+    try:
+        return v2.parse_date(value)
+    except ValueError:
+        raise HTTPException(400, "date must be YYYY-MM-DD") from None
+
+
+@app.get("/api/v2/days")
+def v2_days() -> dict:
+    return v2.days()
+
+
+@app.get("/api/v2/day")
+def v2_day(date: str | None = None) -> dict:
+    return v2.day(_v2_date(date))
+
+
+@app.get("/api/v2/taskgraph")
+def v2_taskgraph(date: str | None = None) -> dict:
+    return v2.taskgraph(_v2_date(date))
+
+
 @app.get("/export/day.ics", response_class=PlainTextResponse)
 def export_ics() -> PlainTextResponse:
     project = get_project()
@@ -425,3 +448,26 @@ def scan_page() -> FileResponse:
 @app.get("/site")
 def site_page() -> FileResponse:
     return _page("site")
+
+
+APP_PLACEHOLDER = "<!doctype html><meta charset=utf-8><title>Tagwerk</title><p>UI v2 not built (web/app/index.html missing).</p>"
+
+
+def _spa_index() -> Response:
+    index = WEB / "app" / "index.html"
+    return FileResponse(index) if index.is_file() else HTMLResponse(APP_PLACEHOLDER)
+
+
+@app.get("/app")
+def spa() -> Response:
+    return _spa_index()
+
+
+@app.get("/app/{path:path}")
+def spa_path(path: str) -> Response:
+    """Built files of the React app (confined to web/app/); anything else is a client route: index.html."""
+    base = (WEB / "app").resolve()
+    target = (base / path).resolve()
+    if path and base in target.parents and target.is_file():
+        return FileResponse(target)
+    return _spa_index()
