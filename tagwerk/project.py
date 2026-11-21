@@ -554,7 +554,7 @@ class Project:
         absent = self.absent_on(a["trade_id"], today)
         if absent:
             reasons.append(f"{absent:g} of {a['crew_planned']:g} {row['trade']} absent today")
-        late_preds = [p for p in a["predecessors"] if fc[p]["delay_d"] > 0]
+        late_preds = [p for p in a["predecessors"] if fc[p]["delay_d"] > 0 and fc[p]["pct"] < 100]
         if late_preds:
             reasons.append("waiting for " + ", ".join(self.activities[p]["name"] for p in late_preds[:3]))
         if row["pct"] < row["planned_pct"]:
