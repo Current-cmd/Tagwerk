@@ -63,6 +63,11 @@ def _num(v: str | None, default: float = 0.0) -> float:
     return float(v) if v not in (None, "") else default
 
 
+def _norm_text(s: str | None) -> str:
+    """Event text for duplicate checks: lowercase, single spaces, no trailing . ! ?"""
+    return " ".join((s or "").lower().split()).rstrip(".!? ")
+
+
 def states_for(element_type: str) -> list[tuple[str, int]]:
     return STATES.get(element_type, STATES["default"])
 
@@ -230,12 +235,22 @@ class Project:
         for lp in structured.get("labour_present", []):
             self.labour.append({"date": day, "trade": lp["trade"], "count": lp["count"], "capture_id": cid})
         for i, ab in enumerate(structured.get("absences", [])):
+            # the same sickness reported again on the same day (another capture, a replay) keeps the max, never adds
+            same = next((e for e in self.events if e["type"] == "absence" and e["date"] == day
+                         and e["trade"].lower() == ab["trade"].lower()), None)
+            if same:
+                if ab["count"] > same["count"]:
+                    same["count"], same["text"] = ab["count"], f"{ab['count']}× {ab['trade']} {ab['reason']}"
+                continue
             act = self.activity_for_trade(ab["trade"], date.fromisoformat(day))
             self.events.append({"id": f"{cid}:absence:{i}", "type": "absence", "trade": ab["trade"],
                                 "count": ab["count"], "text": f"{ab['count']}× {ab['trade']} {ab['reason']}",
                                 "severity": "medium", "date": day, "capture_id": cid,
                                 "activity_id": act["id"] if act else None})
         for i, ev in enumerate(structured.get("special_events", [])):
+            if any(e["type"] == ev["type"] and e["date"] == day and _norm_text(e["text"]) == _norm_text(ev["text"])
+                   for e in self.events):
+                continue
             self.events.append({"id": f"{cid}:event:{i}", "type": ev["type"], "text": ev["text"],
                                 "severity": ev["severity"], "date": day, "capture_id": cid, "activity_id": None})
         for m in structured.get("material_delivered", []):
