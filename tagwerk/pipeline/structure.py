@@ -346,11 +346,14 @@ def cache_path(capture_id: str, name: str) -> Path:
     return Path(get_settings().cache_dir) / capture_id / f"{name}.json"
 
 
-def structure(capture: dict, transcript: dict, vision: dict, context: dict, project=None) -> dict:
+def structure(capture: dict, transcript: dict, vision: dict, context: dict, project=None,
+              replay: bool = False) -> dict:
     s = get_settings()
     cp = cache_path(capture["capture_id"], "structured")
-    if s.replay_mode and cp.exists():
-        return json.loads(cp.read_text(encoding="utf-8"))
+    if (s.replay_mode or replay) and cp.exists():
+        data = json.loads(cp.read_text(encoding="utf-8"))
+        data["capture_id"] = capture["capture_id"]
+        return data
 
     element_types, current, trade_of, act_of, markers = {}, {}, {}, {}, {}
     if project is not None:

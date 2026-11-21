@@ -50,9 +50,9 @@ def _store_cache(cid: str, name: str, data: dict) -> None:
     p.write_text(json.dumps(data, ensure_ascii=False, indent=1), encoding="utf-8")
 
 
-async def _gpu_stage(stage: str, capture: dict, derived: dict | None) -> dict:
+async def _gpu_stage(stage: str, capture: dict, derived: dict | None, replay: bool = False) -> dict:
     s = get_settings()
-    if s.replay_mode and (hit := _cached(capture["capture_id"], stage)) is not None:
+    if (s.replay_mode or replay) and (hit := _cached(capture["capture_id"], stage)) is not None:
         await asyncio.sleep(REPLAY_PAUSE_S)
         return hit
     if s.gpu_worker_url:
@@ -78,10 +78,12 @@ async def _status(capture_id: str, step: str, **props) -> None:
     await broker.publish({"type": "status", "label": "Capture", "id": capture_id, "props": {"step": step, **props}})
 
 
-async def run_capture(capture: dict) -> dict:
+async def run_capture(capture: dict, replay: bool = False) -> dict:
+    """replay=True: use cache/<capture_id>/ stage outputs (see API field replay_of) - no GPU, no Claude."""
     validate("capture", capture)
     cid = capture["capture_id"]
     s = get_settings()
+    replay = replay or s.replay_mode
     store = get_store()
     project = get_project()
 
@@ -91,14 +93,14 @@ async def run_capture(capture: dict) -> dict:
                           "props": {"src": cid, "dst": capture["zone_id"]}})
 
     derived = None
-    if not s.gpu_worker_url and not s.replay_mode:
+    if not s.gpu_worker_url and not replay:
         derived = await asyncio.to_thread(normalize.normalize, capture, Path(s.data_dir) / "work" / cid)
     await _status(cid, "normalized")
 
-    transcript = validate("transcript", await _gpu_stage("speech", capture, derived))
+    transcript = validate("transcript", await _gpu_stage("speech", capture, derived, replay))
     await _status(cid, "transcribed", text=" ".join(seg["text"] for seg in transcript["segments"])[:300])
 
-    vis = validate("vision", await _gpu_stage("vision", capture, derived))
+    vis = validate("vision", await _gpu_stage("vision", capture, derived, replay))
     labels: dict[str, int] = {}
     for f in vis["frames"]:
         for o in f["objects"]:
@@ -107,10 +109,12 @@ async def run_capture(capture: dict) -> dict:
                   markers=sorted({o["marker_id"] for f in vis["frames"] for o in f["objects"]
                                   if o.get("marker_id") is not None}))
 
+    if replay:
+        await asyncio.sleep(REPLAY_PAUSE_S)
     ctx = validate("context", context.build_context(capture, vis, project))
     _store_cache(cid, "context", ctx)
     structured = validate("structured", await asyncio.to_thread(structure.structure, capture, transcript, vis,
-                                                                 ctx, project))
+                                                                 ctx, project, replay))
     await _status(cid, "structured")
 
     photos = [Path(m["path"]).name for m in capture["media"] if m["type"] == "photo"]
@@ -134,7 +138,7 @@ async def run_capture(capture: dict) -> dict:
                               "props": {"state": el["state"], "pct": el["pct"], "via": rel,
                                         "proposed": ch["state"] if rel == "PROPOSES" else None,
                                         "name": el["name_de"]}})
-        if s.replay_mode:
+        if replay:
             await asyncio.sleep(REPLAY_PAUSE_S / 2)
     for aid in sorted({a for ch in changes for a in project.activities_of(ch["element_id"])}):
         r = fc[aid]

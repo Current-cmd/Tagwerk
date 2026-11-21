@@ -97,3 +97,15 @@ def test_overview_and_pages(client):
     assert ov["kpi"]["bac_eur"] > 0 and ov["zones"] and ov["curve"]
     for page in ("/", "/upload", "/graph", "/dashboard", "/site"):
         assert client.get(page).status_code == 200, page
+
+
+def test_replay_of_cached_capture(client):
+    client.post("/captures", data={"zone_id": "Z-AUDIENCE", "capture_id": "cap-src", "note": "Reihe H Unterkonstruktion"})
+    assert "cap-src" in client.get("/api/replayable").json()
+    import tagwerk.pipeline.runner as runner
+
+    runner.REPLAY_PAUSE_S = 0
+    r = client.post("/captures", data={"zone_id": "Z-AUDIENCE", "capture_id": "cap-rep", "replay_of": "cap-src"})
+    assert r.status_code == 200, r.text
+    assert r.json()["status"] == "processed"
+    assert client.post("/captures", data={"zone_id": "Z-AUDIENCE", "capture_id": "x", "replay_of": "nope"}).status_code == 404

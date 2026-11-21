@@ -78,9 +78,13 @@ async def create_capture(
     note: str | None = Form(None),
     capture_id: str | None = Form(None),  # client resends the same id on retry
     ts: str | None = Form(None),  # optional server-time override (history/replay)
+    replay_of: str | None = Form(None),  # re-run an earlier capture from its cached stage outputs
     files: list[UploadFile] = File(default=[]),
 ) -> dict:
     project = get_project()
+    if replay_of:
+        _prepare_replay(replay_of, capture_id or f"replay-{uuid.uuid4().hex[:8]}")
+        capture_id = capture_id or _last_replay_id
     if zone_id not in project.zones:
         raise HTTPException(400, f"unknown zone {zone_id}")
     cid = capture_id or f"cap-{uuid.uuid4().hex[:10]}"
@@ -102,12 +106,41 @@ async def create_capture(
     async with _lock:
         if cid in project.captures:
             return {"capture_id": cid, "status": "exists"}
-        result = await run_capture(capture)
+        result = await run_capture(capture, replay=bool(replay_of))
     _results[cid] = result
     return {"capture_id": cid, "status": "processed",
             "transcript": " ".join(s["text"] for s in result["transcript"]["segments"]),
             "changes": [c for c in result["changes"] if c["action"] in ("confirmed", "proposed", "unchanged")],
             "absences": result["structured"]["absences"], "events": result["structured"]["special_events"]}
+
+
+_last_replay_id = None
+
+
+def _prepare_replay(src: str, dst: str) -> None:
+    """Copy cache/<src>/ to cache/<dst>/ with capture_id rewritten, so <dst> replays <src> exactly."""
+    import json
+    import shutil
+
+    global _last_replay_id
+    s = get_settings()
+    src_dir, dst_dir = Path(s.cache_dir) / src, Path(s.cache_dir) / dst
+    if not (src_dir / "speech.json").exists() or not (src_dir / "vision.json").exists():
+        raise HTTPException(404, f"no cached stage outputs for {src}")
+    if dst_dir.exists():
+        shutil.rmtree(dst_dir)
+    dst_dir.mkdir(parents=True)
+    for f in src_dir.glob("*.json"):
+        data = json.loads(f.read_text(encoding="utf-8"))
+        data["capture_id"] = dst
+        (dst_dir / f.name).write_text(json.dumps(data, ensure_ascii=False), encoding="utf-8")
+    _last_replay_id = dst
+
+
+@app.get("/api/replayable")
+def replayable() -> list[str]:
+    d = Path(get_settings().cache_dir)
+    return sorted(p.name for p in d.iterdir() if (p / "speech.json").exists()) if d.exists() else []
 
 
 @app.get("/captures/{capture_id}")
