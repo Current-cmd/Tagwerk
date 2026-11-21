@@ -1,0 +1,55 @@
+{
+  "expo": {
+    "name": "Tagwerk",
+    "slug": "tagwerk",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "ios": {
+      "supportsTablet": true
+    },
+    "android": {
+      "adaptiveIcon": {
+        "backgroundColor": "#141416",
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "backgroundImage": "./assets/android-icon-background.png",
+        "monochromeImage": "./assets/android-icon-monochrome.png"
+      },
+      "predictiveBackGestureEnabled": false,
+      "package": "de.tagwerk.site",
+      "permissions": [
+        "CAMERA",
+        "RECORD_AUDIO"
+      ]
+    },
+    "web": {
+      "favicon": "./assets/favicon.png"
+    },
+    "plugins": [
+      [
+        "expo-audio",
+        {
+          "microphonePermission": "Tagwerk nimmt Sprachnotizen von der Baustelle auf."
+        }
+      ],
+      "expo-web-browser",
+      [
+        "expo-camera",
+        {
+          "cameraPermission": "Tagwerk filmt die Baustelle und liest den Verbindungs-QR-Code.",
+          "recordAudioAndroid": true
+        }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "cameraPermission": "Tagwerk filmt und fotografiert die Baustelle.",
+          "microphonePermission": "Für Videos mit Kommentar."
+        }
+      ],
+      "expo-asset"
+    ],
+    "scheme": "tagwerk"
+  }
+}
