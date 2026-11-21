@@ -37,7 +37,7 @@ export function BimView({ date, onOpenActivity, workdays = [], onSetDate }: Prop
   const [error, setError] = useState<string | null>(null)
   const [selected, setSelected] = useState<string | null>(null)
   const [hideContext, setHideContext] = useState(false)
-  const [future, setFuture] = useState(false)
+  const [mode, setMode] = useState<'actual' | 'plan' | 'forecast'>('actual')
   const [playing, setPlaying] = useState(false)
 
   useEffect(() => {
@@ -47,9 +47,11 @@ export function BimView({ date, onOpenActivity, workdays = [], onSetDate }: Prop
   }, [])
   useEffect(() => {
     let live = true
-    fetchBim(date).then(b => { if (live) { setStates(new Map(b.elements.map(e => [e.gid, e]))); setFuture(b.is_future) } })
-      .catch(e => live && setError((e as Error).message))
-    return () => { live = false }
+    const t = setTimeout(() => { // debounced: dragging the slider loads only the day it stops on
+      fetchBim(date).then(b => { if (live) { setStates(new Map(b.elements.map(e => [e.gid, e]))); setMode(b.mode ?? (b.is_future ? 'forecast' : 'actual')) } })
+        .catch(e => live && setError((e as Error).message))
+    }, 150)
+    return () => { live = false; clearTimeout(t) }
   }, [date])
 
   // play the schedule: one working day per step until the last day of the slider
@@ -96,7 +98,8 @@ export function BimView({ date, onOpenActivity, workdays = [], onSetDate }: Prop
           <div className="text-xs text-muted-foreground">
             {model ? `${model.index.source} · ${model.index.elements.length} IFC-Bauteile` : '…'} · Stand {fmtLong(date)}
           </div>
-          {future && <Badge variant="outline" className="w-fit border-dashed">Plan (Prognose ab Stichtag)</Badge>}
+          {mode === 'forecast' && <Badge variant="outline" className="w-fit border-dashed">Plan (Prognose ab Stichtag)</Badge>}
+          {mode === 'plan' && <Badge variant="outline" className="w-fit border-dashed border-amber-400">Soll (Terminplan) · noch keine Aufnahmen</Badge>}
           {onSetDate && workdays.length > 0 && (
             <Button size="sm" variant={playing ? 'secondary' : 'default'} onClick={() => {
               if (!playing && !workdays.some(d => d > date)) onSetDate(workdays[0])
@@ -115,7 +118,7 @@ export function BimView({ date, onOpenActivity, workdays = [], onSetDate }: Prop
             ))}
             <li className="flex items-center gap-2">
               <span className="size-3 rounded-sm opacity-45" style={{ background: COLORS.done }} />
-              <span className="flex-1">geplant (Prognose)</span>
+              <span className="flex-1">geplant (Soll / Prognose)</span>
             </li>
             <li className="flex items-center gap-2">
               <span className="size-3 rounded-sm border" style={{ background: COLORS.context }} />

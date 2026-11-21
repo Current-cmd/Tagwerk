@@ -178,6 +178,17 @@ export default function App() {
       <main className={cn('flex min-h-0 flex-1 flex-col gap-3 overflow-auto p-3', route.view !== 'report' && 'xl:overflow-hidden')}>
         {error && <ErrorCard msg={error} onRetry={() => date && loadDay(date)} inline />}
         {day && (route.view === 'dashboard' || route.view === 'graph' || route.view === 'bim') && <KpiStrip day={day} />}
+        {day?.info && !day.info.has_data && (route.view === 'dashboard' || route.view === 'graph' || route.view === 'bim') && (
+          <div role="status" data-testid="no-info" className="flex items-center gap-2 rounded-lg border border-amber-300 bg-amber-50 px-3.5 py-2 text-sm text-amber-900 dark:border-amber-700 dark:bg-amber-950 dark:text-amber-100">
+            <AlertCircle className="size-4 shrink-0" />
+            <span>
+              <b>Keine Informationen zu diesem Zeitpunkt.</b>{' '}
+              {day.info.first
+                ? `Erste Erfassung am ${new Date(day.info.first + 'T12:00:00').toLocaleDateString('de-DE')}. Angezeigt wird der Soll-Stand aus dem Terminplan.`
+                : 'Noch keine Aufnahmen. Angezeigt wird der Soll-Stand aus dem Terminplan.'}
+            </span>
+          </div>
+        )}
         {day && route.view === 'dashboard' && (
           <Dashboard
             day={day}

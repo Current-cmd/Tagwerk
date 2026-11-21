@@ -147,6 +147,7 @@ export interface DayResponse {
   date: string
   today: string
   is_future: boolean
+  info?: { has_data: boolean; first: string | null } // no evidence before `first`: the app shows the plan
   project: { name: string; bim: boolean }
   kpi: Kpi
   weather: Weather | null

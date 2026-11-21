@@ -31,10 +31,13 @@ def states(d: date) -> dict:
 
     meta = model_file("bim.json")
     if meta is None:
-        return {"available": False, "source": None, "date": d.isoformat(), "is_future": False, "elements": []}
+        return {"available": False, "source": None, "date": d.isoformat(), "is_future": False, "mode": "actual",
+                "elements": []}
     source = json.loads(meta.read_text(encoding="utf-8")).get("source")
     t = v2.today()
     is_future = d > t
+    first = v2.first_info()
+    mode = "forecast" if is_future else "plan" if (first is None or d.isoformat() < first) else "actual"
     p = v2.project_as_of(min(d, t))
     fc = p.forecast(t) if is_future else {}
     out = []
@@ -46,6 +49,14 @@ def states(d: date) -> dict:
         done = el["pct"] > 0 and el["pct"] >= max(targets or [100])  # reached what its activities ask for
         acts = p.activities_of(eid)
         planned, pct = False, el["pct"]
+        if mode == "plan" and acts:  # no evidence yet: the baseline schedule, per link (finished -> its target)
+            reached = 0
+            for lk in p._by_el.get(eid, []):
+                a = p.activities[lk["activity_id"]]
+                hi = weight(el["type"], lk["to_state"]) if lk["to_state"] else 100
+                reached = max(reached, hi if a["planned_finish"] < d else 1 if a["planned_start"] <= d else 0)
+            pct, planned = reached, reached > 0
+            done = reached > 0 and reached >= max(targets or [100])
         if is_future and not done and acts:  # after the data date: the forecast schedule (as of today) plays on
             if all(fc[a]["forecast_finish"] < d for a in acts):
                 done, planned, pct = True, True, max(targets or [100])
@@ -57,4 +68,5 @@ def states(d: date) -> dict:
                     "state_de": STATE_DE.get(el["state"], el["state"]) if el["state"] else "nicht begonnen",
                     "activity_id": aid, "activity_name": p.activities[aid]["name"] if aid else None,
                     "zone": (p.zones.get(el["zone"]) or {}).get("name_de")})
-    return {"available": True, "source": source, "date": d.isoformat(), "is_future": is_future, "elements": out}
+    return {"available": True, "source": source, "date": d.isoformat(), "is_future": is_future, "mode": mode,
+            "first": first, "elements": out}

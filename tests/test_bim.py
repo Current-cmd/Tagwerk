@@ -110,3 +110,37 @@ def test_scan3d_carries_the_kept_video(tmp_path, monkeypatch):
         (d / "media" / "walk.mp4").write_bytes(b"\x00" * 16)
         (d / "sfm.json").write_text(json.dumps({"capture_id": "walk-1", "ok": True, "objects": []}), encoding="utf-8")
         assert c.get("/api/v2/scan3d/walk-1").json()["video"] == "/media/walk-1/walk.mp4"
+
+
+def test_days_before_any_information_show_the_plan(tmp_path, monkeypatch):
+    """Before the first snapshot/capture there is no evidence: the day says so and the model shows the baseline plan."""
+    with _client(tmp_path, monkeypatch) as c:
+        day = c.get("/api/v2/day", params={"date": "2026-11-12"}).json()
+        assert day["info"] == {"has_data": False, "first": "2026-11-20"}
+        assert c.get("/api/v2/day", params={"date": "2026-11-24"}).json()["info"]["has_data"] is True
+        b = c.get("/api/v2/bim", params={"date": "2026-11-12"}).json()
+        assert b["mode"] == "plan"
+        # seat rows: A1020 (Rückbau, planned 10.-11.11.) finished by plan, A1080 (new seats) still to come -> begun
+        begun = [e for e in b["elements"] if e["pct"] > 0]
+        assert begun and all(e["planned"] for e in begun)
+        assert {e["element_id"] for e in begun} >= {"E-ROW-A", "E-ROW-H"}
+        assert c.get("/api/v2/bim", params={"date": "2026-11-24"}).json()["mode"] == "actual"
+        assert c.get("/api/v2/bim", params={"date": "2026-11-30"}).json()["mode"] == "forecast"
+
+
+@pytest.mark.skipif(not (SP / "elements.csv").exists(), reason="run scripts/import_schependomlaan.py")
+def test_schependomlaan_whole_lifecycle(tmp_path, monkeypatch):
+    with _client(tmp_path, monkeypatch, "schependomlaan") as c:
+        counts = []
+        for d in ("2015-03-02", "2015-05-04", "2015-06-26", "2015-07-24", "2015-09-01", "2015-10-16"):
+            b = c.get("/api/v2/bim", params={"date": d}).json()
+            counts.append((b["mode"], sum(e["done"] for e in b["elements"])))
+        assert [m for m, _ in counts] == ["plan", "plan", "actual", "actual", "forecast", "forecast"]
+        assert [n for _, n in counts] == sorted(n for _, n in counts)  # the building grows from start to finish
+        assert counts[0][1] < counts[2][1] and counts[-1][1] > counts[3][1]
+
+
+def test_app_index_is_not_cached(tmp_path, monkeypatch):
+    with _client(tmp_path, monkeypatch) as c:
+        r = c.get("/app")
+        assert r.status_code == 200 and "no-cache" in r.headers.get("cache-control", "")

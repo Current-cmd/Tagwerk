@@ -143,6 +143,6 @@ export function fetchBimModel(): Promise<BimModel> {
   bimModel.catch(() => { bimModel = null })
   return bimModel
 }
-export function fetchBim(date: string): Promise<{ available: boolean; is_future: boolean; elements: BimState[] }> {
+export function fetchBim(date: string): Promise<{ available: boolean; is_future: boolean; mode: 'actual' | 'plan' | 'forecast'; elements: BimState[] }> {
   return getJson(`/api/v2/bim?date=${encodeURIComponent(date)}`)
 }

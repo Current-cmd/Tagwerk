@@ -206,6 +206,13 @@ def _bim(p: Project) -> bool:
     return (Path(seed_dir()) / "bim.json").is_file() or bool(p.meta.get("bim", "storeys" in p.meta))
 
 
+def first_info() -> str | None:
+    """First day with any evidence: the history snapshot or the first capture (before it the app shows the plan)."""
+    p = get_project()
+    dates = [h["date"] for h in p.history_log if h.get("date")] + [c["date"] for c in p.captures.values()]
+    return min(dates) if dates else None
+
+
 def parse_date(value: str | None) -> date:
     """ISO date or project today (None). Raises ValueError on anything else."""
     if value is None:
@@ -348,7 +355,9 @@ def day(d: date) -> dict:
 
     events = [_event(e) for e in p.events if e["date"] <= eff_iso] + _weather_events(p, eff_iso)
     events.sort(key=lambda e: (e["date"], e["id"]), reverse=True)
+    first = first_info()
     return {"date": iso, "today": t.isoformat(), "is_future": is_future,
+            "info": {"has_data": bool(first) and iso >= first, "first": first},
             "project": {"name": p.meta.get("name"), "bim": _bim(p)}, "kpi": kpi,
             "weather": None if is_future else _weather_of(p, iso), "recordings": recordings,
             "activities": activities, "lookahead": lookahead, "events": events}

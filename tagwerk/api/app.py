@@ -577,7 +577,9 @@ APP_PLACEHOLDER = "<!doctype html><meta charset=utf-8><title>Tagwerk</title><p>U
 
 def _spa_index() -> Response:
     index = WEB / "app" / "index.html"
-    return FileResponse(index) if index.is_file() else HTMLResponse(APP_PLACEHOLDER)
+    # always revalidate: after a deploy a cached index.html points at deleted asset files (blank page)
+    return (FileResponse(index, headers={"Cache-Control": "no-cache"}) if index.is_file()
+            else HTMLResponse(APP_PLACEHOLDER))
 
 
 @app.get("/app")
