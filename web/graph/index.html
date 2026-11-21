@@ -46,16 +46,20 @@ const SHAPE = { BoQPosition: 'box', Activity: 'ellipse', Zone: 'database', Captu
 const BASE = { Capture: '#1f6feb', Observation: '#484f58', Activity: '#a371f7', BoQPosition: '#d29922',
                Zone: '#238636', Event: '#f85149', Proposal: '#d29922', WeatherReading: '#58a6ff', Note: '#8b949e',
                Trade: '#8b949e', WBS: '#6e40c9', Marker: '#8b949e', Actor: '#8b949e' };
+const LEVEL = { BoQPosition: 0, Activity: 1, Element: 2, Zone: 3, Proposal: 3, Capture: 4, Event: 5, Observation: 5,
+                Marker: 1, WeatherReading: 5, Note: 5, Trade: 0, WBS: 0, Actor: 5 };
 const DASHED = new Set(['PROPOSES', 'FOR', 'LIKELY_IS']);
 const SHOW_EDGES = new Set(['SCHEDULED_AS', 'BUILDS', 'CONTAINS_ELEMENT', 'IN_ZONE', 'CONFIRMED', 'PROPOSES', 'FOR',
-                            'RAISED', 'AFFECTS', 'PRECEDES']);
+                            'RAISED', 'AFFECTS']);
 let all = { nodes: new Map(), edges: new Map() };
 const nodes = new vis.DataSet(), edges = new vis.DataSet();
 const net = new vis.Network(document.getElementById('net'), { nodes, edges }, {
   nodes: { font: { color: '#e6edf3', size: 13 }, borderWidth: 0 },
   edges: { arrows: { to: { enabled: true, scaleFactor: .4 } }, color: { color: '#30363d', highlight: '#8b949e' },
-           smooth: { type: 'continuous' } },
-  physics: { stabilization: { iterations: 300 }, barnesHut: { gravitationalConstant: -14000, springLength: 170, springConstant: 0.03, avoidOverlap: 0.6 } },
+           smooth: { type: 'cubicBezier', forceDirection: 'horizontal', roundness: 0.4 } },
+  layout: { hierarchical: { direction: 'LR', levelSeparation: 330, nodeSpacing: 34, treeSpacing: 60,
+                             blockShifting: true, edgeMinimization: true, parentCentralization: true, sortMethod: 'directed' } },
+  physics: false,
   interaction: { hover: true, tooltipDelay: 120 },
 });
 
@@ -83,7 +87,7 @@ function visNode(n) {
   if (n.label === 'Zone') size = 20;
   const title = Object.entries(p).filter(([k, v]) => v !== null && v !== '' && typeof v !== 'object')
     .map(([k, v]) => `${k}: ${v}`).join('\n');
-  return { id: n.id, label: nodeLabel(n), shape: SHAPE[n.label] || 'dot', size, title: `${n.label} ${n.id}\n${title}`,
+  return { id: n.id, level: LEVEL[n.label] ?? 5, label: nodeLabel(n), shape: SHAPE[n.label] || 'dot', size, title: `${n.label} ${n.id}\n${title}`,
            color: { background: color, border: color, highlight: { background: color, border: '#e6edf3' } },
            font: { color: n.label === 'BoQPosition' ? '#0d1117' : '#e6edf3' } };
 }
@@ -191,7 +195,7 @@ function connect() {
   };
 }
 snapshot().then(connect);
-net.once('stabilizationIterationsDone', () => net.fit({ animation: { duration: 500 } }));
+setTimeout(() => net.fit(), 800);
 </script>
 </body>
 </html>
