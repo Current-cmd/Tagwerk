@@ -115,3 +115,11 @@ def test_untracked_activity_follows_predecessors(p):
     a = fc["A1090"]  # Abnahme: no elements, no manual pct
     assert a["tracked"] is False
     assert a["forecast_start"] > fc["A1080"]["forecast_finish"]
+
+
+def test_absence_on_weekend_counts_from_monday(p):
+    from datetime import date as d
+
+    p.apply_structured(*_cap("c7", absences=[{"trade": "Trockenbau", "count": 2, "reason": "krank"}], day="2026-11-28"))
+    assert p.absent_on("T-TROCKENBAU", d(2026, 11, 30)) == 2
+    assert p.absent_on("T-TROCKENBAU", d(2026, 12, 3)) == 0

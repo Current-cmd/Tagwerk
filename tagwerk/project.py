@@ -18,6 +18,7 @@ from tagwerk.pipeline.loop import STATES, apply_work, weight
 
 SEED_DIR = Path(__file__).resolve().parent.parent / "seed"
 HOURS_PER_DAY = 8
+ABSENCE_WORKDAYS = 3  # a sick report counts for 3 working days (no doctor's note needed in Germany up to day 3)
 
 
 # ---------- working days ----------
@@ -328,10 +329,22 @@ class Project:
         return round(100.0 * done / len(days), 1)
 
     def absent_on(self, trade_id: str, d: date) -> float:
-        """Highest absence count reported for that trade on day d (repeated reports do not add up)."""
+        """Highest absence count for that trade covering day d. A report covers its own day (or the next working day
+        when reported on a weekend) plus the following working days up to ABSENCE_WORKDAYS; repeats do not add up."""
         name = self.trades[trade_id]["name"].lower()
-        return max((e["count"] for e in self.events
-                    if e["type"] == "absence" and e["date"] == d.isoformat() and e["trade"].lower() == name), default=0)
+        best = 0.0
+        for e in self.events:
+            if e["type"] != "absence" or e["trade"].lower() != name:
+                continue
+            first = date.fromisoformat(e["date"])
+            if not is_workday(first):
+                first = next_workday(first)
+            last = first
+            for _ in range(ABSENCE_WORKDAYS - 1):
+                last = next_workday(last)
+            if first <= d <= last:
+                best = max(best, e["count"])
+        return best
 
     def topo_order(self) -> list[str]:
         order, seen = [], set()
@@ -429,7 +442,8 @@ class Project:
                 "forecast_start": start, "forecast_finish": finish, "tracked": tracked,
                 "delay_d": workday_diff(a["planned_finish"], finish),
                 "bac_eur": bac, "pv_eur": round(bac * ppct / 100, 2), "ev_eur": round(bac * pct / 100, 2),
-                "crew_planned": a["crew_planned"], "crew_today": a["crew_planned"] - self.absent_on(a["trade_id"], today),
+                "crew_planned": a["crew_planned"],
+                "crew_today": max(0.0, a["crew_planned"] - self.absent_on(a["trade_id"], today)),
                 "elements": self.elements_of(aid), "predecessors": a["predecessors"],
             }
         return out
