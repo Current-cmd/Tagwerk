@@ -9,6 +9,7 @@ from __future__ import annotations
 import csv
 import json
 from collections import defaultdict
+from contextlib import contextmanager
 from dataclasses import dataclass, field
 from datetime import date, timedelta
 from pathlib import Path
@@ -225,7 +226,34 @@ class Project:
         cid = meta["capture_id"]
         if cid in self.captures:
             return self.captures[cid]["changes"]
-        day = meta["ts"][:10]
+        day = date.fromisoformat(meta["ts"][:10]).isoformat()  # ValueError before anything changes
+        with self.transaction():
+            return self._apply(cid, day, meta, structured)
+
+    @contextmanager
+    def transaction(self):
+        """Undo every change apply_structured can make if the block raises: all or nothing."""
+        lists = {k: len(getattr(self, k)) for k in ("events", "labour", "materials", "proposals", "history_log")}
+        elements = {eid: (el["pct"], el["state"], el["updated"]) for eid, el in self.elements.items()}
+        starts = {aid: a["actual_start"] for aid, a in self.activities.items()}
+        events = [dict(e) for e in self.events]  # same-day absences update count/text in place
+        captures = set(self.captures)
+        try:
+            yield
+        except BaseException:
+            for k, n in lists.items():
+                del getattr(self, k)[n:]
+            self.events[:] = events
+            for eid, (pct, state, updated) in elements.items():
+                el = self.elements[eid]
+                el["pct"], el["state"], el["updated"] = pct, state, updated
+            for aid, start in starts.items():
+                self.activities[aid]["actual_start"] = start
+            for cid in set(self.captures) - captures:
+                del self.captures[cid]
+            raise
+
+    def _apply(self, cid: str, day: str, meta: dict, structured: dict) -> list[dict]:
         changes: list[dict] = []
         for w in structured.get("work_done", []):
             for eid in w["element_ids"]:

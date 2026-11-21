@@ -21,6 +21,11 @@ class Settings(BaseSettings):
     site_lon: float = 11.575
     replay_mode: bool = False
     project: str = "hoersaal"  # seed/ for hoersaal, else seed/projects/<project>/
+    api_token: str = ""  # bearer token for every endpoint but /health and the pages; required unless TAGWERK_DEV=1
+    tagwerk_dev: bool = False  # local development: allow an empty API_TOKEN (auth off)
+    allow_project_create: bool = False  # /api/scan?make_project= writes seed/projects/<name>/
+    max_upload_mb: int = 500  # per file and per request
+    max_upload_files: int = 50
 
 
 @lru_cache

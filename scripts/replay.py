@@ -13,6 +13,10 @@ from pathlib import Path
 
 import httpx
 
+from tagwerk.config import get_settings
+
+AUTH = {"Authorization": f"Bearer {get_settings().api_token}"} if get_settings().api_token else {}  # from .env
+
 p = argparse.ArgumentParser()
 p.add_argument("source", nargs="?", help="capture id whose cached outputs to replay")
 p.add_argument("--list", action="store_true")
@@ -23,17 +27,17 @@ p.add_argument("--api", default="http://localhost:8080")
 a = p.parse_args()
 
 if a.list:
-    print("\n".join(httpx.get(f"{a.api}/api/replayable").json()))
+    print("\n".join(httpx.get(f"{a.api}/api/replayable", headers=AUTH).json()))
 elif a.file:
     ctype = mimetypes.guess_type(a.file.name)[0] or "application/octet-stream"
     with a.file.open("rb") as fh:
         r = httpx.post(f"{a.api}/captures", data={"zone_id": a.zone or "Z-AUDIENCE", "lang": a.lang},
-                       files={"files": (a.file.name, fh, ctype)}, timeout=600)
+                       files={"files": (a.file.name, fh, ctype)}, headers=AUTH, timeout=600)
     print(r.status_code, r.text)
 else:
     cid = f"replay-{uuid.uuid4().hex[:6]}"
     data = {"lang": a.lang, "replay_of": a.source, "capture_id": cid}
     if a.zone:
         data["zone_id"] = a.zone
-    r = httpx.post(f"{a.api}/captures", data=data, timeout=120)
+    r = httpx.post(f"{a.api}/captures", data=data, headers=AUTH, timeout=120)
     print(r.status_code, r.text)

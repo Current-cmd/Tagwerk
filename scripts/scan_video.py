@@ -11,6 +11,10 @@ from pathlib import Path
 
 import httpx
 
+from tagwerk.config import get_settings
+
+AUTH = {"Authorization": f"Bearer {get_settings().api_token}"} if get_settings().api_token else {}  # from .env
+
 ap = argparse.ArgumentParser()
 ap.add_argument("file", type=Path)
 ap.add_argument("--api", default="http://localhost:8080")
@@ -23,7 +27,7 @@ data = {"zone_name": a.zone_name}
 if a.make_project:
     data["make_project"] = a.make_project
 with a.file.open("rb") as fh:
-    r = httpx.post(f"{a.api}/api/scan", data=data, files={"files": (a.file.name, fh, ctype)}, timeout=900)
+    r = httpx.post(f"{a.api}/api/scan", data=data, files={"files": (a.file.name, fh, ctype)}, headers=AUTH, timeout=900)
 r.raise_for_status()
 inv = r.json()
 if a.json:
