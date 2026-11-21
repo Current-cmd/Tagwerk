@@ -68,6 +68,16 @@ def _norm_text(s: str | None) -> str:
     return " ".join((s or "").lower().split()).rstrip(".!? ")
 
 
+# Spoken trade -> project trade, for projects whose trades are groups (scan projects: Rohbau, Fenster/Türen, TGA,
+# Ausbau, Ausstattung). An exact trade name always wins; this map is only the second choice.
+TRADE_GROUPS = {
+    "tga": {"elektro", "elektriker", "heizung", "heizungsbauer", "sanitär", "klempner", "lüftung", "installateur"},
+    "ausbau": {"trockenbau", "maler", "bodenleger", "fliesenleger", "putz", "verputzer"},
+    "rohbau": {"maurer", "beton", "zimmerer", "zimmermann"},
+    "fenster/türen": {"fensterbauer", "tischler", "schreiner"},
+}
+
+
 def states_for(element_type: str) -> list[tuple[str, int]]:
     return STATES.get(element_type, STATES["default"])
 
@@ -283,6 +293,9 @@ class Project:
         for t in self.trades.values():
             if t["name"].lower() == n or t["id"].lower() == n:
                 return t
+        for t in self.trades.values():  # group fallback: "Elektro" -> TGA
+            if n in TRADE_GROUPS.get(t["name"].lower(), ()):
+                return t
         return None
 
     def activity_for_trade(self, trade_name: str, d: date) -> dict | None:
@@ -343,10 +356,12 @@ class Project:
     def absent_on(self, trade_id: str, d: date) -> float:
         """Highest absence count for that trade covering day d. A report covers its own day (or the next working day
         when reported on a weekend) plus the following working days up to ABSENCE_WORKDAYS; repeats do not add up."""
-        name = self.trades[trade_id]["name"].lower()
         best = 0.0
         for e in self.events:
-            if e["type"] != "absence" or e["trade"].lower() != name:
+            if e["type"] != "absence":
+                continue
+            t = self.trade_by_name(e["trade"])
+            if not t or t["id"] != trade_id:
                 continue
             first = date.fromisoformat(e["date"])
             if not is_workday(first):

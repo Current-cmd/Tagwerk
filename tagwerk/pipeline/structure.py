@@ -15,6 +15,7 @@ import copy
 import json
 import logging
 import re
+from functools import lru_cache
 import unicodedata
 from pathlib import Path
 
@@ -41,6 +42,14 @@ TRADE_WORDS = {
     "AV-Technik": ["av-techniker", "av techniker", "techniker", "av-technik", "av technician", "av"],
     "Rückbau": ["rückbau", "abbruch", "demolition"],
     "Bauleitung": ["bauleitung", "bauleiter"],
+    # German trades that map onto a project trade via project.TRADE_GROUPS (scan projects: TGA, Ausbau, ...)
+    "TGA": ["tga"],
+    "Heizung": ["heizungsbauer", "heizungsmonteur"],
+    "Sanitär": ["klempner", "sanitärinstallateur"],
+    "Maurer": ["maurer"],
+    "Zimmerer": ["zimmerer", "zimmermann"],
+    "Fliesenleger": ["fliesenleger"],
+    "Fensterbauer": ["fensterbauer"],
     # Dutch trades (Schependomlaan)
     "Metselaar": ["metselaar", "metselaars"],
     "Betonwerker": ["betonwerker", "betonwerkers", "betonploeg"],
@@ -73,11 +82,17 @@ STATE_WORDS: list[tuple[str, list[str]]] = [
     ("covered", ["verlegt", "belegt", "versiegelt", "covered", "laid"]),
     ("removed", ["demontiert", "ausgebaut", "rückgebaut", "entfernt", "removed"]),
     ("mounted", ["montiert", "hängt", "hängen", "aufgehängt", "mounted", "hung"]),
-    ("installed", ["montiert", "eingebaut", "installiert", "steht", "eingefüllt", "verfüllt", "eingesetzt",
-                   "angebracht", "vorgefertigt", "installed", "fitted", "geplaatst",
+    ("installed", ["montiert", "eingebaut", "installiert", "steht", "stehen", "eingefüllt", "verfüllt", "eingesetzt",
+                   "angebracht", "vorgefertigt", "aufgestellt", "aufgebaut", "installed", "fitted", "geplaatst",
                    "gemonteerd", "gemetseld", "gestort", "gelegd", "aangebracht", "staat"]),
     ("started", ["begonnen", "angefangen", "started", "gestart", "mee bezig"]),
 ]
+# A state word that is valid German but missing from an element type's state table falls back to the nearest
+# state that type does have, only if the target exists in that type; otherwise the phrase is dropped as before.
+# ("Die Steckdose ist angeschlossen" -> installed; "Die Decke ist verputzt" -> started.)
+STATE_FALLBACK = {"connected": "installed", "wired": "installed", "mounted": "installed", "prepared": "started",
+                  "primed": "started", "substructure": "started", "framed": "started", "boarded": "installed",
+                  "covered": "installed", "levelled": "started"}
 DONE_WORDS = ["fertig", "erledigt", "komplett", "done", "finished", "complete", "completed", "klaar", "gereed",
               "endzustand", "fertiggestellt"]
 FUTURE_WORDS = ["wird noch", "werden noch", "kommt noch", "muss noch", "müssen noch", "soll noch", "später",
@@ -162,8 +177,37 @@ def _rows_in(text: str) -> set[str]:
     return found
 
 
+_WORD = re.compile(r"[\wäöüß]+")
+_UMLAUT_TAIL = re.compile(r"(au|a|o|u)([^aouäöüy]*)$")
+_UMLAUT = {"au": "äu", "a": "ä", "o": "ö", "u": "ü"}
+
+
+@lru_cache(maxsize=4096)
+def _plural_forms(word: str) -> tuple[str, ...]:
+    """Word plus likely German plurals (+n/en/e/er/s, umlaut on the last a/o/u/au + e/er): Wand -> Wände,
+    Stuhl -> Stühle, Dach -> Dächer. Short words (< 4 letters) are not inflected."""
+    if len(word) < 4:
+        return (word,)
+    forms = {word, *(word + x for x in ("n", "en", "e", "er", "s"))}
+    m = _UMLAUT_TAIL.search(word)
+    if m:
+        uml = word[:m.start()] + _UMLAUT[m.group(1)] + m.group(2)
+        forms |= {uml, uml + "e", uml + "er"}
+    return tuple(sorted(forms))
+
+
+def _name_hit(t: str, tokens: set[str], name: str) -> bool:
+    n = _norm(name)
+    if len(n) <= 2:
+        return False
+    if _WORD.fullmatch(n):  # single word: also match its plural forms (whole word only)
+        return any(f in tokens for f in _plural_forms(n))
+    return _has(t, n)
+
+
 def _match_elements(text: str, candidates: list[dict]) -> list[str]:
     t = _norm(text)
+    tokens = set(_WORD.findall(t))
     hits: list[str] = []
     rows = _rows_in(t)
     for c in candidates:
@@ -171,7 +215,7 @@ def _match_elements(text: str, candidates: list[dict]) -> list[str]:
             hits.append(c["id"])
             continue
         names = [c["name_de"], c["name_en"], *c["aliases"]]
-        if any(len(n) > 2 and _has(t, _norm(n)) for n in names):
+        if any(_name_hit(t, tokens, n) for n in names):
             hits.append(c["id"])
     # drop generic matches when a more specific one in the same family matched (e.g. 'Traverse' vs 'Traverse 1')
     return hits
@@ -182,10 +226,14 @@ def _state_for(text: str, el_type: str) -> str | None:
     names = [s for s, _ in STATES.get(el_type, STATES["default"])]
     if any(_has(t, w) for w in DONE_WORDS):
         return names[-1]
+    fallback = None
     for state, words in STATE_WORDS:
-        if state in names and any(_has(t, w) for w in words):
-            return state
-    return None
+        if any(_has(t, w) for w in words):
+            if state in names:
+                return state
+            if fallback is None and STATE_FALLBACK.get(state) in names:
+                fallback = STATE_FALLBACK[state]
+    return fallback
 
 
 def _trade_in(text: str) -> str | None:
