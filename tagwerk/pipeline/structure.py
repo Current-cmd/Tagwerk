@@ -44,8 +44,9 @@ TRADE_WORDS = {
     "Bauleitung": ["bauleitung", "bauleiter"],
     # German trades that map onto a project trade via project.TRADE_GROUPS (scan projects: TGA, Ausbau, ...)
     "TGA": ["tga"],
-    "Heizung": ["heizungsbauer", "heizungsmonteur"],
-    "Sanitär": ["klempner", "sanitärinstallateur"],
+    "Heizung": ["heizung", "heizungsbauer", "heizungsmonteur"],
+    "Sanitär": ["sanitär", "klempner", "sanitärinstallateur"],
+    "Lüftung": ["lüftung", "lüftungsbauer"],
     "Maurer": ["maurer"],
     "Zimmerer": ["zimmerer", "zimmermann"],
     "Fliesenleger": ["fliesenleger"],
@@ -211,6 +212,7 @@ def _match_elements(text: str, candidates: list[dict]) -> list[str]:
     t = _norm(text)
     tokens = set(_WORD.findall(t))
     hits: list[str] = []
+    numbered: set[str] = set()  # hit through an instance-numbered name ("Stuhl 2")
     rows = _rows_in(t)
     for c in candidates:
         if c["id"].startswith("E-ROW-") and c["id"][-1] in rows:
@@ -219,8 +221,12 @@ def _match_elements(text: str, candidates: list[dict]) -> list[str]:
         names = [c["name_de"], c["name_en"], *c["aliases"]]
         if any(_name_hit(t, tokens, n) for n in names):
             hits.append(c["id"])
-    # drop generic matches when a more specific one in the same family matched (e.g. 'Traverse' vs 'Traverse 1')
-    return hits
+            if any(re.search(r"\d", n) and _name_hit(t, tokens, n) for n in names):
+                numbered.add(c["id"])
+    # a numbered mention ("Stuhl 2") beats the plain name every instance carries as alias ("Stuhl"), in its own
+    # family only (family = id without the trailing number); plain mentions still hit all instances
+    fams = {h.rsplit("-", 1)[0] for h in numbered}
+    return [h for h in hits if h in numbered or h.rsplit("-", 1)[0] not in fams]
 
 
 def _state_for(text: str, el_type: str) -> str | None:
@@ -326,18 +332,23 @@ def rules_structure(capture: dict, transcript: dict, vision: dict, context: dict
                 m = re.search(rf"(?<![\wäöü]){re.escape(w)}(?![\wäöü])", s)
                 if m:
                     n = _number_before(s, m.start())
-                    if n:
-                        out["labour_present"].append({"trade": trade, "count": n})
+                    if n:  # said and typed in one capture: one entry per trade, the higher count
+                        same = next((x for x in out["labour_present"] if x["trade"] == trade), None)
+                        if same:
+                            same["count"] = max(same["count"], n)
+                        else:
+                            out["labour_present"].append({"trade": trade, "count": n})
                     break
 
         # deliveries: "60 Stühle geliefert"
         if any(_has(s, w) for w in DELIVERY_WORDS):
             m = re.search(r"(\d+)\s*(stk|stück|m2|m²|m|paletten?)?\s*([a-zäöüß-]+)", s)
             if m:
-                out["material_delivered"].append({"name": m.group(3).capitalize(), "qty": float(m.group(1)),
-                                                  "unit": m.group(2) or "Stk"})
+                item = {"name": m.group(3).capitalize(), "qty": float(m.group(1)), "unit": m.group(2) or "Stk"}
             else:
-                out["material_delivered"].append({"name": sent.strip()[:60], "qty": None, "unit": None})
+                item = {"name": sent.strip()[:60], "qty": None, "unit": None}
+            if item not in out["material_delivered"]:  # the same delivery said and typed counts once
+                out["material_delivered"].append(item)
 
         for etype, sev, words in EVENT_WORDS:
             if any(_has(s, w) for w in words):

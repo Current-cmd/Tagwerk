@@ -119,7 +119,9 @@ def _sync_capture(store, p: Project, capture_id: str, vision: dict | None = None
             if e.get("activity_id"):
                 store.merge_edge(e["id"], "AFFECTS", e["activity_id"])
     fc = _forecast(p)
-    for aid in {a for ch in c["changes"] for a in p.activities_of(ch["element_id"])}:
+    touched = {a for ch in c["changes"] for a in p.activities_of(ch["element_id"])}
+    touched |= {e["activity_id"] for e in p.events if e["capture_id"] == capture_id and e.get("activity_id")}
+    for aid in touched:
         store.merge_node("Activity", aid, {"pct": p.activity_pct(aid), **({"delay_d": fc[aid]["delay_d"],
                          "forecast_finish": fc[aid]["forecast_finish"].isoformat()} if aid in fc else {})})
     if vision:

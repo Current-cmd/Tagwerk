@@ -109,3 +109,33 @@ def test_hoersaal_trades_unchanged():
     p = Project.from_seed()
     assert p.trade_by_name("Trockenbau")["id"] == "T-TROCKENBAU" and p.trade_by_name("Elektro")["id"] == "T-ELEKTRO"
     assert p.trade_by_name("Maler")["id"] == "T-MALER" and p.trade_by_name("Tischler")["id"] == "T-TISCHLER"
+
+
+def test_numbered_name_updates_only_that_instance(room):
+    assert set(work(room, "Stuhl 2 steht.")) == {"S-CHAIR-2"}
+    assert set(work(room, "Stuhl 3 und Stuhl 4 stehen.")) == {"S-CHAIR-3", "S-CHAIR-4"}
+    assert len(work(room, "Die Stühle stehen.")) == 4  # plain plural still means all instances
+
+
+def test_numbered_hit_only_narrows_its_own_family(room):
+    cands = [{"id": e["id"], "name_de": e["name_de"], "name_en": e["name_en"], "aliases": e["aliases"]}
+             for e in room.elements.values()]
+    hits = structure._match_elements("stuhl 2 und die steckdose", cands)
+    assert [h for h in hits if h.startswith("S-CHAIR")] == ["S-CHAIR-2"]
+    assert [h for h in hits if h.startswith("S-SOCKET")] == ["S-SOCKET-1", "S-SOCKET-2", "S-SOCKET-3"]
+
+
+def test_heizung_and_lueftung_absence_land_on_tga(room):
+    for text, trade in [("Zwei Mann von der Heizung sind krank.", "Heizung"),
+                        ("Zwei Mann von der Lüftung sind krank.", "Lüftung"),
+                        ("Ein Sanitär ist krank.", "Sanitär")]:
+        s = say(room, text)
+        assert s["absences"][0]["trade"] == trade, text
+        assert room.activity_for_trade(trade, date(2026, 12, 7))["id"] == "A030"
+
+
+def test_labour_and_delivery_said_and_typed_are_not_doubled(room):
+    text = "Drei Elektriker sind da. 40 Stühle geliefert. Drei Elektriker sind da. 40 Stühle geliefert."
+    s = say(room, text)
+    assert s["labour_present"] == [{"trade": "Elektro", "count": 3}]
+    assert len(s["material_delivered"]) == 1 and s["material_delivered"][0]["qty"] == 40.0

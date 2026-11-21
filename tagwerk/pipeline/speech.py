@@ -46,7 +46,7 @@ def _model():
         log.info("loading whisper %s on %s (int8)", *key)
         try:  # the cache first: a plain load asks the HF hub for model info and hangs when the hub is unreachable
             _models[key] = WhisperModel(key[0], device=key[1], compute_type="int8", local_files_only=True)
-        except Exception:  # noqa: BLE001 - not cached yet: download once
+        except (OSError, ValueError):  # not cached yet: download once (CUDA/runtime errors must propagate)
             _models[key] = WhisperModel(key[0], device=key[1], compute_type="int8")
     return _models[key]
 

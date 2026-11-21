@@ -157,7 +157,9 @@ async def _publish_results(project, cid: str, changes: list[dict], replay: bool)
                                         "name": el["name_de"]}})
         if replay:
             await asyncio.sleep(REPLAY_PAUSE_S / 2)
-    for aid in sorted({a for ch in changes for a in project.activities_of(ch["element_id"])}):
+    touched = {a for ch in changes for a in project.activities_of(ch["element_id"])}
+    touched |= {e["activity_id"] for e in project.events if e["capture_id"] == cid and e.get("activity_id")}
+    for aid in sorted(touched):  # an absence moves its activity's forecast too
         r = fc[aid]
         await broker.publish({"type": "update", "label": "Activity", "id": aid,
                               "props": {"pct": r["pct"], "delay_d": r["delay_d"], "name": r["name"],

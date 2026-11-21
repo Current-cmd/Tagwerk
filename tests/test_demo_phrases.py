@@ -11,7 +11,7 @@ PHRASES = [
     ("Z-AUDIENCE", "Stuhlreihe A ist montiert"),
     ("Z-AUDIENCE", "Reihen F bis H Unterkonstruktion"),
     ("Z-AUDIENCE", "zwei Mann vom Trockenbau sind krank"),
-    ("Z-STAGE", "Lautsprecher links und rechts angeschlossen"),
+    ("Z-STAGE", "Lautsprecher links und Lautsprecher rechts angeschlossen"),
     ("Z-STAGE", "die Leinwand ist in Betrieb"),
     ("Z-STAGE", "40 Stühle geliefert"),
     ("Z-STAGE", "Kratzer an der Bühne"),
@@ -49,3 +49,15 @@ def test_baseline_has_no_delay_without_evidence():
     p = Project.from_seed()  # no history: nothing reported yet
     fc = p.forecast(date(2026, 11, 2))
     assert all(r["delay_d"] <= 0 for r in fc.values()), {k: v["delay_d"] for k, v in fc.items() if v["delay_d"] > 0}
+
+
+def test_both_speakers_connected_by_the_demo_phrase():
+    p = Project.from_seed()
+    p.load_history()
+    phrase = "Lautsprecher links und Lautsprecher rechts angeschlossen"
+    cap = {"capture_id": "spk", "zone_id": "Z-STAGE", "note": phrase}
+    vis = {"capture_id": "spk", "frames": []}
+    s = structure.structure(cap, {"capture_id": "spk", "lang": "de", "segments": []}, vis, build_context(cap, vis, p), p)
+    ch = p.apply_structured({"capture_id": "spk", "zone_id": "Z-STAGE", "ts": "2026-11-26T09:00:00Z"}, s)
+    assert {(c["element_id"], c["state"]) for c in ch if c["action"] == "confirmed"} >= {
+        ("E-SPK-L", "connected"), ("E-SPK-R", "connected")}

@@ -115,3 +115,31 @@ def test_whisper_loads_from_local_cache_without_network(monkeypatch):
     calls.clear()
     speech._model()
     assert calls == [True, False]  # not cached: falls back to the normal (downloading) load
+
+
+def test_whisper_load_narrow_fallback(monkeypatch):
+    """Only a cache miss (OSError/ValueError) falls back to the downloading load; a CUDA RuntimeError must propagate
+    instead of silently hitting the HF hub (the hang)."""
+    import sys
+    import types
+
+    import pytest
+
+    from tagwerk.pipeline import speech
+
+    def fake(exc):
+        class M:
+            def __init__(self, name, device, compute_type, local_files_only=False):
+                if local_files_only:
+                    raise exc
+        return M
+
+    mod = types.ModuleType("faster_whisper")
+    monkeypatch.setitem(sys.modules, "faster_whisper", mod)
+    mod.WhisperModel = fake(RuntimeError("CUDA failed with error unknown"))
+    monkeypatch.setattr(speech, "_models", {})
+    with pytest.raises(RuntimeError):
+        speech._model()
+    mod.WhisperModel = fake(FileNotFoundError("not cached"))
+    monkeypatch.setattr(speech, "_models", {})
+    assert speech._model() is not None

@@ -19,7 +19,7 @@ All commands in `~/Developer/hacka/Tagwerk`, with `export PYTHONPATH=$PWD`.
   network or Claude.
 - Live: photo + short voice note from the phone. Phrases that change the freshly reset demo state (checked by
   `tests/test_demo_phrases.py`): "Stuhlreihe A ist montiert", "Reihen F bis H Unterkonstruktion",
-  "zwei Mann vom Trockenbau sind krank", "Lautsprecher links und rechts angeschlossen", "die Leinwand ist in Betrieb",
+  "zwei Mann vom Trockenbau sind krank", "Lautsprecher links und Lautsprecher rechts angeschlossen", "die Leinwand ist in Betrieb",
   "40 Stühle geliefert", "Kratzer an der Bühne". Each element only moves up once: after a reset they work again.
 - Dashboard: KPI strip, forecast moved by the sick workers, exports (P6 XML, .ics, GAEB X84).
 
@@ -73,6 +73,10 @@ Hörsaal (:8080) and Schependomlaan (:8081) demos are not touched.
    - Not evidence: "Die Tische werden noch geliefert." (future, logged as material only).
    Words that change state: eingebaut/installiert/montiert/aufgestellt/aufgebaut/steht/stehen (installed), hängt
    (mounted, lights), verlegt (floor), gestrichen/verputzt (walls), fertig (100 %), in Betrieb (screens).
+   A numbered name updates only that instance: "Stuhl 2 steht." changes CHAIR-2, "Stuhl 3 und Stuhl 4 stehen."
+   changes 3 and 4, while "Die Stühle stehen." still changes all of them.
+   An absence covers 3 working days, so for a forecast effect you can see, name the trade of the FIRST activity:
+   "Zwei Maurer sind krank." -> Rohbau (TGA only starts a week later, so "Elektriker" barely moves the forecast today).
    Only elements the scan found exist: say what is in the project (Wand, Tür, Fenster, Decke, Boden, Steckdose,
    Leuchte, Heizkörper, Kabel, Bildschirm, Stuhl, Tisch, Sofa, ...). Each element only moves up, a repeat shows "unchanged".
 

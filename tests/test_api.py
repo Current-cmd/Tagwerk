@@ -146,3 +146,21 @@ def test_same_filenames_do_not_overwrite(client, tmp_path):
     client.post("/captures", data={"zone_id": "Z-STAGE", "capture_id": "cap-f1"}, files=files)
     saved = sorted(p.name for p in (tmp_path / "data" / "captures" / "cap-f1").iterdir())
     assert saved == ["00_image.jpg", "01_image.jpg"]
+
+
+def test_absence_only_capture_publishes_activity_update_and_graph_delay(client):
+    """An absence changes the forecast of its activity: /graph and the websocket must show it without a reload."""
+    with client.websocket_connect("/events") as ws:
+        r = client.post("/captures", data={"zone_id": "Z-AUDIENCE", "capture_id": "cap-abs",
+                                           "note": "Zwei Mann vom Trockenbau sind krank."})
+        assert r.json()["changes"] == []
+        seen = []
+        while True:
+            ev = ws.receive_json()
+            seen.append(ev)
+            if ev["type"] == "status" and ev["id"] == "cap-abs" and ev["props"]["step"] == "done":
+                break
+    assert any(e["type"] == "update" and e["label"] == "Activity" and e["id"] == "A1080" for e in seen)
+    node = next(n for n in client.get("/api/graph").json()["nodes"] if n["id"] == "A1080")
+    fc = {a["id"]: a for a in client.get("/api/dashboard").json()["activities"]}
+    assert node["props"]["delay_d"] == fc["A1080"]["delay_d"]
