@@ -41,7 +41,7 @@ docker compose up -d neo4j
 PYTHONPATH=$PWD .venv/bin/python -m pytest -q    # PYTHONPATH must be set: the shell's ROS paths break the venv
 ```
 
-Pages: `/graph`, `/dashboard`, `/site`, `/upload`. Exports: `/export/p6.xml`, `/export/p6-baseline.xml`,
+Pages: `/graph` (with the ▶ Abspielen replay picker), `/dashboard`, `/site`, `/upload`, `/scan` (room scan to a new project). Exports: `/export/p6.xml`, `/export/p6-baseline.xml`,
 `/export/day.ics`, `/export/boq.x83`, `/export/boq.x84`. Demo runbook: `docs/DEMO.md`.
 
 `.env`: `NEO4J_URI=bolt://localhost:7687`, `GPU_WORKER_URL=http://localhost:8100`, `DATA_DATE=2026-11-26`

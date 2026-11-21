@@ -143,3 +143,11 @@ def test_whisper_load_narrow_fallback(monkeypatch):
     mod.WhisperModel = fake(FileNotFoundError("not cached"))
     monkeypatch.setattr(speech, "_models", {})
     assert speech._model() is not None
+
+
+def test_concat_line_escapes_apostrophes(tmp_path):
+    from tagwerk.pipeline.normalize import concat_line
+
+    p = tmp_path / "Peter's walk.wav"
+    assert concat_line(p) == "file '" + str(p.resolve()).replace("'", "'\\''") + "'\n"
+    assert "Peter'\\''s walk.wav'" in concat_line(p)

@@ -94,6 +94,8 @@ STATE_WORDS: list[tuple[str, list[str]]] = [
 STATE_FALLBACK = {"connected": "installed", "wired": "installed", "mounted": "installed", "prepared": "started",
                   "primed": "started", "substructure": "started", "framed": "started", "boarded": "installed",
                   "covered": "installed", "levelled": "started"}
+# "steht/stehen (noch) ... aus", "fehlt noch": still outstanding, not installed
+OUTSTANDING_RE = re.compile(r"\b(?:steht|stehen)\b.*\baus\b|\b(?:fehlt|fehlen) noch\b")
 DONE_WORDS = ["fertig", "erledigt", "komplett", "done", "finished", "complete", "completed", "klaar", "gereed",
               "endzustand", "fertiggestellt"]
 FUTURE_WORDS = ["wird noch", "werden noch", "kommt noch", "muss noch", "müssen noch", "soll noch", "später",
@@ -355,7 +357,7 @@ def rules_structure(capture: dict, transcript: dict, vision: dict, context: dict
                 out["special_events"].append({"type": etype, "text": sent.strip(), "severity": sev})
                 break
 
-        if els and (s.rstrip().endswith("?") or any(_has(s, w) for w in FUTURE_WORDS)):
+        if els and (s.rstrip().endswith("?") or any(_has(s, w) for w in FUTURE_WORDS) or OUTSTANDING_RE.search(s)):
             out["unmatched"].append(sent.strip())  # question or future work: not evidence of progress
             continue
         if els:

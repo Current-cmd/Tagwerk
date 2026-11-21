@@ -139,3 +139,30 @@ def test_labour_and_delivery_said_and_typed_are_not_doubled(room):
     s = say(room, text)
     assert s["labour_present"] == [{"trade": "Elektro", "count": 3}]
     assert len(s["material_delivered"]) == 1 and s["material_delivered"][0]["qty"] == 40.0
+
+
+def test_different_spoken_trades_on_one_project_trade_add_up(room):
+    # 2 Elektro + 1 Sanitär are different people on the TGA crew: 3 absent; a repeat of one report still keeps the max
+    for i, (trade, n) in enumerate([("Elektro", 2), ("Sanitär", 1), ("Elektro", 2)]):
+        room.apply_structured({"capture_id": f"a{i}", "zone_id": "Z-SITE", "ts": "2026-11-23T09:00:00Z"},
+                              {"capture_id": f"a{i}", "labour_present": [], "material_delivered": [], "work_done": [],
+                               "special_events": [], "unmatched": [],
+                               "absences": [{"trade": trade, "count": n, "reason": "krank"}]})
+    assert room.absent_on("T-TGA", date(2026, 11, 23)) == 3
+
+
+def test_outstanding_work_is_not_confirmed(room):
+    # "steht/stehen ... aus" means still missing, not installed
+    assert work(room, "Es stehen noch Stühle aus.") == {}
+    assert work(room, "Der Tisch steht noch aus.") == {}
+    assert set(work(room, "Die Stühle stehen.").values()) == {"installed"}
+
+
+def test_project_without_activities_does_not_crash(room):
+    from tagwerk.pipeline.export import p6_xml
+
+    room.activities.clear()
+    room.mapping.clear() if hasattr(room, "mapping") else None
+    ov = room.overview(date(2026, 11, 23))
+    assert ov["kpi"]["forecast_finish"] is None and ov["kpi"]["delay_d"] == 0
+    assert "<APIBusinessObjects" in p6_xml(room, progress=True, today=date(2026, 11, 23))

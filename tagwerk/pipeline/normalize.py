@@ -17,6 +17,11 @@ log = logging.getLogger(__name__)
 _JPEG = {".jpg", ".jpeg"}
 
 
+
+def concat_line(path: Path) -> str:
+    """One ffmpeg concat-demuxer line; a ' inside the path is closed, escaped and reopened ('\\'')."""
+    return "file '" + str(path.resolve()).replace("'", "'\\''") + "'\n"
+
 def _run(cmd: list[str]) -> bool:
     try:
         r = subprocess.run(cmd, capture_output=True, text=True, timeout=600)
@@ -138,7 +143,7 @@ def normalize(capture: dict, workdir: Path) -> dict:
         wavs[0].replace(audio)
     elif wavs:
         listing = workdir / "_concat.txt"
-        listing.write_text("".join(f"file '{w.resolve()}'\n" for w in wavs))
+        listing.write_text("".join(concat_line(w) for w in wavs))
         ok = _run(["ffmpeg", "-y", "-v", "error", "-f", "concat", "-safe", "0", "-i", str(listing),
                    "-c", "copy", str(audio)])
         listing.unlink(missing_ok=True)

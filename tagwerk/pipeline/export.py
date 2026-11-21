@@ -1,5 +1,5 @@
 """.ics for Outlook (UTC, stable UIDs), Primavera P6 XML (baseline/progress) and GAEB DA XML X83/X84."""
-from datetime import UTC, datetime, timedelta
+from datetime import UTC, date, datetime, timedelta
 
 
 def _ics_time(dt: datetime) -> str:
@@ -72,8 +72,8 @@ def p6_xml(project, today=None, progress: bool = True) -> str:
         for k, v in (("ObjectId", oid), ("Title", title), ("SubjectArea", "Activity"), ("DataType", "Text")):
             SubElement(u, k).text = str(v)
     proj = SubElement(root, "Project")
-    start = min(a["planned_start"] for a in project.activities.values())
-    finish = max(a["planned_finish"] for a in project.activities.values())
+    start = min((a["planned_start"] for a in project.activities.values()), default=today or date.today())
+    finish = max((a["planned_finish"] for a in project.activities.values()), default=start)
     for k, v in (("ObjectId", 1), ("Id", project.meta.get("id", "P-1")), ("Name", project.meta.get("name", "Tagwerk")),
                  ("PlannedStartDate", _p6_date(start)), ("ScheduledFinishDate", _p6_finish(finish)),
                  ("DataDate", _p6_date(today) if (progress and today) else _p6_date(start)),

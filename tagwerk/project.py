@@ -354,9 +354,11 @@ class Project:
         return round(100.0 * done / len(days), 1)
 
     def absent_on(self, trade_id: str, d: date) -> float:
-        """Highest absence count for that trade covering day d. A report covers its own day (or the next working day
-        when reported on a weekend) plus the following working days up to ABSENCE_WORKDAYS; repeats do not add up."""
-        best = 0.0
+        """Absent crew for that trade covering day d. A report covers its own day (or the next working day when
+        reported on a weekend) plus the following working days up to ABSENCE_WORKDAYS. Repeats of one spoken trade do
+        not add up (highest count wins); different spoken trades mapped to one project trade (Elektro + Sanitär on TGA)
+        are different people and are summed."""
+        best: dict[str, float] = {}
         for e in self.events:
             if e["type"] != "absence":
                 continue
@@ -370,8 +372,9 @@ class Project:
             for _ in range(ABSENCE_WORKDAYS - 1):
                 last = next_workday(last)
             if first <= d <= last:
-                best = max(best, e["count"])
-        return best
+                key = e["trade"].lower()
+                best[key] = max(best.get(key, 0.0), e["count"])
+        return float(sum(best.values()))
 
     def topo_order(self) -> list[str]:
         order, seen = [], set()
@@ -509,8 +512,9 @@ class Project:
         pv = sum(r["pv_eur"] for r in acts)
         ev = sum(r["ev_eur"] for r in acts)
         bac = sum(r["bac_eur"] for r in acts)
-        project_finish = max(r["forecast_finish"] for r in acts)
-        baseline_finish = max(r["baseline_finish"] for r in acts)
+        # a project without activities (hand-made seed) still renders: no finish dates, no delay
+        project_finish = max((r["forecast_finish"] for r in acts), default=None)
+        baseline_finish = max((r["baseline_finish"] for r in acts), default=today)
         iso = today.isoformat()
 
         curve = self.curve(today, max(today, baseline_finish))
@@ -543,8 +547,9 @@ class Project:
                 "priced": any(lk["value"] for lk in self.links),
                 "planned_basis": "start of report day (curve points: end of each day)",
                 "ac_eur": round(self.actual_cost(today)), "ac_note": "labour hours x invented trade rates",
-                "forecast_finish": project_finish.isoformat(), "baseline_finish": baseline_finish.isoformat(),
-                "delay_d": workday_diff(baseline_finish, project_finish),
+                "forecast_finish": project_finish.isoformat() if project_finish else None,
+                "baseline_finish": baseline_finish.isoformat(),
+                "delay_d": workday_diff(baseline_finish, project_finish) if project_finish else 0,
                 "open_defects": len([e for e in self.events if e["type"] == "defect"]),
             },
             "activities": [{**r, "planned_start": r["planned_start"].isoformat(),
@@ -590,7 +595,7 @@ class Project:
                        for lk in self._by_el.get(eid, []))
 
         log = sorted((h for h in self.history_log if h["date"]), key=lambda h: h["date"])
-        start = min(a["planned_start"] for a in self.activities.values())
+        start = min((a["planned_start"] for a in self.activities.values()), default=today)
         first_log = log[0]["date"] if log else None
         if first_log and date.fromisoformat(first_log) < start:
             start = date.fromisoformat(first_log)
