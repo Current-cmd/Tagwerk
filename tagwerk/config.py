@@ -20,6 +20,7 @@ class Settings(BaseSettings):
     site_lat: float = 48.137
     site_lon: float = 11.575
     replay_mode: bool = False
+    project: str = "hoersaal"  # seed/ for hoersaal, else seed/projects/<project>/
 
 
 @lru_cache

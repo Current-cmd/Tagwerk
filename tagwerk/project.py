@@ -107,7 +107,7 @@ class Project:
         p = cls()
         for r in _read_csv(seed_dir / "zones.csv"):
             p.zones[r["zone_id"]] = {"id": r["zone_id"], "name_de": r["name_de"], "name_en": r["name_en"],
-                                     "kind": r["kind"]}
+                                     "kind": r["kind"], "storey": r.get("storey") or None}
         for r in _read_csv(seed_dir / "elements.csv"):
             eid = r["element_id"]
             p.elements[eid] = {

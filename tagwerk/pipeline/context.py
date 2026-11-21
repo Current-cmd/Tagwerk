@@ -41,7 +41,11 @@ def weather(lat: float, lon: float) -> dict:
 def build_context(capture: dict, vision: dict, project=None) -> dict:
     s = get_settings()
     gps = capture.get("gps") or {}
-    w = weather(gps.get("lat", s.site_lat), gps.get("lon", s.site_lon))
+    lat = (project.meta.get("lat") if project is not None and get_settings().project not in ("", "hoersaal")
+           else None) or s.site_lat
+    lon = (project.meta.get("lon") if project is not None and get_settings().project not in ("", "hoersaal")
+           else None) or s.site_lon
+    w = weather(gps.get("lat", lat), gps.get("lon", lon))
     if project is None:
         from tagwerk.pipeline import stub
 
@@ -49,7 +53,9 @@ def build_context(capture: dict, vision: dict, project=None) -> dict:
         ctx["zone_id"], ctx["weather"] = capture["zone_id"], w
         return ctx
 
-    today = date.fromisoformat(s.data_date)
+    from tagwerk.state import today as data_today
+
+    today = data_today()
     markers = project.marker_map()
     seen = [markers[o["marker_id"]] for f in vision.get("frames", []) for o in f["objects"]
             if o.get("marker_id") in markers]

@@ -8,16 +8,21 @@ def sync_seed(store, p: Project) -> None:
 
 
 def _sync_seed(store, p: Project) -> None:
-    store.merge_node("Project", "P-HS", {"name": "Hörsaal Sanierung", "client": "TUM (fictitious renovation)"})
-    store.merge_node("Site", "S-1", {"name": "Hörsaal", "lat": 48.137, "lon": 11.575})
-    store.merge_node("Building", "B-1", {"name": "Hörsaalgebäude"})
-    store.merge_node("Storey", "ST-0", {"name": "EG", "elevation": 0.0})
-    store.merge_edge("P-HS", "HAS_SITE", "S-1")
-    store.merge_edge("S-1", "HAS_BUILDING", "B-1")
-    store.merge_edge("B-1", "HAS_STOREY", "ST-0")
+    m = p.meta
+    pid = m.get("id", "P-HS")
+    store.merge_node("Project", pid, {"name": m.get("name", ""), "client": m.get("client", "")})
+    store.merge_node("Site", f"{pid}-S", {"name": m.get("site", m.get("name", "")), "lat": m.get("lat"),
+                                         "lon": m.get("lon")})
+    store.merge_node("Building", f"{pid}-B", {"name": m.get("building", m.get("name", ""))})
+    store.merge_edge(pid, "HAS_SITE", f"{pid}-S")
+    store.merge_edge(f"{pid}-S", "HAS_BUILDING", f"{pid}-B")
+    storeys = m.get("storeys") or [{"id": "ST-0", "name": "EG", "elevation": 0.0}]
+    for st in storeys:
+        store.merge_node("Storey", st["id"], {"name": st["name"], "elevation": st.get("elevation", 0.0)})
+        store.merge_edge(f"{pid}-B", "HAS_STOREY", st["id"])
     for z in p.zones.values():
         store.merge_node("Zone", z["id"], {"name": z["name_de"], "name_en": z["name_en"], "kind": z["kind"]})
-        store.merge_edge("ST-0", "HAS_SPACE", z["id"])
+        store.merge_edge(z.get("storey") or storeys[0]["id"], "HAS_SPACE", z["id"])
     for t in p.trades.values():
         store.merge_node("Trade", t["id"], {"name": t["name"], "rate_eur_h": t["rate_eur_h"]})
     for code, w in p.wbs.items():

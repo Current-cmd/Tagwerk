@@ -54,7 +54,8 @@ def health() -> dict:
     s = get_settings()
     return {"status": "ok", "graph": type(get_store()).__name__, "gpu_worker": s.gpu_worker_url or "in-process",
             "replay_mode": s.replay_mode, "structuring": "claude" if s.anthropic_api_key else "rules",
-            "data_date": s.data_date}
+            "data_date": today().isoformat(), "project": get_project().meta.get("name"),
+            "elements": len(get_project().elements), "activities": len(get_project().activities)}
 
 
 @app.get("/zones")
@@ -99,7 +100,7 @@ async def create_capture(
         media.append({"type": _kind(f), "path": str(dest)})
     now = datetime.now(UTC).replace(microsecond=0)
     if ts is None:  # put live captures on the project's data date so they count as "today"
-        ts = f"{get_settings().data_date}T{now.strftime('%H:%M:%S')}Z"
+        ts = f"{today().isoformat()}T{now.strftime('%H:%M:%S')}Z"
     capture = {"capture_id": cid, "ts_server": ts, "gps": None, "zone_id": zone_id,
                "lang": lang if lang in ("de", "en", "auto") else "auto", "media": media,
                "note": (note or "").strip() or None}
@@ -174,7 +175,7 @@ async def confirm_element(element_id: str, body: Confirm) -> dict:
     if not el:
         raise HTTPException(404)
     cid = f"manual-{uuid.uuid4().hex[:8]}"
-    ts = f"{get_settings().data_date}T{datetime.now(UTC).strftime('%H:%M:%S')}Z"
+    ts = f"{today().isoformat()}T{datetime.now(UTC).strftime('%H:%M:%S')}Z"
     structured = {"capture_id": cid, "labour_present": [], "absences": [], "material_delivered": [],
                   "work_done": [{"element_ids": [element_id], "activity_id": None, "state_proposed": body.state,
                                  "evidence": "voice", "quote": f"manual: {el['name_de']} {body.state}", "t": None}],
