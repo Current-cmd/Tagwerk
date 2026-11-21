@@ -98,7 +98,17 @@ Hörsaal (:8080) and Schependomlaan (:8081) demos are not touched.
    Only elements the scan found exist: say what is in the project (Wand, Tür, Fenster, Decke, Boden, Steckdose,
    Leuchte, Heizkörper, Kabel, Bildschirm, Stuhl, Tisch, Sofa, ...). Each element only moves up, a repeat shows "unchanged".
 
-## Fallbacks
+## Tagesbericht (Bautagebuch)
+`http://<laptop-ip>:8080/export/report.html` (today = data date) or `…/export/report.html?date=2026-11-25` is the
+auto-filled German daily report; the JSON for `/app` is `/api/v2/report?date=…`. It fills itself from that day's
+recordings: confirmed work (one row per spoken sentence, German state names), crew present/absent (labour and sick
+reports covering the day), the scan inventory with relations ("neben Wand", from `cache/<id>/sfm.json`, else the
+vision detections), events and defects, delays with causes, the next 3 working days and up to 6 photos/keyframes.
+Weather comes from the stored readings (no network call for past days). Bericht-Nr. = working day since project
+start. For a PDF: open it in the browser, Ctrl+P, "Als PDF speichern", A4 (the page has print CSS). Schependomlaan:
+same URL on :8081.
+
+
 1. Live upload fails: stay on replay.
 2. GPU worker down: the API runs speech/vision in-process automatically (slower).
 3. Everything down: backup screen recording.

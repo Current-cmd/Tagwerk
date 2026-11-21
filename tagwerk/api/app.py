@@ -16,7 +16,7 @@ from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.responses import FileResponse, HTMLResponse, PlainTextResponse, Response
 from pydantic import BaseModel
 
-from tagwerk import v2
+from tagwerk import report, v2
 from tagwerk.config import get_settings
 from tagwerk.contracts import validate
 from tagwerk.events import broker
@@ -357,6 +357,18 @@ def v2_day(date: str | None = None) -> dict:
 @app.get("/api/v2/taskgraph")
 def v2_taskgraph(date: str | None = None) -> dict:
     return v2.taskgraph(_v2_date(date))
+
+
+@app.get("/api/v2/report")
+def v2_report(date: str | None = None) -> dict:
+    """Tagesbericht / Bautagebuch of the day (default: the project's today)."""
+    return report.report(_v2_date(date))
+
+
+@app.get("/export/report.html", response_class=HTMLResponse)
+def export_report(date: str | None = None) -> HTMLResponse:
+    """Print-ready German A4 Bautagebuch page (print to PDF in the browser)."""
+    return HTMLResponse(report.report_html(_v2_date(date)))
 
 
 @app.get("/export/day.ics", response_class=PlainTextResponse)
