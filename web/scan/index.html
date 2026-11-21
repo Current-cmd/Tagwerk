@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Tagwerk · Video scannen</title>
+<script src="/auth.js"></script>
 <style>
   :root { --ink: #1d1d1f; --muted: #6b6b70; --line: #e3e3e8; --bg: #f6f7f9; --card: #fff; --accent: #1f6feb; }
   * { box-sizing: border-box; }
@@ -168,6 +169,7 @@ f.addEventListener('submit', ev => {
     tick(); timer = setInterval(tick, 500);
   };
   xhr.onload = () => {
+    if (xhr.status === 401) tagwerkAuth.ask();
     if (xhr.status !== 200) {
       let d = ''; try { d = JSON.parse(xhr.responseText).detail || ''; } catch (e) {}
       return fail(`Fehler ${xhr.status}${d ? ': ' + (typeof d === 'string' ? d : JSON.stringify(d)) : ''}`);

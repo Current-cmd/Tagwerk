@@ -34,6 +34,9 @@ Event, DailyReport. Relationships: see `seed/ontology.yaml`.
 - Forecast "today" is `data_date` from the project's `project.json` if set, else `DATA_DATE` from config.
 - A sick report counts for 3 working days (`ABSENCE_WORKDAYS`); repeated reports on one day do not add up.
 - Ids (`capture_id`, `replay_of`) are limited to `[A-Za-z0-9_-]{1,64}`: they become folder names.
+- Auth: one bearer `API_TOKEN` (header, `?token=` or the `tagwerk_token` cookie set by `web/auth.js`); `/health`, the
+  pages, `/auth.js` and `/vendor/` are open. Empty token only with `TAGWERK_DEV=1`. Tests run in dev mode (conftest).
+- `ts` must be ISO 8601 with a timezone; `apply_structured` is all-or-nothing (`Project.transaction()`).
 
 ## Commands
 - Tests: `PYTHONPATH=$PWD .venv/bin/python -m pytest -q`

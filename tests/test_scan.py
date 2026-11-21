@@ -81,6 +81,7 @@ def _scan_client(tmp_path, monkeypatch, vision):
     monkeypatch.setenv("CACHE_DIR", str(tmp_path / "cache"))
     monkeypatch.setenv("NEO4J_URI", "")
     monkeypatch.setenv("GPU_WORKER_URL", "")
+    monkeypatch.setenv("ALLOW_PROJECT_CREATE", "1")  # these tests create projects
     get_settings.cache_clear()
     store._store = None
     state.reset()

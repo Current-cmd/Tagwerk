@@ -4,6 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Tagwerk · Upload</title>
+<script src="/auth.js"></script>
 <style>
   body { font-family: system-ui, sans-serif; max-width: 520px; margin: 24px auto; padding: 0 16px; color: #1d1d1f; }
   label { display: block; margin: 14px 0 4px; font-weight: 600; }
@@ -50,7 +51,7 @@ document.getElementById('f').addEventListener('submit', ev => {
   xhr.upload.onprogress = e => { if (e.lengthComputable) p.value = 100 * e.loaded / e.total; };
   xhr.onload = () => {
     if (xhr.status === 200) { st.textContent = '✓ ' + xhr.responseText; captureId = null; ev.target.reset(); }
-    else st.textContent = 'Fehler ' + xhr.status + ' – nochmal versuchen (gleiche ID)';
+    else { if (xhr.status === 401) tagwerkAuth.ask(); st.textContent = 'Fehler ' + xhr.status + ' – nochmal versuchen (gleiche ID)'; }
   };
   xhr.onerror = () => { st.textContent = 'Netzwerkfehler – nochmal versuchen (gleiche ID)'; };
   xhr.send(fd);

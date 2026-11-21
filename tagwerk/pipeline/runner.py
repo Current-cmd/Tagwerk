@@ -213,9 +213,10 @@ async def run_capture(capture: dict, replay: bool = False, sync_t0: float | None
     photos = [Path(m["path"]).name for m in capture["media"] if m["type"] == "photo"]
     meta = {"capture_id": cid, "zone_id": capture["zone_id"], "ts": capture["ts_server"],
             "note": capture.get("note"), "lang": transcript["lang"], "photos": photos, "weather": ctx["weather"]}
-    changes = project.apply_structured(meta, structured)
-    project.captures[cid].update({"photos": photos, "weather": ctx["weather"], "lang": transcript["lang"]})
-    save_result(meta, structured)
+    with project.transaction():  # a failed save leaves the state as it was, so a retry applies again
+        changes = project.apply_structured(meta, structured)
+        project.captures[cid].update({"photos": photos, "weather": ctx["weather"], "lang": transcript["lang"]})
+        save_result(meta, structured)
     try:
         await asyncio.to_thread(sync_capture, store, project, cid, vis)
     except Exception as exc:  # the state is saved; a graph hiccup must not fail the capture or the live view

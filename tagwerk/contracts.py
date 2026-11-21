@@ -22,7 +22,8 @@ def schema(name: str) -> dict:
 
 def validate(name: str, data: dict) -> dict:
     """Raise ContractError if data does not match contracts/<name>.schema.json; return data."""
-    errors = sorted(Draft202012Validator(schema(name)).iter_errors(data), key=lambda e: list(e.path))
+    validator = Draft202012Validator(schema(name), format_checker=Draft202012Validator.FORMAT_CHECKER)
+    errors = sorted(validator.iter_errors(data), key=lambda e: list(e.path))
     if errors:
         msg = "; ".join(f"{'/'.join(map(str, e.path)) or '<root>'}: {e.message}" for e in errors[:5])
         raise ContractError(f"{name}: {msg}")

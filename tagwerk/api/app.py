@@ -6,14 +6,16 @@ import asyncio
 import logging
 import mimetypes
 import re
+import secrets
 import uuid
-from contextlib import asynccontextmanager
+from contextlib import asynccontextmanager, suppress
 from datetime import UTC, datetime
 from pathlib import Path
+from urllib.parse import unquote
 
-from fastapi import FastAPI, File, Form, HTTPException, UploadFile, WebSocket, WebSocketDisconnect
+from fastapi import FastAPI, File, Form, HTTPException, Request, UploadFile, WebSocket, WebSocketDisconnect
 from fastapi.middleware.gzip import GZipMiddleware
-from fastapi.responses import FileResponse, HTMLResponse, PlainTextResponse, Response
+from fastapi.responses import FileResponse, HTMLResponse, JSONResponse, PlainTextResponse, Response
 from pydantic import BaseModel
 
 from tagwerk import bim, report, v2
@@ -43,6 +45,9 @@ def _sync_all() -> None:
 
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
+    s = get_settings()
+    if not s.api_token and not s.tagwerk_dev:
+        raise RuntimeError("API_TOKEN is empty: set it in .env (or TAGWERK_DEV=1 for local development without auth)")
     try:
         await asyncio.to_thread(_sync_all)
     except Exception as exc:  # the API must come up even if the graph write fails
@@ -52,6 +57,32 @@ async def lifespan(_app: FastAPI):
 
 app = FastAPI(title="Tagwerk", lifespan=lifespan)
 app.add_middleware(GZipMiddleware, minimum_size=2000)  # /api/overview and /api/graph are large for big projects
+
+TOKEN_COOKIE = "tagwerk_token"  # set by web/auth.js so <img>, <video>, XHR and the websocket carry the token too
+PAGES = {"/", "/upload", "/graph", "/dashboard", "/scan", "/site"}
+OPEN_PATHS = PAGES | {"/health", "/auth.js", "/app"}  # /app/*: the built React app (its /api/v2 calls need the token)
+
+
+def _token_ok(headers, query_params, cookies) -> bool:
+    """API_TOKEN as `Authorization: Bearer`, `?token=` or the tagwerk_token cookie. No token configured (only
+    possible with TAGWERK_DEV=1) means auth is off."""
+    expected = get_settings().api_token
+    if not expected:
+        return True
+    auth = headers.get("authorization", "")
+    candidates = [auth[7:] if auth.lower().startswith("bearer ") else "", query_params.get("token") or "",
+                  unquote(cookies.get(TOKEN_COOKIE) or "")]
+    return any(c and secrets.compare_digest(c.encode(), expected.encode()) for c in candidates)
+
+
+@app.middleware("http")
+async def require_token(request: Request, call_next):
+    path = request.url.path
+    if path in OPEN_PATHS or path.startswith(("/vendor/", "/app/")) or _token_ok(request.headers, request.query_params,
+                                                                       request.cookies):
+        return await call_next(request)
+    return JSONResponse({"detail": "missing or invalid token"}, status_code=401,
+                        headers={"WWW-Authenticate": "Bearer"})
 
 
 @app.get("/health")
@@ -94,6 +125,8 @@ async def create_capture(
     sync_t0 = runner._clock() if (replay_of and (sync or "").lower() in ("1", "true", "yes")) else None
     _check_id(capture_id, "capture_id")
     _check_id(replay_of, "replay_of")
+    if ts is not None:
+        _check_ts(ts)
     if replay_of and zone_id is None:
         zone_id = _cached_zone(replay_of)
     if zone_id not in project.zones:
@@ -103,13 +136,7 @@ async def create_capture(
         return {"capture_id": cid, "status": "exists"}
     if replay_of:
         _prepare_replay(replay_of, cid)
-    folder = Path(get_settings().data_dir) / "captures" / cid
-    folder.mkdir(parents=True, exist_ok=True)
-    media = []
-    for i, f in enumerate(files):  # index prefix: phones name every photo image.jpg
-        dest = folder / f"{i:02d}_{Path(f.filename or 'upload.bin').name}"
-        dest.write_bytes(await f.read())
-        media.append({"type": _kind(f), "path": str(dest)})
+    media = await _save_uploads(files, Path(get_settings().data_dir) / "captures" / cid)
     now = datetime.now(UTC).replace(microsecond=0)
     if ts is None:  # put live captures on the project's data date so they count as "today"
         ts = f"{today().isoformat()}T{now.strftime('%H:%M:%S')}Z"
@@ -129,6 +156,44 @@ async def create_capture(
 
 
 ID_RE = re.compile(r"^[A-Za-z0-9_-]{1,64}$")
+CHUNK = 1 << 20
+
+
+async def _save_uploads(files: list[UploadFile], folder: Path) -> list[dict]:
+    """Stream uploads to folder in 1 MiB chunks as NN_<name> (phones name every photo image.jpg). 413 above
+    MAX_UPLOAD_FILES files or MAX_UPLOAD_MB in total (so also per file); then nothing written is left behind."""
+    s = get_settings()
+    if len(files) > s.max_upload_files:
+        raise HTTPException(413, f"too many files (max {s.max_upload_files})")
+    limit, total, media, written = s.max_upload_mb * 1024 * 1024, 0, [], []
+    folder.mkdir(parents=True, exist_ok=True)
+    try:
+        for i, f in enumerate(files):
+            dest = folder / f"{i:02d}_{Path(f.filename or 'upload.bin').name}"
+            written.append(dest)
+            with dest.open("wb") as out:
+                while chunk := await f.read(CHUNK):
+                    total += len(chunk)
+                    if total > limit:
+                        raise HTTPException(413, f"upload too large (max {s.max_upload_mb} MB)")
+                    out.write(chunk)
+            media.append({"type": _kind(f), "path": str(dest)})
+    except BaseException:
+        for p in written:
+            p.unlink(missing_ok=True)
+        with suppress(OSError):
+            folder.rmdir()  # only if empty
+        raise
+    return media
+
+
+def _check_ts(ts: str) -> None:
+    try:
+        parsed = datetime.fromisoformat(ts)
+    except ValueError:
+        raise HTTPException(400, f"invalid ts {ts!r}: use ISO 8601 with a timezone, e.g. 2026-11-26T10:00:00Z") from None
+    if parsed.tzinfo is None:
+        raise HTTPException(400, f"invalid ts {ts!r}: a timezone is required (Z or +01:00)")
 
 
 def _check_id(value: str | None, field: str) -> None:
@@ -178,6 +243,8 @@ async def scan_video(files: list[UploadFile] = File(...), make_project: str | No
     from tagwerk.pipeline.scan import inventory, seed_from_scan
     from tagwerk.project import SEED_DIR
 
+    if make_project and not get_settings().allow_project_create:
+        raise HTTPException(403, "creating projects is off (set ALLOW_PROJECT_CREATE=1)")
     sid = f"scan-{uuid.uuid4().hex[:8]}"
     name = out = None
     if make_project:  # check the name before the (slow) vision pass
@@ -187,12 +254,7 @@ async def scan_video(files: list[UploadFile] = File(...), make_project: str | No
         if name in ("hoersaal", "schependomlaan") or (out / "history.json").exists():  # never clobber real projects
             raise HTTPException(409, f"project {name} exists; choose another name")
     folder = Path(get_settings().data_dir) / "captures" / sid
-    folder.mkdir(parents=True, exist_ok=True)
-    media = []
-    for f in files:
-        dest = folder / Path(f.filename or "upload.bin").name
-        dest.write_bytes(await f.read())
-        media.append({"type": _kind(f), "path": str(dest)})
+    media = await _save_uploads(files, folder)
     capture = {"capture_id": sid, "ts_server": datetime.now(UTC).isoformat().replace("+00:00", "Z"), "gps": None,
                "zone_id": next(iter(get_project().zones)), "lang": "auto", "media": media, "note": None}
     from tagwerk.pipeline import normalize
@@ -315,11 +377,11 @@ async def confirm_element(element_id: str, body: Confirm) -> dict:
     validate("structured", structured)
     meta = {"capture_id": cid, "zone_id": el["zone"], "ts": ts, "note": "manual confirmation"}
     async with _lock:
-        changes = project.apply_structured(meta, structured)
-        if changes and changes[0]["action"] == "invalid":
-            del project.captures[cid]
-            raise HTTPException(400, f"{body.state!r} is not a state of {element_id}")
-        save_result(meta, structured)
+        with project.transaction():  # an invalid state or a failed save leaves nothing behind
+            changes = project.apply_structured(meta, structured)
+            if changes and changes[0]["action"] == "invalid":
+                raise HTTPException(400, f"{body.state!r} is not a state of {element_id}")
+            save_result(meta, structured)
         await asyncio.to_thread(sync_capture, get_store(), project, cid)
     await broker.publish({"type": "update", "label": "Element", "id": element_id,
                           "props": {"state": el["state"], "pct": el["pct"], "via": "CONFIRMED", "name": el["name_de"]}})
@@ -448,6 +510,9 @@ def export_gaeb(phase: str) -> Response:
 
 @app.websocket("/events")
 async def events(ws: WebSocket) -> None:
+    if not _token_ok(ws.headers, ws.query_params, ws.cookies):
+        await ws.close(code=1008)  # policy violation, before accept: the handshake fails
+        return
     await broker.connect(ws)
     try:
         while True:
@@ -469,6 +534,11 @@ def vendor(name: str) -> FileResponse:
         raise HTTPException(404)
     return FileResponse(WEB / "vendor" / name, media_type="text/javascript",
                         headers={"Cache-Control": "public, max-age=86400"})
+
+
+@app.get("/auth.js")
+def auth_js() -> FileResponse:
+    return FileResponse(WEB / "auth.js", media_type="text/javascript", headers={"Cache-Control": "no-cache"})
 
 
 @app.get("/")

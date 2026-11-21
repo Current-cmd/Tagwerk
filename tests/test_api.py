@@ -1,30 +1,3 @@
-import pytest
-from fastapi.testclient import TestClient
-
-
-@pytest.fixture()
-def client(tmp_path, monkeypatch):
-    monkeypatch.setenv("DATA_DIR", str(tmp_path / "data"))
-    monkeypatch.setenv("CACHE_DIR", str(tmp_path / "cache"))
-    monkeypatch.setenv("NEO4J_URI", "")
-    monkeypatch.setenv("GPU_WORKER_URL", "")
-    monkeypatch.setenv("ANTHROPIC_API_KEY", "")
-    monkeypatch.setenv("REPLAY_MODE", "false")
-    import tagwerk.graph.store as store
-    import tagwerk.pipeline.context as context
-    import tagwerk.state as state
-    from tagwerk.config import get_settings
-
-    get_settings.cache_clear()
-    store._store = None
-    state.reset()
-    monkeypatch.setattr(context, "weather", lambda lat, lon: {"tempC": 5.0, "precipMm": 0.0, "windKmh": 8.0,
-                                                              "source": "test"})
-    from tagwerk.api.app import _results, app
-
-    _results.clear()
-    with TestClient(app) as c:
-        yield c
 
 
 NOTE = "Stuhlreihe A ist montiert. Zwei Mann vom Trockenbau sind heute krank."
