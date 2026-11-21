@@ -54,7 +54,7 @@ day in between is listed.
    "zones": ["Zuschauerraum"], "gaeb": [{"oz": "01.04.0010", "text": "Bestuhlung neu liefern und montieren"}],
    "planned_start": "2026-11-23", "baseline_finish": "2026-11-25", "forecast_start": "2026-11-23",
    "forecast_finish": "2026-12-01", "pct": 34.4, "planned_pct": 60.0, "delay_d": 4, "tracked": true, "done": false,
-   "cause": "2× Trockenbau krank", "recordings": ["cap-e2e-2"], "last_recording": "2026-11-26",
+   "cause": "2× Trockenbau krank", "recordings": [{"capture_id": "cap-e2e-2", "date": "2026-11-26", "time": "10:42"}], "last_recording": "2026-11-26",
    "predecessors": ["A1070"]
  }],
  "lookahead": [{"date": "2026-11-27", "activities": [{"id": "A1090", "name": "…", "trade": "…",
@@ -66,7 +66,8 @@ day in between is listed.
 }
 ```
 - `recordings`: captures of day D only, newest first. `activities`: all activities, sorted by planned start (the Gantt
-  order). `lookahead`: the next 3 working days after D with the activities planned to run on them. `events`: all events
+  order); `activities[].recordings` are `{capture_id, date, time}` of every capture up to D that touched it, oldest
+  first. `lookahead`: the next 3 working days after D with the activities planned to run on them. `events`: all events
   with date <= D, newest first, plus weather events.
 - Weather events: from the weather reading of that day's captures (or the context weather for today): precip >= 5 mm,
   wind >= 50 km/h or temp <= 0 °C produce one event naming the constraint (outdoor work, concrete/screed, crane). Only
@@ -89,7 +90,9 @@ Non-BIM view: GAEB position - P6 activity - place (zone) - recording - event/pro
            {"src": "A1070", "dst": "A1080", "type": "PRECEDES"},
            {"src": "cap-e2e-2", "dst": "A1080", "type": "PROGRESSED", "label": "Stuhlreihe A montiert"},
            {"src": "cap-e2e-2:absence:0", "dst": "A1060", "type": "AFFECTS"},
-           {"src": "prop:cap-x:E-DOOR-1", "dst": "A1010", "type": "PROPOSES"}]}
+           {"src": "prop:cap-x:E-DOOR-1", "dst": "A1010", "type": "PROPOSES"},
+           {"src": "cap-e2e-2", "dst": "cap-e2e-2:absence:0", "type": "RAISED"},
+           {"src": "cap-x", "dst": "prop:cap-x:E-DOOR-1", "type": "RAISED"}]}
 ```
 Recordings, events and proposals of day D only (activities/GAEB/zones always). Activity zones come from its elements'
 zones; GAEB links from mapping.csv.

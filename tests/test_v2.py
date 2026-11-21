@@ -95,7 +95,8 @@ def test_day_past_uses_history_up_to_that_day(client):
     assert any("Reihe F" in e["text"] for e in d25["events"])
     act = a25["A1080"]
     assert act["zones"] == ["Zuschauerraum"] and act["gaeb"] and all(set(g) == {"oz", "text"} for g in act["gaeb"])
-    assert "hist-1125-a" in act["recordings"] and act["last_recording"] == "2026-11-25"
+    assert {"capture_id": "hist-1125-a", "date": "2026-11-25", "time": "08:20"} in act["recordings"]
+    assert act["last_recording"] == "2026-11-25"
     assert act["predecessors"] == ["A1030", "A1070"]
     assert len(d24["lookahead"]) == 3 and d24["lookahead"][0]["date"] == "2026-11-25"
     assert {"id", "name", "trade", "zones", "planned_pct_by_end"} <= set(d24["lookahead"][0]["activities"][0])
@@ -123,7 +124,8 @@ def test_day_today_after_typed_note(client):
     ev = next(e for e in day["events"] if e["type"] == "absence")
     assert ev["capture_id"] == "cap-v2" and ev["source"] == "capture" and ev["date"] == "2026-11-26"
     a = {x["id"]: x for x in day["activities"]}["A1080"]
-    assert "cap-v2" in a["recordings"] and a["last_recording"] == "2026-11-26"
+    assert "cap-v2" in [r["capture_id"] for r in a["recordings"]] and a["last_recording"] == "2026-11-26"
+    assert a["recordings"] == sorted(a["recordings"], key=lambda r: (r["date"], r["time"]))  # oldest first
     assert set(day["kpi"]) == {"pct_actual", "pct_planned", "spi", "forecast_finish", "baseline_finish", "delay_d",
                                "open_defects"}
     # the day before is unaffected by today's capture
@@ -240,3 +242,13 @@ def test_one_german_state_mapping():
 
     assert v2.STATE_DE is STATE_DE and report.STATE_DE is STATE_DE
     assert STATE_DE["checked"] == "abgenommen" and STATE_DE["tested"] == "geprüft"
+
+
+def test_taskgraph_links_recordings_to_their_events_and_proposals(client):
+    _post_note(client, "cap-raise")
+    g = client.get("/api/v2/taskgraph").json()
+    raised = {(e["src"], e["dst"]) for e in g["edges"] if e["type"] == "RAISED"}
+    assert ("cap-raise", "cap-raise:absence:0") in raised
+    g25 = client.get("/api/v2/taskgraph", params={"date": "2026-11-25"}).json()
+    ev = next(n["id"] for n in g25["nodes"] if n["type"] == "event" and n["id"].startswith("hist-1125"))
+    assert (ev.split(":")[0], ev) in {(e["src"], e["dst"]) for e in g25["edges"] if e["type"] == "RAISED"}

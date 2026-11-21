@@ -330,7 +330,8 @@ def day(d: date) -> dict:
             "forecast_start": r["forecast_start"].isoformat(), "forecast_finish": r["forecast_finish"].isoformat(),
             "pct": r["pct"], "planned_pct": planned, "delay_d": r["delay_d"], "tracked": r["tracked"],
             "done": r["pct"] >= 100, "cause": _cause(p, r, eff, fc),
-            "recordings": [cid for _, cid in linked], "last_recording": linked[-1][0][:10] if linked else None,
+            "recordings": [{"capture_id": cid, "date": ts[:10], "time": ts[11:16]} for ts, cid in linked],
+            "last_recording": linked[-1][0][:10] if linked else None,
             "predecessors": list(r["predecessors"]),
         })
 
@@ -412,6 +413,8 @@ def taskgraph(d: date) -> dict:
         nodes[e["id"]] = {"id": e["id"], "type": "event", "label": e["text"], "severity": e["severity"]}
         if e["activity_id"]:
             edge(e["id"], e["activity_id"], "AFFECTS")
+        if e.get("capture_id"):
+            edge(e["capture_id"], e["id"], "RAISED")
     for pr in p.proposals:
         if pr["date"] != iso:
             continue
@@ -423,5 +426,6 @@ def taskgraph(d: date) -> dict:
                    if x["element_id"] == pr["element_id"] and x["action"] == "proposed"), {"element_id": pr["element_id"]})
         for aid in _change_activities(p, ch):
             edge(pid, aid, "PROPOSES")
+        edge(pr["capture_id"], pid, "RAISED")
     return {"date": iso, "nodes": list(nodes.values()), "edges": edges}
 
