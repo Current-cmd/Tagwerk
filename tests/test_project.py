@@ -90,3 +90,8 @@ def test_p6_and_gaeb_export_parse(p):
                                                                    for a in p.activities.values())
     x84 = fromstring(gaeb_xml(p, 84))
     assert len(x84.findall(".//{*}Item")) == len(p.boq)
+
+
+def test_history_has_only_valid_changes(p):
+    bad = [ch for c in p.captures.values() for ch in c["changes"] if ch["action"] == "invalid"]
+    assert not bad

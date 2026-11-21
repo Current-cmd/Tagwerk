@@ -17,7 +17,7 @@
    "E-CEILING": "installed",
    "E-TRUSS-1": "wired",
    "E-TRUSS-2": "mounted",
-   "E-EMLIGHT": "installed",
+   "E-EMLIGHT": "wired",
    "E-CABLETRAY": "checked",
    "E-STAGE": "boarded",
    "E-STAGE-STAIRS": "installed",
@@ -426,9 +426,9 @@
          "E-EMLIGHT"
         ],
         "activity_id": "A1050",
-        "state_proposed": "checked",
+        "state_proposed": "tested",
         "evidence": "voice",
-        "quote": "Notbeleuchtung geprüft",
+        "quote": "Notbeleuchtung getestet",
         "t": null
        }
       ],
