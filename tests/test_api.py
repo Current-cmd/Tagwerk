@@ -329,7 +329,7 @@ def test_pages_use_bundled_libraries_not_a_cdn(client):
     assert client.get("/vendor/..%2Fapi%2Fapp.py").status_code == 404
 
 
-# ---------------------------------------------------------------- scan 3D: runner stage, /api/v2/scan3d, report
+# ---------------------------------------------------------------- scan 3D: runner stage, /api/v2/scan3d
 
 SFM = {"capture_id": "cap-3d", "ok": True, "reason": None, "seconds": 12.0, "frames_used": 40, "frames_registered": 30,
        "fps": 2.5, "points": [[0, 0, 1, 10, 20, 30]], "cameras": [], "units": "relative (SfM scale is arbitrary)",
@@ -418,31 +418,3 @@ def test_replay_without_cached_sfm_skips_the_stage_and_reads_the_cache_when_ther
     client.post("/captures", data={"zone_id": "Z-AUDIENCE", "capture_id": "cap-src3", "note": "Reihe H Unterkonstruktion"})
     monkeypatch.setattr(runner.sfm, "analyse", lambda cap, workdir: pytest.fail("a replay must not run the SfM stage"))
     assert client.post("/captures", data={"capture_id": "cap-rep3", "replay_of": "cap-src3"}).status_code == 200
-
-
-def test_report_assembles_the_day_and_renders_german_html(client, monkeypatch):
-    _pin_models(monkeypatch)
-    r = client.post("/captures", data={"zone_id": "Z-AUDIENCE", "capture_id": "cap-rep-day", "lang": "de",
-                                       "note": "Stuhlreihe A ist montiert, zwei Mann vom Trockenbau sind krank. "
-                                               "Drei Elektriker sind da. Kratzer an der Bühne."})
-    assert r.status_code == 200, r.text
-    _write_sfm("cap-rep-day")
-    rep = client.get("/api/v2/report").json()
-    assert rep["date"] == client.get("/api/v2/day").json()["date"] and rep["project"]["name"]
-    assert {"capture_id": "cap-rep-day", "time": rep["recordings"][-1]["time"], "zone_name": "Zuschauerraum", "kind": "note",
-            "has_3d": True} in rep["recordings"]
-    assert any(w["element_name"] == "Stuhlreihe A" and w["state_de"] == "montiert" and w["capture_id"] == "cap-rep-day"
-               for w in rep["work_done"])
-    assert {"trade": "Trockenbau", "count": 2, "reason": "krank"} in rep["workforce"]["absent"]
-    assert {"trade": "Elektro", "count": 3} in rep["workforce"]["present"]
-    assert rep["inventory"][0] == {"name_de": "Tür", "count": 1, "relations": ["neben Wand"],
-                                   "thumb": "/media/cap-3d/sfm/0001.jpg", "capture_id": "cap-rep-day"}
-    assert any(e["type"] == "defect" for e in rep["events"]) and isinstance(rep["lookahead"][0]["activities"], list)
-    assert set(rep) == {"date", "project", "weather", "recordings", "work_done", "workforce", "inventory", "events", "photos",
-                        "delays", "lookahead"}
-    page = client.get("/export/report.html")
-    assert page.status_code == 200 and page.headers["content-type"].startswith("text/html")
-    for word in ("Bautagebuch", "Arbeiten", "Personal", "Inventar aus dem Scan", "Ereignisse und Mängel", "Verzüge",
-                 "Vorschau", "Unterschrift Bauleiter", "Stuhlreihe A", "neben Wand"):
-        assert word in page.text, word
-    assert client.get("/api/v2/report?date=nonsense").status_code == 400

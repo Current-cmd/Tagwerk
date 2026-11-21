@@ -366,27 +366,13 @@ def v2_taskgraph(date: str | None = None) -> dict:
 @app.get("/api/v2/scan3d/{capture_id}")
 def v2_scan3d(capture_id: str) -> dict:
     """cache/<id>/sfm.json (Scan 3D); 404 when the capture has none."""
-    from tagwerk import report
+    import json
 
     _check_id(capture_id, "capture_id")
-    scan = report.load_scan(capture_id)
-    if scan is None:
-        raise HTTPException(404, "no 3D scan for this capture")
-    return scan
-
-
-@app.get("/api/v2/report")
-def v2_report(date: str | None = None) -> dict:
-    from tagwerk import report
-
-    return report.report(_v2_date(date))
-
-
-@app.get("/export/report.html", response_class=HTMLResponse)
-def export_report(date: str | None = None) -> HTMLResponse:
-    from tagwerk import report
-
-    return HTMLResponse(report.render_html(report.report(_v2_date(date))))
+    try:
+        return json.loads((Path(get_settings().cache_dir) / capture_id / "sfm.json").read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        raise HTTPException(404, "no 3D scan for this capture") from None
 
 
 @app.get("/export/day.ics", response_class=PlainTextResponse)
