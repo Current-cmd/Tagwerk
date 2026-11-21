@@ -95,6 +95,10 @@ class Project:
     materials: list[dict] = field(default_factory=list)
     proposals: list[dict] = field(default_factory=list)
     history_log: list[dict] = field(default_factory=list)  # every state change, for curves
+    meta: dict = field(default_factory=dict)  # seed/<project>/project.json: id, name, data_date, lat, lon
+    _by_act: dict[str, list[dict]] = field(default_factory=dict, repr=False)
+    _by_el: dict[str, list[dict]] = field(default_factory=dict, repr=False)
+    _budget: dict[str, float] = field(default_factory=dict, repr=False)
 
     # ----- loading -----
 
@@ -115,8 +119,9 @@ class Project:
                 "geom": [_num(r[k]) for k in ("x", "y", "z", "dx", "dy", "dz")],
                 "pct": 0, "state": None, "updated": None,
             }
-        for r in _read_csv(seed_dir / "wbs.csv"):
-            p.wbs[r["wbs"]] = {"code": r["wbs"], "name": r["name"]}
+        if (seed_dir / "wbs.csv").exists():
+            for r in _read_csv(seed_dir / "wbs.csv"):
+                p.wbs[r["wbs"]] = {"code": r["wbs"], "name": r["name"]}
         for r in _read_csv(seed_dir / "trades.csv"):
             p.trades[r["trade_id"]] = {"id": r["trade_id"], "name": r["name"], "rate_eur_h": _num(r["rate_eur_h"])}
         for r in _read_csv(seed_dir / "activities.csv"):
@@ -124,8 +129,8 @@ class Project:
                 "id": r["activity_id"], "wbs": r["wbs"], "name": r["name"], "trade_id": r["trade_id"],
                 "planned_start": date.fromisoformat(r["planned_start"]),
                 "planned_finish": date.fromisoformat(r["planned_finish"]),
-                "crew_planned": _num(r["crew_planned"], 1),
-                "predecessors": [x for x in r["predecessors"].split(";") if x],
+                "crew_planned": _num(r.get("crew_planned"), 1),
+                "predecessors": [x for x in (r.get("predecessors") or "").split(";") if x],
                 "manual_pct": None, "actual_start": None, "actual_finish": None,
             }
         for r in _read_csv(seed_dir / "boq.csv"):
@@ -135,8 +140,23 @@ class Project:
             p.links.append({"oz": r["oz"], "activity_id": r["activity_id"], "element_id": r["element_id"] or None,
                             "share": _num(r["share"], 1), "from_state": r["from_state"] or None,
                             "to_state": r["to_state"] or None})
+        meta_file = seed_dir / "project.json"
+        p.meta = {"id": "P-HS", "name": "Hörsaal Sanierung", "client": "TUM (fictitious renovation)",
+                  "lat": 48.137, "lon": 11.575, "seed_dir": str(seed_dir)}
+        if meta_file.exists():
+            p.meta.update(json.loads(meta_file.read_text(encoding="utf-8")))
         p._check()
+        p._index()
         return p
+
+    def _index(self) -> None:
+        self._by_act, self._by_el, self._budget = defaultdict(list), defaultdict(list), defaultdict(float)
+        for lk in self.links:
+            lk["value"] = self.link_value(lk)
+            self._by_act[lk["activity_id"]].append(lk)
+            self._budget[lk["activity_id"]] += lk["value"]
+            if lk["element_id"]:
+                self._by_el[lk["element_id"]].append(lk)
 
     def _check(self) -> None:
         for link in self.links:
@@ -153,7 +173,7 @@ class Project:
                 assert pred in self.activities, f"activity {a['id']}: unknown predecessor {pred}"
 
     def load_history(self, path: Path | None = None) -> None:
-        path = path or SEED_DIR / "history.json"
+        path = path or Path(self.meta.get("seed_dir", SEED_DIR)) / "history.json"
         if not path.exists():
             return
         hist = json.loads(path.read_text(encoding="utf-8"))
@@ -232,8 +252,8 @@ class Project:
     def _set_state(self, el: dict, state: str, pct: int, day: str, cid: str) -> None:
         el["pct"], el["state"], el["updated"] = pct, state, day
         self.history_log.append({"date": day, "element_id": el["id"], "state": state, "pct": pct, "capture_id": cid})
-        for link in self.links:
-            if link["element_id"] == el["id"]:
+        for link in self._by_el.get(el["id"], []):
+            if True:
                 a = self.activities[link["activity_id"]]
                 if a["actual_start"] is None or day < a["actual_start"]:
                     if self._element_contrib(el, link, pct) > 0:
@@ -264,10 +284,10 @@ class Project:
         return {el["marker_id"]: eid for eid, el in self.elements.items() if el["marker_id"] is not None}
 
     def elements_of(self, activity_id: str) -> list[str]:
-        return sorted({lk["element_id"] for lk in self.links if lk["activity_id"] == activity_id and lk["element_id"]})
+        return sorted({lk["element_id"] for lk in self._by_act.get(activity_id, []) if lk["element_id"]})
 
     def activities_of(self, element_id: str) -> list[str]:
-        return sorted({lk["activity_id"] for lk in self.links if lk["element_id"] == element_id})
+        return sorted({lk["activity_id"] for lk in self._by_el.get(element_id, [])})
 
     # ----- numbers -----
 
@@ -276,7 +296,7 @@ class Project:
         return b["qty"] * b["unit_price"] * link["share"]
 
     def budget(self, activity_id: str) -> float:
-        return round(sum(self.link_value(lk) for lk in self.links if lk["activity_id"] == activity_id), 2)
+        return round(self._budget.get(activity_id, 0.0), 2)
 
     def _element_contrib(self, el: dict, link: dict, pct: float | None = None) -> float:
         pct = el["pct"] if pct is None else pct
@@ -287,13 +307,13 @@ class Project:
     def activity_pct(self, activity_id: str) -> float:
         """BoQ-weighted average of element progress (weight = qty x unit price x share of the linked position)."""
         a = self.activities[activity_id]
-        links = [lk for lk in self.links if lk["activity_id"] == activity_id and lk["element_id"]]
+        links = [lk for lk in self._by_act.get(activity_id, []) if lk["element_id"]]
         if not links:
             return float(a["manual_pct"] or 0.0)
-        total = sum(self.link_value(lk) for lk in links)
-        if not total:
-            return 0.0
-        return round(sum(self._element_contrib(self.elements[lk["element_id"]], lk) * self.link_value(lk)
+        total = sum(lk["value"] for lk in links)
+        if not total:  # unpriced schedule (e.g. imported BIM project): count elements equally
+            return round(sum(self._element_contrib(self.elements[lk["element_id"]], lk) for lk in links) / len(links), 1)
+        return round(sum(self._element_contrib(self.elements[lk["element_id"]], lk) * lk["value"]
                          for lk in links) / total, 1)
 
     def planned_pct(self, activity_id: str, d: date) -> float:
@@ -323,6 +343,13 @@ class Project:
             visit(aid)
         return order
 
+    def _last_change(self) -> dict[str, str]:
+        last: dict[str, str] = {}
+        for h in self.history_log:
+            if h["date"] and h["date"] > last.get(h["element_id"], ""):
+                last[h["element_id"]] = h["date"]
+        return last
+
     def forecast(self, today: date) -> dict[str, dict]:
         """Projection from today's evidence.
 
@@ -332,6 +359,7 @@ class Project:
         (finish-to-start), so a delay passes on through the network.
         """
         out: dict[str, dict] = {}
+        last = self._last_change()
         for aid in self.topo_order():
             a = self.activities[aid]
             pct = self.activity_pct(aid)
@@ -342,7 +370,8 @@ class Project:
             if pred_finish is not None and pred_finish >= earliest:
                 earliest = next_workday(pred_finish)
             if pct >= 100:
-                finish = date.fromisoformat(self._finish_day(aid)) if self._finish_day(aid) else a["planned_finish"]
+                days = [last[e] for e in self.elements_of(aid) if e in last]
+                finish = date.fromisoformat(max(days)) if days else a["planned_finish"]
             else:
                 d = max(earliest, today) if pct == 0 else today
                 if not is_workday(d):
@@ -367,12 +396,6 @@ class Project:
                 "elements": self.elements_of(aid), "predecessors": a["predecessors"],
             }
         return out
-
-    def _finish_day(self, activity_id: str) -> str | None:
-        """Day the activity reached 100 % (last state change of its elements), else None."""
-        els = set(self.elements_of(activity_id))
-        days = [h["date"] for h in self.history_log if h["element_id"] in els and h["date"]]
-        return max(days) if days else None
 
     def actual_cost(self, upto: date) -> float:
         """Labour hours x invented trade rates (labelled as such in the UI)."""
@@ -411,14 +434,7 @@ class Project:
         baseline_finish = max(r["baseline_finish"] for r in acts)
         iso = today.isoformat()
 
-        # planned / earned curves per working day of the baseline (earned from history_log)
-        start = min(a["planned_start"] for a in self.activities.values())
-        curve = []
-        for d in workdays(start, max(today, baseline_finish)):
-            pv_d = sum(self.budget(a) * self.planned_pct(a, d) / 100 for a in self.activities)
-            ev_d = self._earned_at(d) if d <= today else None
-            curve.append({"date": d.isoformat(), "pv": round(pv_d), "ev": None if ev_d is None else round(ev_d),
-                          "ac": round(self.actual_cost(d)) if d <= today else None})
+        curve = self.curve(today, max(today, baseline_finish))
 
         labour_today: dict[str, int] = defaultdict(int)
         for lp in self.labour:
@@ -450,7 +466,7 @@ class Project:
                             "baseline_finish": r["baseline_finish"].isoformat(),
                             "forecast_finish": r["forecast_finish"].isoformat(),
                             "red": r["delay_d"] > 0,
-                            "cause": self._cause(r, today)} for r in sorted(acts, key=lambda r: (-r["delay_d"], r["pct"]))],
+                            "cause": self._cause(r, today, fc)} for r in sorted(acts, key=lambda r: (-r["delay_d"], r["pct"]))],
             "captures": sorted([{"capture_id": c["capture_id"], "zone_id": c["zone_id"], "ts": c["ts"],
                                  "note": c.get("note"), "quotes": c["quotes"],
                                  "photos": c.get("photos", []),
@@ -466,22 +482,51 @@ class Project:
                              if c.get("weather")), None),
         }
 
-    def _earned_at(self, d: date) -> float:
-        """Earned value at the end of day d, replaying history_log."""
-        saved = {eid: (el["pct"], el["state"]) for eid, el in self.elements.items()}
-        try:
-            for el in self.elements.values():
-                el["pct"] = 0
-            for h in self.history_log:
-                if h["date"] and h["date"] <= d.isoformat():
-                    el = self.elements[h["element_id"]]
-                    el["pct"] = max(el["pct"], h["pct"])
-            return sum(self.budget(a) * self.activity_pct(a) / 100 for a in self.activities)
-        finally:
-            for eid, (pct, st) in saved.items():
-                self.elements[eid]["pct"], self.elements[eid]["state"] = pct, st
+    def curve(self, today: date, until: date) -> list[dict]:
+        """Planned vs earned per working day, in EUR (BoQ-weighted) and in % of the project.
 
-    def _cause(self, row: dict, today: date) -> str | None:
+        Earned is replayed incrementally from history_log, so this stays linear in the size of the log.
+        Unpriced projects (imported BIM schedules) weight every element link equally instead.
+        """
+        priced = sum(lk["value"] for lk in self.links) > 0
+        w = {id(lk): (lk["value"] if priced else 1.0) for lk in self.links}
+        total = sum(w.values()) or 1.0
+        act_w = {a: sum(w[id(lk)] for lk in self._by_act.get(a, [])) for a in self.activities}
+        manual = sum(act_w[a] * (self.activities[a]["manual_pct"] or 0) / 100 for a in self.activities
+                     if not any(lk["element_id"] for lk in self._by_act.get(a, [])))
+        el_types = {e: el["type"] for e, el in self.elements.items()}
+        cur: dict[str, float] = {}
+
+        def contrib(eid: str, pct: float) -> float:
+            return sum(w[id(lk)] * self._element_contrib({"type": el_types[eid]}, lk, pct) / 100
+                       for lk in self._by_el.get(eid, []))
+
+        log = sorted((h for h in self.history_log if h["date"]), key=lambda h: h["date"])
+        start = min(a["planned_start"] for a in self.activities.values())
+        first_log = log[0]["date"] if log else None
+        if first_log and date.fromisoformat(first_log) < start:
+            start = date.fromisoformat(first_log)
+        ev, i, out = manual, 0, []
+        for d in workdays(start, until):
+            iso = d.isoformat()
+            while i < len(log) and log[i]["date"] <= iso:
+                h = log[i]
+                old = cur.get(h["element_id"], 0)
+                if h["pct"] > old:
+                    ev += contrib(h["element_id"], h["pct"]) - contrib(h["element_id"], old)
+                    cur[h["element_id"]] = h["pct"]
+                i += 1
+            pv = sum(act_w[a] * self.planned_pct(a, d) / 100 for a in self.activities)
+            row = {"date": iso, "pv": round(pv), "pv_pct": round(100 * pv / total, 1),
+                   "ev": round(ev) if d <= today else None,
+                   "ev_pct": round(100 * ev / total, 1) if d <= today else None,
+                   "ac": round(self.actual_cost(d)) if d <= today else None}
+            if not priced:
+                row["pv"], row["ev"] = row["pv_pct"], row["ev_pct"]
+            out.append(row)
+        return out
+
+    def _cause(self, row: dict, today: date, fc: dict[str, dict]) -> str | None:
         if row["delay_d"] <= 0:
             return None
         reasons = []
@@ -489,15 +534,12 @@ class Project:
         absent = self.absent_on(a["trade_id"], today)
         if absent:
             reasons.append(f"{absent:g} of {a['crew_planned']:g} {row['trade']} absent today")
-        late_preds = [p for p in a["predecessors"] if self.forecast_cache_delay(p, today) > 0]
+        late_preds = [p for p in a["predecessors"] if fc[p]["delay_d"] > 0]
         if late_preds:
-            reasons.append("waiting for " + ", ".join(self.activities[p]["name"] for p in late_preds))
+            reasons.append("waiting for " + ", ".join(self.activities[p]["name"] for p in late_preds[:3]))
         if row["pct"] < row["planned_pct"]:
             reasons.append(f"{row['pct']:.0f} % done vs {row['planned_pct']:.0f} % planned")
         return "; ".join(reasons) or "behind plan"
-
-    def forecast_cache_delay(self, activity_id: str, today: date) -> int:
-        return self.forecast(today)[activity_id]["delay_d"]
 
 
 def ceil_div(a: float, b: float) -> int:
