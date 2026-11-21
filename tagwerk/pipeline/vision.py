@@ -296,6 +296,9 @@ def _relations(m: dict, img_bgr: np.ndarray, objects: list[dict]) -> list[dict]:
 
 def analyse(capture: dict, derived: dict) -> dict:
     if not ml_available():
+        if os.environ.get("TAGWERK_STUBS") != "1":  # never pass fixture detections off as real ones
+            log.error("torch/ultralytics not installed: vision stage returns no frames (install .[gpu])")
+            return {"capture_id": capture["capture_id"], "frames": []}
         return stub("vision", capture["capture_id"])
     import cv2
 

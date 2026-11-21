@@ -5,6 +5,7 @@
 import asyncio
 import logging
 import mimetypes
+import re
 import uuid
 from contextlib import asynccontextmanager
 from datetime import UTC, datetime
@@ -78,7 +79,7 @@ def _kind(upload: UploadFile) -> str:
 
 @app.post("/captures")
 async def create_capture(
-    zone_id: str = Form(...),
+    zone_id: str | None = Form(None),  # required, except for replays (taken from the source capture)
     lang: str = Form("auto"),
     note: str | None = Form(None),
     capture_id: str | None = Form(None),  # client resends the same id on retry
@@ -87,19 +88,22 @@ async def create_capture(
     files: list[UploadFile] = File(default=[]),
 ) -> dict:
     project = get_project()
-    if replay_of:
-        _prepare_replay(replay_of, capture_id or f"replay-{uuid.uuid4().hex[:8]}")
-        capture_id = capture_id or _last_replay_id
+    _check_id(capture_id, "capture_id")
+    _check_id(replay_of, "replay_of")
+    if replay_of and zone_id is None:
+        zone_id = _cached_zone(replay_of)
     if zone_id not in project.zones:
         raise HTTPException(400, f"unknown zone {zone_id}")
-    cid = capture_id or f"cap-{uuid.uuid4().hex[:10]}"
+    cid = capture_id or (f"replay-{uuid.uuid4().hex[:8]}" if replay_of else f"cap-{uuid.uuid4().hex[:10]}")
     if cid in project.captures:  # idempotent retry
         return {"capture_id": cid, "status": "exists"}
+    if replay_of:
+        _prepare_replay(replay_of, cid)
     folder = Path(get_settings().data_dir) / "captures" / cid
     folder.mkdir(parents=True, exist_ok=True)
     media = []
-    for f in files:
-        dest = folder / Path(f.filename or "upload.bin").name
+    for i, f in enumerate(files):  # index prefix: phones name every photo image.jpg
+        dest = folder / f"{i:02d}_{Path(f.filename or 'upload.bin').name}"
         dest.write_bytes(await f.read())
         media.append({"type": _kind(f), "path": str(dest)})
     now = datetime.now(UTC).replace(microsecond=0)
@@ -119,7 +123,20 @@ async def create_capture(
             "absences": result["structured"]["absences"], "events": result["structured"]["special_events"]}
 
 
-_last_replay_id = None
+ID_RE = re.compile(r"^[A-Za-z0-9_-]{1,64}$")
+
+
+def _check_id(value: str | None, field: str) -> None:
+    """Ids become folder names: allow only [A-Za-z0-9_-] (no path traversal)."""
+    if value is not None and not ID_RE.match(value):
+        raise HTTPException(400, f"invalid {field}: use 1-64 characters A-Z a-z 0-9 _ -")
+
+
+def _cached_zone(src: str) -> str | None:
+    import json
+
+    p = Path(get_settings().cache_dir) / src / "context.json"
+    return json.loads(p.read_text(encoding="utf-8")).get("zone_id") if p.exists() else None
 
 
 def _prepare_replay(src: str, dst: str) -> None:
@@ -127,7 +144,6 @@ def _prepare_replay(src: str, dst: str) -> None:
     import json
     import shutil
 
-    global _last_replay_id
     s = get_settings()
     src_dir, dst_dir = Path(s.cache_dir) / src, Path(s.cache_dir) / dst
     if not (src_dir / "speech.json").exists() or not (src_dir / "vision.json").exists():
@@ -139,7 +155,6 @@ def _prepare_replay(src: str, dst: str) -> None:
         data = json.loads(f.read_text(encoding="utf-8"))
         data["capture_id"] = dst
         (dst_dir / f.name).write_text(json.dumps(data, ensure_ascii=False), encoding="utf-8")
-    _last_replay_id = dst
 
 
 @app.post("/api/scan")
@@ -218,6 +233,7 @@ class Confirm(BaseModel):
 async def confirm_element(element_id: str, body: Confirm) -> dict:
     """Manual tap in the site-manager view; counts like voice evidence."""
     project = get_project()
+    _check_id(element_id, "element_id")
     el = project.elements.get(element_id)
     if not el:
         raise HTTPException(404)

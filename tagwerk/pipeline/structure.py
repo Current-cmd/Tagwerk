@@ -19,7 +19,7 @@ import unicodedata
 from pathlib import Path
 
 from tagwerk.config import get_settings
-from tagwerk.contracts import schema
+from tagwerk.contracts import schema, validate
 from tagwerk.pipeline.loop import STATES
 
 log = logging.getLogger(__name__)
@@ -400,6 +400,18 @@ def claude_structure(capture: dict, transcript: dict, vision: dict, context: dic
     return data
 
 
+def enforce_evidence(result: dict, transcript: dict, note: str | None) -> dict:
+    """The model may only claim voice evidence for what was actually said or typed: without speech or a note
+    everything becomes vision; an item whose quote is not in the transcript/note is downgraded to vision."""
+    spoken = _norm(" ".join(s["text"] for s in transcript.get("segments", [])) + " " + (note or ""))
+    for w in result.get("work_done", []):
+        if w["evidence"] in ("voice", "both"):
+            quote = _norm(w.get("quote") or "")
+            if not spoken.strip() or not quote or quote not in spoken:
+                w["evidence"] = "vision"
+    return result
+
+
 # ---------------------------------------------------------------- entry point
 
 def cache_path(capture_id: str, name: str) -> Path:
@@ -433,9 +445,11 @@ def structure(capture: dict, transcript: dict, vision: dict, context: dict, proj
     if s.anthropic_api_key:
         try:
             result = claude_structure(capture, transcript, vision, context, element_types)
-            result["_source"] = "claude"
+            validate("structured", result)  # malformed output falls back to rules before anything is cached
+            result = enforce_evidence(result, transcript, capture.get("note"))
         except Exception as exc:  # noqa: BLE001 - never let the API kill a capture
-            log.warning("structure: Claude failed (%s), using rules", exc)
+            log.warning("structure: Claude failed or returned invalid data (%s), using rules", exc)
+            result = None
     if result is None:
         zone_elements, zone_aliases = None, None
         if project is not None:
@@ -446,7 +460,6 @@ def structure(capture: dict, transcript: dict, vision: dict, context: dict, proj
             zone_aliases = {z: [zz["name_de"], zz["name_en"], *zz.get("aliases", [])] for z, zz in project.zones.items()}
         result = rules_structure(capture, transcript, vision, context, element_types, current, trade_of, act_of,
                                  markers, zone_elements, zone_aliases)
-    result.pop("_source", None)
     cp.parent.mkdir(parents=True, exist_ok=True)
     cp.write_text(json.dumps(result, ensure_ascii=False, indent=1), encoding="utf-8")
     return result

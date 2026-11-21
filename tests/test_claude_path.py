@@ -68,3 +68,26 @@ def test_claude_error_falls_back_to_rules(env, monkeypatch):
     _fake_anthropic(monkeypatch, boom)
     s = structure.structure(cap, tr, vis, ctx, p)
     assert any(w["element_ids"] == ["E-ROW-A"] for w in s["work_done"])  # rules still found it
+
+
+def test_claude_cannot_claim_voice_without_speech(env, monkeypatch):
+    p, cap, tr, vis, ctx = env
+    cap = {**cap, "capture_id": "cl2", "note": None}
+    tr = {**tr, "capture_id": "cl2", "segments": []}
+    out = {"labour_present": [], "absences": [], "material_delivered": [], "special_events": [], "unmatched": [],
+           "work_done": [{"element_ids": ["E-ROW-A"], "activity_id": None, "state_proposed": "installed",
+                          "evidence": "both", "quote": "Reihe A montiert", "t": None}]}
+    block = types.SimpleNamespace(type="tool_use", input=out)
+    _fake_anthropic(monkeypatch, lambda kw: types.SimpleNamespace(content=[block]))
+    s = structure.structure(cap, tr, vis, ctx, p)
+    assert s["work_done"][0]["evidence"] == "vision"
+
+
+def test_invalid_claude_output_falls_back(env, monkeypatch):
+    p, cap, tr, vis, ctx = env
+    cap = {**cap, "capture_id": "cl3"}
+    tr = {**tr, "capture_id": "cl3"}
+    block = types.SimpleNamespace(type="tool_use", input={"work_done": [{"element_ids": ["E-ROW-A"]}]})
+    _fake_anthropic(monkeypatch, lambda kw: types.SimpleNamespace(content=[block]))
+    s = structure.structure(cap, tr, vis, ctx, p)
+    assert s["work_done"] and s["work_done"][0]["evidence"] in ("voice", "both")  # rules result

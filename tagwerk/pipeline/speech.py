@@ -70,7 +70,10 @@ def transcribe(capture: dict, derived: dict) -> dict:
         available = True
     except ImportError:
         available = False
-    if not available:  # CPU-only machine without whisper: fixture keeps the chain testable
+    if not available:
+        if os.environ.get("TAGWERK_STUBS") != "1":  # never pass fixture text off as real speech
+            log.error("faster-whisper is not installed: speech stage returns no segments (install .[gpu])")
+            return {"capture_id": capture["capture_id"], "lang": lang if lang != "auto" else "de", "segments": []}
         out = stub("transcript", capture["capture_id"])
         if lang != "auto":
             out["lang"] = lang

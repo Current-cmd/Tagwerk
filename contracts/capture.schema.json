@@ -7,7 +7,8 @@
     "capture_id": {
       "type": "string",
       "minLength": 1,
-      "description": "End-to-end key, idempotent across retries"
+      "description": "End-to-end key, idempotent across retries",
+      "pattern": "^[A-Za-z0-9_-]{1,64}$"
     },
     "ts_device": {
       "type": "string",

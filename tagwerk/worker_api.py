@@ -35,7 +35,7 @@ async def _prepare(capture_json: str, media: list[UploadFile]) -> tuple[dict, di
     capture = validate("capture", json.loads(capture_json))
     workdir = Path(tempfile.mkdtemp(prefix=f"tagwerk-{capture['capture_id']}-"))
     by_name = {}
-    for f in media:
+    for f in media:  # the API already made names unique (index prefix)
         dest = workdir / Path(f.filename or "upload.bin").name
         dest.write_bytes(await f.read())
         by_name[dest.name] = str(dest)

@@ -119,3 +119,30 @@ def test_upload_kind_falls_back_to_extension():
     up = UploadFile(file=None, filename="walk.mp4", headers=Headers({"content-type": "application/octet-stream"}))
     assert _kind(up) == "video"
     assert _kind(UploadFile(file=None, filename="x.jpg", headers=Headers({"content-type": "image/jpeg"}))) == "photo"
+
+
+def test_path_traversal_ids_rejected(client, tmp_path):
+    for bad in ("../x", "a/b", "..", "x" * 65, "a b"):
+        r = client.post("/captures", data={"zone_id": "Z-STAGE", "capture_id": bad})
+        assert r.status_code == 400, bad
+        r = client.post("/captures", data={"zone_id": "Z-STAGE", "capture_id": "ok-1", "replay_of": bad})
+        assert r.status_code == 400, bad
+    assert not (tmp_path / "x").exists() and not (tmp_path / "data" / "captures" / "..").resolve().name == "x"
+
+
+def test_graph_failure_does_not_fail_capture(client, monkeypatch):
+    import tagwerk.pipeline.runner as runner
+
+    def broken(*a, **k):
+        raise RuntimeError("neo4j down")
+
+    monkeypatch.setattr(runner, "sync_capture", broken)
+    r = client.post("/captures", data={"zone_id": "Z-AUDIENCE", "capture_id": "cap-g1", "note": "Reihe H Unterkonstruktion"})
+    assert r.status_code == 200 and r.json()["changes"][0]["action"] == "confirmed"
+
+
+def test_same_filenames_do_not_overwrite(client, tmp_path):
+    files = [("files", ("image.jpg", b"\xff\xd8a", "image/jpeg")), ("files", ("image.jpg", b"\xff\xd8b", "image/jpeg"))]
+    client.post("/captures", data={"zone_id": "Z-STAGE", "capture_id": "cap-f1"}, files=files)
+    saved = sorted(p.name for p in (tmp_path / "data" / "captures" / "cap-f1").iterdir())
+    assert saved == ["00_image.jpg", "01_image.jpg"]

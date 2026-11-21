@@ -124,8 +124,23 @@ async def run_capture(capture: dict, replay: bool = False) -> dict:
     changes = project.apply_structured(meta, structured)
     project.captures[cid].update({"photos": photos, "weather": ctx["weather"], "lang": transcript["lang"]})
     save_result(meta, structured)
-    await asyncio.to_thread(sync_capture, store, project, cid, vis)
+    try:
+        await asyncio.to_thread(sync_capture, store, project, cid, vis)
+    except Exception as exc:  # the state is saved; a graph hiccup must not fail the capture or the live view
+        log.warning("graph sync failed for %s: %s", cid, exc)
+    try:
+        await _publish_results(project, cid, changes, replay)
+    except Exception as exc:  # noqa: BLE001
+        log.warning("websocket publish failed for %s: %s", cid, exc)
+    try:
+        await _status(cid, "done")
+    except Exception:  # noqa: BLE001
+        pass
+    return {"capture": capture, "transcript": transcript, "vision": vis, "context": ctx, "structured": structured,
+            "changes": changes}
 
+
+async def _publish_results(project, cid: str, changes: list[dict], replay: bool) -> None:
     fc = project.forecast(today())
     for ch in changes:
         if ch["action"] not in ("confirmed", "proposed", "unchanged"):
@@ -152,6 +167,3 @@ async def run_capture(capture: dict, replay: bool = False) -> dict:
             await broker.publish({"type": "node", "label": "Event", "id": e["id"],
                                   "props": {"name": short, "text": e["text"], "type": e["type"], "capture": cid,
                                             "severity": e["severity"], "activity_id": e.get("activity_id")}})
-    await _status(cid, "done")
-    return {"capture": capture, "transcript": transcript, "vision": vis, "context": ctx, "structured": structured,
-            "changes": changes}
