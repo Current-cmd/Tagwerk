@@ -138,6 +138,42 @@ def _prepare_replay(src: str, dst: str) -> None:
     _last_replay_id = dst
 
 
+@app.post("/api/scan")
+async def scan_video(files: list[UploadFile] = File(...), make_project: str | None = Form(None),
+                     zone_name: str = Form("Baustelle")) -> dict:
+    """Run the vision stage on an uploaded video/photos and categorise what was seen. With make_project=<name>
+    also write seed/projects/<name>/ (start the API with PROJECT=<name> to work on it)."""
+    import re
+
+    from tagwerk.pipeline.runner import _gpu_stage
+    from tagwerk.pipeline.scan import inventory, seed_from_scan
+    from tagwerk.state import seed_dir
+
+    sid = f"scan-{uuid.uuid4().hex[:8]}"
+    folder = Path(get_settings().data_dir) / "captures" / sid
+    folder.mkdir(parents=True, exist_ok=True)
+    media = []
+    for f in files:
+        dest = folder / Path(f.filename or "upload.bin").name
+        dest.write_bytes(await f.read())
+        media.append({"type": _kind(f), "path": str(dest)})
+    capture = {"capture_id": sid, "ts_server": datetime.now(UTC).isoformat().replace("+00:00", "Z"), "gps": None,
+               "zone_id": next(iter(get_project().zones)), "lang": "auto", "media": media, "note": None}
+    derived = None
+    if not get_settings().gpu_worker_url:
+        from tagwerk.pipeline import normalize
+
+        derived = await asyncio.to_thread(normalize.normalize, capture, folder / "derived")
+    async with _lock:
+        vis = validate("vision", await _gpu_stage("vision", capture, derived))
+    inv = inventory(vis)
+    if make_project:
+        name = re.sub(r"[^a-z0-9_-]", "", make_project.lower())[:40] or sid
+        out = (seed_dir().parent if seed_dir().name != "seed" else seed_dir()) / "projects" / name
+        inv["project"] = seed_from_scan(inv, out, name, today(), zone_name)
+    return inv
+
+
 @app.get("/api/replayable")
 def replayable() -> list[str]:
     d = Path(get_settings().cache_dir)

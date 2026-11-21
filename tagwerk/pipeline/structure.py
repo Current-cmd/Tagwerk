@@ -297,6 +297,30 @@ def rules_structure(capture: dict, transcript: dict, vision: dict, context: dict
         elif _state_for(s, "default") or any(_state_for(s, k) for k in STATES):
             out["unmatched"].append(sent.strip())
 
+    # vision only: detections whose label names an element type (scan projects, e.g. 'drywall panel') propose
+    # the next state for as many matching elements as were seen at once - never more than the frame showed
+    if zone_elements:
+        seen_max: dict[str, tuple[int, float | None]] = {}
+        for f in vision.get("frames", []):
+            counts: dict[str, int] = {}
+            for o in f["objects"]:
+                if o["source"] != "marker" and o["conf"] >= 0.35:
+                    counts[o["label"]] = counts.get(o["label"], 0) + 1
+            for label, c in counts.items():
+                if c > seen_max.get(label, (0, None))[0]:
+                    seen_max[label] = (c, f["t"])
+        zone_cands = zone_elements.get(capture["zone_id"], [])
+        for label, (count, t) in seen_max.items():
+            matches = [c["id"] for c in zone_cands if label in [a.lower() for a in c["aliases"]]
+                       and c["id"] not in voiced and c["id"] not in marker_hits]
+            for eid in matches[:count]:
+                names = STATES.get(element_types.get(eid, "default"), STATES["default"])
+                nxt = next((s for s, w in names if w > current_pct.get(eid, 0)), None)
+                if nxt:
+                    out["work_done"].append({"element_ids": [eid], "activity_id": activity_of_element.get(eid),
+                                             "state_proposed": nxt, "evidence": "vision",
+                                             "quote": f"{label} detected ({count}x)", "t": t})
+
     # vision only: a marker seen without a matching voice note proposes the next state
     for eid, t in marker_hits.items():
         if eid in voiced:

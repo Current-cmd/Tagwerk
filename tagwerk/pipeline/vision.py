@@ -27,8 +27,12 @@ log = logging.getLogger(__name__)
 
 RELATIONS = ["on", "standing on", "in front of", "behind", "next to", "above", "below",
              "mounted on", "attached to", "holding", "using", "blocking"]
-WORLD_CLASSES = ["stage", "lectern", "projection screen", "projector", "speaker",
-                 "lighting truss", "cable", "door", "stairs"]
+# open-vocabulary classes: auditorium elements + general construction-site vocabulary
+WORLD_CLASSES = ["stage", "lectern", "projection screen", "projector", "speaker", "lighting truss", "cable", "door",
+                 "stairs", "wall", "window", "ceiling", "floor", "scaffolding", "ladder", "formwork", "rebar",
+                 "brick wall", "drywall panel", "concrete column", "steel beam", "pipe", "cable tray", "crane",
+                 "excavator", "concrete mixer", "wheelbarrow", "hard hat", "safety vest", "power tool", "pallet",
+                 "insulation", "radiator", "socket", "light fixture"]
 
 MAX_FRAMES = 20
 COCO_CONF = 0.35
