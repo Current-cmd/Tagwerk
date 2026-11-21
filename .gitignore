@@ -19,3 +19,9 @@ seed/projects/*
 !seed/projects/schependomlaan/
 data-*/
 cache-*/
+
+# UI v2 React app (source in web-app/, built output web/app/ is committed)
+web-app/node_modules/
+web-app/.vite/
+web-app/node_modules/.tmp/
+web-app/*.tsbuildinfo

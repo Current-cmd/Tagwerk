@@ -1,0 +1,16 @@
+[
+  {
+    "id": "cap-e2e-2",
+    "label": "Demo: Stuhlreihe A montiert, 2× Trockenbau krank, Traverse verkabelt",
+    "zone_id": "Z-AUDIENCE",
+    "ts": null,
+    "video": null,
+    "photos": [],
+    "note": "Demo-Daten: kein Video im Mock. Die Untertitel und das Erfasst-Protokoll laufen wie bei einer echten Wiedergabe.",
+    "segments": [
+      { "start": 0.0, "end": 2.4, "text": "Stuhlreihe A ist montiert," },
+      { "start": 2.4, "end": 4.8, "text": "zwei Mann vom Trockenbau sind heute krank," },
+      { "start": 4.8, "end": 6.6, "text": "die hintere Traverse ist verkabelt" }
+    ]
+  }
+]
