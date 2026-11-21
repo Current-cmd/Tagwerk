@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { AlertTriangle, ArrowLeft, Box, Loader2, Route as RouteIcon, Tag, FlipVertical2 } from 'lucide-react'
+import { AlertTriangle, ArrowLeft, Box, EyeOff, Loader2, MessageSquareQuote, Route as RouteIcon, Tag, FlipVertical2 } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
@@ -8,7 +8,7 @@ import { Separator } from '@/components/ui/separator'
 import { Toggle } from '@/components/ui/toggle'
 import { fetchScan3d } from '@/lib/api'
 import { num } from '@/lib/format'
-import type { Scan3D, ScanObject } from '@/lib/types'
+import type { Scan3D, ScanMention, ScanObject } from '@/lib/types'
 import { cn } from '@/lib/utils'
 import { SceneView } from './SceneView'
 
@@ -17,6 +17,14 @@ const CAT_COLORS: Record<string, string> = {
   'Bauteile': '#94a3b8', 'Sanitär': '#2dd4bf', 'Baustelle': '#fb923c',
 }
 const PALETTE = ['#34d399', '#f472b6', '#60a5fa', '#fbbf24', '#c084fc', '#4ade80']
+const SAID = '#f59e0b' // objects the speaker named (same amber as in SceneView)
+const TALK_BEFORE_S = 1, TALK_AFTER_S = 3 // a mention "is being said" from 1 s before to 3 s after its estimated second
+
+function mmss(t: number | null | undefined) {
+  if (t == null) return '–'
+  const s = Math.max(0, Math.round(t))
+  return `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`
+}
 function colorOf(cat: string) {
   if (CAT_COLORS[cat]) return CAT_COLORS[cat]
   let h = 0
@@ -47,10 +55,35 @@ export function ScanView({ cid, onBack }: { cid: string; onBack: () => void }) {
   }, [scan])
   const sel = scan?.objects.find(o => o.id === selected) ?? null
   const videoRef = useRef<HTMLVideoElement>(null)
-  useEffect(() => { // jump the walkthrough video to where the selected object was first seen
+  const seekTo = useRef<number | null>(null) // set by a "Gesagt" click: seek there instead of the first sighting
+  useEffect(() => { // jump the walkthrough video to where the selected object was first seen (or was named)
     const v = videoRef.current
-    if (v && sel?.first_t != null) { v.currentTime = sel.first_t; v.play().catch(() => {}) }
+    const t = seekTo.current ?? sel?.first_t
+    seekTo.current = null
+    if (v && sel && t != null) { v.currentTime = Math.max(0, t); v.play().catch(() => {}) }
   }, [sel])
+  const mentions = useMemo(() => [...(scan?.mentions ?? [])].sort((a, b) => (a.t ?? 0) - (b.t ?? 0)), [scan])
+  const unseen = scan?.unseen_mentions ?? []
+  const [vt, setVt] = useState<number | null>(null) // current video time while it plays
+  const talkingMentions = useMemo(
+    () => (vt == null ? [] : mentions.filter(m => m.t != null && vt >= m.t - TALK_BEFORE_S && vt <= m.t + TALK_AFTER_S)),
+    [mentions, vt],
+  )
+  const talking = useMemo(() => [...new Set(talkingMentions.flatMap(m => m.object_ids))], [talkingMentions])
+  const openMention = (m: ScanMention) => {
+    const id = m.object_ids[0]
+    if (!id) return
+    seekTo.current = Math.max(0, (m.t ?? m.t_start ?? 0) - 0.5)
+    if (id === selected) { // already selected: the effect will not run again, seek directly
+      const v = videoRef.current
+      if (v) { v.currentTime = seekTo.current; seekTo.current = null; v.play().catch(() => {}) }
+    }
+    setSelected(id)
+  }
+  const seekOnly = (t: number | null) => {
+    const v = videoRef.current
+    if (v && t != null) { v.currentTime = Math.max(0, t - 0.5); v.play().catch(() => {}) }
+  }
   const cOf = useCallback(colorOf, [])
 
   return (
@@ -84,7 +117,13 @@ export function ScanView({ cid, onBack }: { cid: string; onBack: () => void }) {
             </div>
           ) : scan.ok ? (
             <>
-              <SceneView scan={scan} colorOf={cOf} selected={selected} onSelect={setSelected} showPath={showPath} showLabels={showLabels} flipY={flipY} />
+              <SceneView scan={scan} colorOf={cOf} selected={selected} onSelect={setSelected} showPath={showPath} showLabels={showLabels} flipY={flipY} talking={talking} />
+              {talkingMentions.length > 0 && (
+                <div className="pointer-events-none absolute top-3 left-1/2 max-w-[80%] -translate-x-1/2 rounded-full bg-amber-500/95 px-3 py-1 text-sm font-medium text-white shadow" data-testid="scan-talking">
+                  <MessageSquareQuote className="mr-1 inline size-4" /> „{talkingMentions[0].phrase}“ → {talkingMentions[0].name_de}
+                  {talkingMentions[0].state_de && ` · ${talkingMentions[0].state_de}`}
+                </div>
+              )}
               <div className="pointer-events-none absolute bottom-2 left-3 text-[11px] text-white/60">Ziehen: drehen · Rechtsklick/Shift: verschieben · Rad: zoomen · Doppelklick: Auswahl aufheben · Maßstab relativ</div>
             </>
           ) : (
@@ -108,6 +147,7 @@ export function ScanView({ cid, onBack }: { cid: string; onBack: () => void }) {
         <Card className="flex w-[330px] shrink-0 flex-col gap-0 overflow-hidden py-0">
           {scan?.video && (
             <video ref={videoRef} src={scan.video} controls playsInline muted preload="metadata"
+              onTimeUpdate={e => setVt(e.currentTarget.currentTime)} onSeeked={e => setVt(e.currentTarget.currentTime)}
               className="aspect-video w-full shrink-0 bg-black" data-testid="scan-video" />
           )}
           <CardHeader className="border-b py-3">
@@ -115,7 +155,54 @@ export function ScanView({ cid, onBack }: { cid: string; onBack: () => void }) {
           </CardHeader>
           <ScrollArea className="min-h-0 flex-1">
             <div className="flex flex-col gap-3 p-3" data-testid="scan-objects">
-              {sel && <ObjectDetail o={sel} objects={scan!.objects} color={colorOf(sel.category_de)} onSelect={setSelected} />}
+              {sel && <ObjectDetail o={sel} objects={scan!.objects} color={sel.mentioned ? SAID : colorOf(sel.category_de)} onSelect={setSelected} />}
+              {(mentions.length > 0 || unseen.length > 0) && (
+                <div data-testid="scan-said">
+                  <div className="mb-1 flex items-center gap-2 text-[11px] font-medium tracking-wide text-amber-700 uppercase">
+                    <MessageSquareQuote className="size-3.5" /> Gesagt
+                    <span className="ml-auto tabular-nums">{mentions.length}</span>
+                  </div>
+                  <ul className="flex flex-col gap-0.5">
+                    {mentions.map((m, i) => {
+                      const on = talkingMentions.includes(m)
+                      return (
+                        <li key={i}>
+                          <button type="button" onClick={() => openMention(m)} title={m.text}
+                            className={cn('flex w-full items-start gap-2 rounded-md border border-transparent px-2 py-1.5 text-left text-sm hover:bg-amber-50',
+                              on && 'border-amber-400 bg-amber-100', m.object_ids.includes(selected ?? '') && 'bg-amber-50 font-medium')}>
+                            <span className="w-9 shrink-0 font-mono text-[11px] leading-5 text-muted-foreground tabular-nums">{mmss(m.t)}</span>
+                            <span className="min-w-0 flex-1">
+                              <span className="font-medium">„{m.phrase}“</span> <span className="text-muted-foreground">→ {m.name_de}</span>
+                              {m.object_ids.length > 1 && <span className="text-[11px] text-muted-foreground"> ({m.object_ids.length}×)</span>}
+                            </span>
+                            {m.state_de && <Badge variant="outline" className="shrink-0 border-amber-400 text-[10px] text-amber-800">{m.state_de}</Badge>}
+                          </button>
+                        </li>
+                      )
+                    })}
+                  </ul>
+                  {unseen.length > 0 && (
+                    <>
+                      <div className="mt-2 mb-1 flex items-center gap-2 text-[11px] font-medium tracking-wide text-muted-foreground uppercase">
+                        <EyeOff className="size-3.5" /> Genannt, nicht im Bild
+                      </div>
+                      <ul className="flex flex-col gap-0.5" data-testid="scan-unseen">
+                        {unseen.map((u, i) => (
+                          <li key={i}>
+                            <button type="button" onClick={() => seekOnly(u.t)} title={u.text}
+                              className="flex w-full items-start gap-2 rounded-md px-2 py-1 text-left text-sm text-muted-foreground hover:bg-muted">
+                              <span className="w-9 shrink-0 font-mono text-[11px] leading-5 tabular-nums">{mmss(u.t)}</span>
+                              <span className="min-w-0 flex-1">„{u.phrase}“ → {u.name}{(u.times?.length ?? 0) > 1 && <span className="text-[11px]"> ({u.times!.length}×)</span>}</span>
+                              {u.state_de && <span className="text-[11px]">{u.state_de}</span>}
+                            </button>
+                          </li>
+                        ))}
+                      </ul>
+                    </>
+                  )}
+                  <Separator className="mt-3" />
+                </div>
+              )}
               {groups.length === 0 && !state.loading && <div className="text-sm text-muted-foreground">Keine Objekte erkannt.</div>}
               {groups.map(([cat, objs]) => (
                 <div key={cat}>
@@ -132,6 +219,7 @@ export function ScanView({ cid, onBack }: { cid: string; onBack: () => void }) {
                           className={cn('flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-sm hover:bg-muted', o.id === selected && 'bg-muted font-medium')}
                         >
                           <span className="flex-1 truncate">{o.name_de}</span>
+                          {o.mentioned && <i className={cn('inline-block size-2 rounded-full', talking.includes(o.id) && 'animate-ping')} style={{ background: SAID }} title={`gesagt: „${o.spoken_phrase ?? o.name_de}“`} />}
                           {o.relations.length > 0 && <span className="text-[11px] text-muted-foreground">{o.relations.length} Bez.</span>}
                           <span className="w-8 text-right text-[11px] text-muted-foreground tabular-nums">{o.detections}×</span>
                         </button>
@@ -160,6 +248,11 @@ function ObjectDetail({ o, objects, color, onSelect }: { o: ScanObject; objects:
         <span className="text-xs text-muted-foreground">{o.label}</span>
         {o.element_id && <Badge variant="outline" className="ml-auto font-mono text-[10px]">{o.element_id}</Badge>}
       </div>
+      {o.mentioned && (
+        <div className="mb-2 rounded-md border border-amber-300 bg-amber-50 px-2 py-1 text-xs text-amber-900" data-testid="scan-detail-said">
+          gesagt bei {(o.mention_times ?? []).map(mmss).join(', ')}: „{o.spoken_phrase ?? o.name_de}“{o.spoken_state_de ? ` · ${o.spoken_state_de}` : ''}
+        </div>
+      )}
       {o.thumb && (
         <div className="relative overflow-hidden rounded-md bg-muted">
           <img src={o.thumb} alt={o.name_de} className="block w-full" onLoad={e => setNat({ w: e.currentTarget.naturalWidth, h: e.currentTarget.naturalHeight })} />

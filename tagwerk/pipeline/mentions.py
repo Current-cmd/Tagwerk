@@ -3,7 +3,7 @@
 link_mentions(sfm, transcript, elements, activity_of) -> {"mentions", "unseen_mentions", "objects"} where
   mentions:        per transcript segment and named item {t (estimated second of the phrase), t_start, t_end,
                    text, phrase, label, name_de, object_ids, element_id, state, state_de, activity_id}
-  unseen_mentions: building items named but not detected in the clip {name, phrase, t, text, state, state_de}
+  unseen_mentions: building items named but not detected in the clip {name, phrase, t, times, text, state, state_de}
   objects:         the sfm objects with mentioned / mention_times / spoken_state(_de) / spoken_phrase added
 Names are matched like the structuring rules (tagwerk.pipeline.structure): German and English catalogue names,
 the project elements' names and aliases, German plurals; building stems inside compounds ("Betonfassade") come from
@@ -137,9 +137,15 @@ def link_mentions(sfm: dict, transcript: dict | None, elements: dict[str, dict] 
             # Whisper segments can be long (45 s): place the phrase by its position in the text
             t = round(t0 + (t1 - t0) * h["pos"] / len(text), 2) if t0 is not None and t1 is not None else t0
             inst = by_label.get(h["label"]) if h["label"] else None
-            if not inst:
-                unseen.append({"name": h["name"], "label": h["label"], "phrase": h["phrase"], "t": t, "text": text,
-                               "state": h["state"], "state_de": h["state_de"]})
+            if not inst:  # one entry per name, every time it was said
+                u = next((x for x in unseen if x["name"] == h["name"]), None)
+                if u is None:
+                    unseen.append({"name": h["name"], "label": h["label"], "phrase": h["phrase"], "t": t, "times": [t],
+                                   "text": text, "state": h["state"], "state_de": h["state_de"]})
+                else:
+                    u["times"].append(t)
+                    if h["state"] and not u["state"]:
+                        u["state"], u["state_de"] = h["state"], h["state_de"]
                 continue
             near = [o for o in inst if o.get("first_t") is not None and t is not None
                     and o["first_t"] - WINDOW_S <= t <= (o.get("last_t") or o["first_t"]) + WINDOW_S]

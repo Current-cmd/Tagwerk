@@ -9,6 +9,7 @@ import { EventIcon, SeverityBadge } from '@/components/common'
 import { fetchReport } from '@/lib/api'
 import { eventTypeDe, fmtLong, fmtShort, fmtTime, kindDe, num, weekday } from '@/lib/format'
 import type { Report } from '@/lib/types'
+import { cn } from '@/lib/utils'
 
 interface Props {
   date: string
@@ -162,10 +163,15 @@ export function ReportView({ date, onOpenScan, onOpenRecording }: Props) {
         {r.inventory.length === 0 ? <Muted>kein Scan an diesem Tag</Muted> : (
           <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-4 print:grid-cols-4" data-testid="inventory">
             {r.inventory.map(it => (
-              <div key={it.name_de} className="flex gap-2 rounded-lg border p-2 break-inside-avoid">
+              <div key={it.name_de} className={cn('flex gap-2 rounded-lg border p-2 break-inside-avoid', it.mentioned && 'border-amber-400 bg-amber-50')}>
                 {it.thumb && <img src={it.thumb} alt="" className="size-12 shrink-0 rounded object-cover" />}
                 <div className="min-w-0">
                   <div className="text-sm font-medium">{it.count}× {it.name_de}</div>
+                  {it.mentioned && (
+                    <div className="text-[11px] font-medium text-amber-800" data-testid="inventory-said">
+                      gesagt: „{it.spoken ?? it.name_de}“{it.spoken_state_de ? ` (${it.spoken_state_de})` : ''}
+                    </div>
+                  )}
                   <div className="text-[11px] leading-snug text-muted-foreground">{it.relations.slice(0, 3).join(', ')}</div>
                 </div>
               </div>

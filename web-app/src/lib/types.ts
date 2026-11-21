@@ -237,6 +237,38 @@ export interface ScanObject {
   bbox_in_thumb: [number, number, number, number] | null
   element_id: string | null
   relations: ScanRelation[]
+  // what the speaker named (tagwerk.pipeline.mentions); absent on older APIs
+  mentioned?: boolean
+  mention_times?: number[]
+  spoken_phrase?: string | null
+  spoken_state?: string | null
+  spoken_state_de?: string | null
+}
+
+export interface ScanMention {
+  t: number | null // estimated second of the phrase in the video
+  t_start: number | null
+  t_end: number | null
+  text: string
+  phrase: string
+  label: string
+  name_de: string
+  object_ids: string[]
+  element_id: string | null
+  state: string | null
+  state_de: string | null
+  activity_id: string | null
+}
+
+export interface ScanUnseenMention {
+  name: string
+  label: string | null
+  phrase: string
+  t: number | null
+  times?: (number | null)[]
+  text: string
+  state: string | null
+  state_de: string | null
 }
 
 export interface ScanCamera {
@@ -258,6 +290,8 @@ export interface Scan3D {
   objects: ScanObject[]
   units: string
   video?: string | null // kept walkthrough video (/media/<cid>/<file>)
+  mentions?: ScanMention[]
+  unseen_mentions?: ScanUnseenMention[]
 }
 
 // GET /api/v2/report?date=D
@@ -268,7 +302,8 @@ export interface Report {
   recordings: { capture_id: string; time: string; zone_name: string | null; kind: string; has_3d: boolean }[]
   work_done: { activity_id: string | null; activity_name: string | null; element_name: string; state_de: string; quote: string | null; capture_id: string | null }[]
   workforce: { present: { trade: string; count: number }[]; absent: { trade: string; count: number; reason: string | null }[] }
-  inventory: { name_de: string; count: number; relations: string[]; thumb: string | null; capture_id: string | null }[]
+  inventory: { name_de: string; count: number; relations: string[]; thumb: string | null; capture_id: string | null
+    mentioned?: boolean; spoken?: string | null; spoken_state_de?: string | null }[]
   events: { type: string; text: string; severity: Severity }[]
   photos: string[]
   delays: { activity_id: string; activity_name: string; delay_d: number; cause: string | null }[]

@@ -147,6 +147,11 @@
 }
 .tw-scan-label[data-active='1'] { background: #fff; outline: 2px solid var(--c); transform: scale(1.12); }
 .tw-scan-label[data-active='dim'] { opacity: 0.45; }
+/* objects the speaker named: amber, with the spoken phrase; pulsing while it is being said in the video */
+.tw-scan-label[data-said='1'] { font-weight: 600; box-shadow: 0 0 0 2px #f59e0b, 0 0 12px 2px rgb(245 158 11 / 0.7); }
+.tw-scan-label[data-said='1'] small { display: block; font-weight: 500; font-size: 10px; opacity: 0.8; }
+.tw-scan-label[data-talking='1'] { animation: tw-talk 0.9s ease-in-out infinite; z-index: 10; }
+@keyframes tw-talk { 50% { transform: scale(1.25); box-shadow: 0 0 0 3px #f59e0b, 0 0 22px 6px rgb(245 158 11 / 0.9); } }
 
 /* Tagesbericht print: A4, only the report */
 @media print {

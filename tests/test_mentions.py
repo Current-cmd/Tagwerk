@@ -170,3 +170,10 @@ def test_phrase_time_is_estimated_inside_long_segments():
     assert res["objects"][0]["spoken_state_de"] is None
     res = link_mentions(SFM, {"segments": [_seg(3.0, 4.0, "Die Tür ist eingebaut.")]}, {})
     assert {o["id"]: o for o in res["objects"]}["obj-1"]["spoken_state_de"] == "montiert"
+
+
+def test_unseen_items_named_repeatedly_are_one_entry_with_all_times():
+    tr = {"segments": [_seg(1.0, 2.0, "Die Betonfassade."), _seg(10.0, 11.0, "Nochmal die Betonfassade, fertig.")]}
+    unseen = link_mentions(SFM, tr, {})["unseen_mentions"]
+    assert len(unseen) == 1 and unseen[0]["name"] == "Betonfassade" and unseen[0]["t"] < 2.0
+    assert len(unseen[0]["times"]) == 2 and unseen[0]["state"] is not None  # state from the later "fertig"
