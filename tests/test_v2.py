@@ -216,3 +216,27 @@ def test_schependomlaan_snapshot(tmp_path, monkeypatch):
         assert time.perf_counter() - t < 1.5
         assert not any(n["type"] == "element" for n in g["nodes"])
         assert not set(_keys(day)) & COST_KEYS
+
+
+def test_has_3d_only_for_a_successful_reconstruction(client):
+    import json
+
+    from tagwerk.config import get_settings
+
+    _post_note(client, "cap-3d-ok")
+    _post_note(client, "cap-3d-fail")
+    for cid, ok in (("cap-3d-ok", True), ("cap-3d-fail", False)):
+        d = get_settings().cache_dir / cid
+        d.mkdir(parents=True, exist_ok=True)
+        (d / "sfm.json").write_text(json.dumps({"capture_id": cid, "ok": ok, "reason": None if ok else "zu wenig Bilder",
+                                                "objects": []}), encoding="utf-8")
+    recs = {r["capture_id"]: r["has_3d"] for r in client.get("/api/v2/day").json()["recordings"]}
+    assert recs["cap-3d-ok"] is True and recs["cap-3d-fail"] is False
+
+
+def test_one_german_state_mapping():
+    from tagwerk import report, v2
+    from tagwerk.labels import STATE_DE
+
+    assert v2.STATE_DE is STATE_DE and report.STATE_DE is STATE_DE
+    assert STATE_DE["checked"] == "abgenommen" and STATE_DE["tested"] == "geprüft"

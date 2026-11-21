@@ -14,6 +14,7 @@ from datetime import date, timedelta
 from pathlib import Path
 
 from tagwerk.config import get_settings
+from tagwerk.labels import STATE_DE
 from tagwerk.project import Project, is_workday, next_workday
 from tagwerk.state import get_project, results_dir, seed_dir, today
 
@@ -22,11 +23,6 @@ VIDEO_EXT = (".mp4", ".mov", ".webm", ".m4v")
 PHOTO_EXT = (".jpg", ".jpeg", ".png", ".webp")
 AUDIO_EXT = (".m4a", ".mp3", ".wav", ".ogg", ".aac", ".opus")
 KIND_DE = {"video": "Video", "photo": "Foto", "audio": "Sprachnotiz", "note": "Notiz", "manual": "Manuell"}
-STATE_DE = {"removed": "ausgebaut", "substructure": "Unterkonstruktion", "installed": "montiert", "checked": "geprüft",
-            "prepared": "vorbereitet", "primed": "grundiert", "painted": "gestrichen", "done": "fertig",
-            "framed": "Rahmen gestellt", "boarded": "beplankt", "finished": "fertig", "mounted": "montiert",
-            "wired": "verkabelt", "tested": "geprüft", "connected": "angeschlossen", "commissioned": "in Betrieb",
-            "stripped": "entfernt", "levelled": "gespachtelt", "covered": "belegt", "started": "begonnen"}
 # weather constraints (contract): precip >= 5 mm, wind >= 50 km/h, temp <= 0 °C
 RAIN_MM, WIND_KMH, FROST_C = 5.0, 50.0, 0.0
 
@@ -135,6 +131,14 @@ def _media(cid: str) -> tuple[str | None, list[str], bool]:
     video = next((f for f, lf in low if lf.endswith(VIDEO_EXT)), None)
     photos = [f"/media/{cid}/{f}" for f, lf in low if lf.endswith(PHOTO_EXT)]
     return (f"/media/{cid}/{video}" if video else None), photos, any(lf.endswith(AUDIO_EXT) for _, lf in low)
+
+
+def _has_3d(cid: str) -> bool:
+    """A finished reconstruction: cache/<cid>/sfm.json with "ok": true (a failed one keeps its 2D objects only)."""
+    try:
+        return json.loads((Path(get_settings().cache_dir) / cid / "sfm.json").read_text(encoding="utf-8")).get("ok") is True
+    except (OSError, ValueError, AttributeError):
+        return False
 
 
 def _transcript(cid: str) -> str | None:
@@ -249,7 +253,7 @@ def _recording(p: Project, c: dict) -> dict:
             "kind": kind, "transcript": _transcript(cid), "note": c.get("note"), "video": video, "photos": photos,
             "changes": changes, "proposals": proposals, "absences": absences, "events": events,
             "material": list(s.get("material_delivered", [])), "labour": list(s.get("labour_present", [])),
-            "has_3d": (Path(get_settings().cache_dir) / cid / "sfm.json").is_file()}
+            "has_3d": _has_3d(cid)}
 
 
 # ---------- payloads ----------

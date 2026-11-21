@@ -13,17 +13,10 @@ from pathlib import Path
 
 from tagwerk import v2
 from tagwerk.config import get_settings
+from tagwerk.labels import STATE_DE
 from tagwerk.pipeline.scan import CATALOG
 from tagwerk.project import ABSENCE_WORKDAYS, Project, is_workday, next_workday
 
-# German labels for every element state in tagwerk.pipeline.loop.STATES (Bautagebuch wording)
-STATE_DE = {
-    "started": "begonnen", "installed": "montiert", "mounted": "montiert", "connected": "angeschlossen",
-    "wired": "verkabelt", "tested": "geprüft", "commissioned": "in Betrieb", "checked": "abgenommen",
-    "painted": "gestrichen", "primed": "grundiert", "prepared": "vorbereitet", "covered": "verlegt",
-    "levelled": "nivelliert", "substructure": "Unterkonstruktion", "framed": "Unterkonstruktion",
-    "boarded": "beplankt", "removed": "ausgebaut", "stripped": "entfernt", "done": "fertig", "finished": "fertig",
-}
 # RelateAnything predicates -> German; unknown predicates stay as they are
 PREDICATE_DE = {
     "on": "auf", "under": "unter", "below": "unter", "above": "über", "next to": "neben", "beside": "neben",
@@ -227,7 +220,7 @@ def report(d: date) -> dict:
     caps = sorted((c for c in p.captures.values() if c["date"] == iso), key=lambda c: c["ts"])
     recs = sorted(snap["recordings"], key=lambda r: (r["time"], r["capture_id"]))
     recordings = [{"capture_id": r["capture_id"], "time": r["time"], "zone_name": r["zone_name"], "kind": r["kind"],
-                   "has_3d": bool((_sfm(r["capture_id"]) or {}).get("ok"))} for r in recs]
+                   "has_3d": v2._has_3d(r["capture_id"])} for r in recs]
     events = [{"type": e["type"], "text": e["text"], "severity": e["severity"]}
               for e in sorted(snap["events"], key=lambda e: e["id"]) if e["date"] == iso and e["type"] in EVENT_TYPES]
     delays = sorted(({"activity_id": a["id"], "activity_name": a["name"], "delay_d": a["delay_d"], "cause": a["cause"]}
