@@ -55,11 +55,6 @@ export function ScanView({ cid, onBack }: { cid: string; onBack: () => void }) {
   }, [cid])
 
   const scan = state.scan
-  const groups = useMemo(() => {
-    const m = new Map<string, ScanObject[]>()
-    scan?.objects.forEach(o => m.set(o.category_de, [...(m.get(o.category_de) ?? []), o]))
-    return [...m.entries()].sort((a, b) => a[0].localeCompare(b[0], 'de'))
-  }, [scan])
   const sel = scan?.objects.find(o => o.id === selected) ?? null
   const sections: ScanSection[] = useMemo(() => scan?.sections?.length ? scan.sections : [], [scan])
   const view = useMemo<Scan3D | null>(() => { // the scene shows one section: its points, cameras and objects
@@ -67,6 +62,11 @@ export function ScanView({ cid, onBack }: { cid: string; onBack: () => void }) {
     const s = sections.find(x => x.id === sectionId) ?? sections[0]
     return { ...scan, points: s.points, cameras: s.cameras, objects: scan.objects.filter(o => (o.section ?? 0) === s.id) }
   }, [scan, sections, sectionId])
+  const groups = useMemo(() => { // the object list follows the section shown ("Gesagt" stays global)
+    const m = new Map<string, ScanObject[]>()
+    view?.objects.forEach(o => m.set(o.category_de, [...(m.get(o.category_de) ?? []), o]))
+    return [...m.entries()].sort((a, b) => a[0].localeCompare(b[0], 'de'))
+  }, [view])
   const choose = (id: string | null) => { // select an object, switching to its section
     const o = id ? scan?.objects.find(x => x.id === id) : null
     if (o && sections.length && (o.section ?? 0) !== sectionId) { setSectionId(o.section ?? 0); setFollow(false) }
@@ -200,7 +200,7 @@ export function ScanView({ cid, onBack }: { cid: string; onBack: () => void }) {
               className="aspect-video w-full shrink-0 bg-black" data-testid="scan-video" />
           )}
           <CardHeader className="border-b py-3">
-            <CardTitle className="text-sm">Objekte nach Kategorie</CardTitle>
+            <CardTitle className="text-sm">Objekte nach Kategorie{sections.length > 1 && <span className="font-normal text-muted-foreground"> · dieser Abschnitt</span>}</CardTitle>
           </CardHeader>
           <ScrollArea className="min-h-0 flex-1">
             <div className="flex flex-col gap-3 p-3" data-testid="scan-objects">
