@@ -1,0 +1,436 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<APIBusinessObjects xmlns="http://xmlns.oracle.com/Primavera/P6/V8.3/API/BusinessObjects">
+  <UDFType>
+    <ObjectId>9001</ObjectId>
+    <Title>GAEB_OZ</Title>
+    <SubjectArea>Activity</SubjectArea>
+    <DataType>Text</DataType>
+  </UDFType>
+  <UDFType>
+    <ObjectId>9002</ObjectId>
+    <Title>ELEMENT_IDS</Title>
+    <SubjectArea>Activity</SubjectArea>
+    <DataType>Text</DataType>
+  </UDFType>
+  <Project>
+    <ObjectId>1</ObjectId>
+    <Id>HS-SAN</Id>
+    <Name>Hörsaal Sanierung</Name>
+    <PlannedStartDate>2026-11-09T08:00:00</PlannedStartDate>
+    <ScheduledFinishDate>2026-11-26T17:00:00</ScheduledFinishDate>
+    <DataDate>2026-11-09T08:00:00</DataDate>
+    <Status>Active</Status>
+    <WBS>
+      <ObjectId>100</ObjectId>
+      <ProjectObjectId>1</ProjectObjectId>
+      <ParentObjectId />
+      <Code>1</Code>
+      <Name>Vorbereitung</Name>
+    </WBS>
+    <WBS>
+      <ObjectId>101</ObjectId>
+      <ProjectObjectId>1</ProjectObjectId>
+      <ParentObjectId>100</ParentObjectId>
+      <Code>1</Code>
+      <Name>Baustelle</Name>
+    </WBS>
+    <WBS>
+      <ObjectId>102</ObjectId>
+      <ProjectObjectId>1</ProjectObjectId>
+      <ParentObjectId>100</ParentObjectId>
+      <Code>2</Code>
+      <Name>Rückbau</Name>
+    </WBS>
+    <WBS>
+      <ObjectId>103</ObjectId>
+      <ProjectObjectId>1</ProjectObjectId>
+      <ParentObjectId />
+      <Code>2</Code>
+      <Name>Ausbau</Name>
+    </WBS>
+    <WBS>
+      <ObjectId>104</ObjectId>
+      <ProjectObjectId>1</ProjectObjectId>
+      <ParentObjectId>103</ParentObjectId>
+      <Code>1</Code>
+      <Name>Boden</Name>
+    </WBS>
+    <WBS>
+      <ObjectId>105</ObjectId>
+      <ProjectObjectId>1</ProjectObjectId>
+      <ParentObjectId>103</ParentObjectId>
+      <Code>2</Code>
+      <Name>Akustik</Name>
+    </WBS>
+    <WBS>
+      <ObjectId>106</ObjectId>
+      <ProjectObjectId>1</ProjectObjectId>
+      <ParentObjectId>103</ParentObjectId>
+      <Code>3</Code>
+      <Name>Bühne</Name>
+    </WBS>
+    <WBS>
+      <ObjectId>107</ObjectId>
+      <ProjectObjectId>1</ProjectObjectId>
+      <ParentObjectId>103</ParentObjectId>
+      <Code>4</Code>
+      <Name>Maler</Name>
+    </WBS>
+    <WBS>
+      <ObjectId>108</ObjectId>
+      <ProjectObjectId>1</ProjectObjectId>
+      <ParentObjectId>103</ParentObjectId>
+      <Code>5</Code>
+      <Name>Bestuhlung</Name>
+    </WBS>
+    <WBS>
+      <ObjectId>109</ObjectId>
+      <ProjectObjectId>1</ProjectObjectId>
+      <ParentObjectId />
+      <Code>3</Code>
+      <Name>Technik (TGA/AV)</Name>
+    </WBS>
+    <WBS>
+      <ObjectId>110</ObjectId>
+      <ProjectObjectId>1</ProjectObjectId>
+      <ParentObjectId>109</ParentObjectId>
+      <Code>1</Code>
+      <Name>Elektro</Name>
+    </WBS>
+    <WBS>
+      <ObjectId>111</ObjectId>
+      <ProjectObjectId>1</ProjectObjectId>
+      <ParentObjectId>109</ParentObjectId>
+      <Code>2</Code>
+      <Name>AV</Name>
+    </WBS>
+    <WBS>
+      <ObjectId>112</ObjectId>
+      <ProjectObjectId>1</ProjectObjectId>
+      <ParentObjectId />
+      <Code>4</Code>
+      <Name>Abschluss</Name>
+    </WBS>
+    <WBS>
+      <ObjectId>113</ObjectId>
+      <ProjectObjectId>1</ProjectObjectId>
+      <ParentObjectId>112</ParentObjectId>
+      <Code>1</Code>
+      <Name>Abnahme</Name>
+    </WBS>
+    <Activity>
+      <ObjectId>1010</ObjectId>
+      <Id>A1010</Id>
+      <Name>Baustelleneinrichtung</Name>
+      <ProjectObjectId>1</ProjectObjectId>
+      <WBSObjectId>101</WBSObjectId>
+      <Type>Task Dependent</Type>
+      <PercentCompleteType>Physical</PercentCompleteType>
+      <PlannedDuration>8</PlannedDuration>
+      <PlannedStartDate>2026-11-09T08:00:00</PlannedStartDate>
+      <PlannedFinishDate>2026-11-09T17:00:00</PlannedFinishDate>
+      <PhysicalPercentComplete>0</PhysicalPercentComplete>
+      <Status>Not Started</Status>
+      <RemainingDuration>8</RemainingDuration>
+      <UDF>
+        <TypeObjectId>9001</TypeObjectId>
+        <TextValue>01.01.0010</TextValue>
+      </UDF>
+      <UDF>
+        <TypeObjectId>9002</TypeObjectId>
+        <TextValue />
+      </UDF>
+    </Activity>
+    <Activity>
+      <ObjectId>1020</ObjectId>
+      <Id>A1020</Id>
+      <Name>Rückbau Bestuhlung</Name>
+      <ProjectObjectId>1</ProjectObjectId>
+      <WBSObjectId>102</WBSObjectId>
+      <Type>Task Dependent</Type>
+      <PercentCompleteType>Physical</PercentCompleteType>
+      <PlannedDuration>16</PlannedDuration>
+      <PlannedStartDate>2026-11-10T08:00:00</PlannedStartDate>
+      <PlannedFinishDate>2026-11-11T17:00:00</PlannedFinishDate>
+      <PhysicalPercentComplete>0</PhysicalPercentComplete>
+      <Status>Not Started</Status>
+      <RemainingDuration>16</RemainingDuration>
+      <UDF>
+        <TypeObjectId>9001</TypeObjectId>
+        <TextValue>01.01.0020</TextValue>
+      </UDF>
+      <UDF>
+        <TypeObjectId>9002</TypeObjectId>
+        <TextValue>E-ROW-A;E-ROW-B;E-ROW-C;E-ROW-D;E-ROW-E;E-ROW-F;E-ROW-G;E-ROW-H</TextValue>
+      </UDF>
+    </Activity>
+    <Activity>
+      <ObjectId>1030</ObjectId>
+      <Id>A1030</Id>
+      <Name>Bodenbelag</Name>
+      <ProjectObjectId>1</ProjectObjectId>
+      <WBSObjectId>104</WBSObjectId>
+      <Type>Task Dependent</Type>
+      <PercentCompleteType>Physical</PercentCompleteType>
+      <PlannedDuration>32</PlannedDuration>
+      <PlannedStartDate>2026-11-12T08:00:00</PlannedStartDate>
+      <PlannedFinishDate>2026-11-17T17:00:00</PlannedFinishDate>
+      <PhysicalPercentComplete>0</PhysicalPercentComplete>
+      <Status>Not Started</Status>
+      <RemainingDuration>32</RemainingDuration>
+      <UDF>
+        <TypeObjectId>9001</TypeObjectId>
+        <TextValue>01.02.0010;01.02.0020</TextValue>
+      </UDF>
+      <UDF>
+        <TypeObjectId>9002</TypeObjectId>
+        <TextValue>E-FLOOR-AUD;E-FLOOR-STAGE</TextValue>
+      </UDF>
+    </Activity>
+    <Activity>
+      <ObjectId>1040</ObjectId>
+      <Id>A1040</Id>
+      <Name>Akustikpaneele und Decke</Name>
+      <ProjectObjectId>1</ProjectObjectId>
+      <WBSObjectId>105</WBSObjectId>
+      <Type>Task Dependent</Type>
+      <PercentCompleteType>Physical</PercentCompleteType>
+      <PlannedDuration>40</PlannedDuration>
+      <PlannedStartDate>2026-11-12T08:00:00</PlannedStartDate>
+      <PlannedFinishDate>2026-11-18T17:00:00</PlannedFinishDate>
+      <PhysicalPercentComplete>0</PhysicalPercentComplete>
+      <Status>Not Started</Status>
+      <RemainingDuration>40</RemainingDuration>
+      <UDF>
+        <TypeObjectId>9001</TypeObjectId>
+        <TextValue>01.03.0010;01.03.0020</TextValue>
+      </UDF>
+      <UDF>
+        <TypeObjectId>9002</TypeObjectId>
+        <TextValue>E-CEILING;E-PANELS-E;E-PANELS-W</TextValue>
+      </UDF>
+    </Activity>
+    <Activity>
+      <ObjectId>1050</ObjectId>
+      <Id>A1050</Id>
+      <Name>Elektro und Licht-Traverse</Name>
+      <ProjectObjectId>1</ProjectObjectId>
+      <WBSObjectId>110</WBSObjectId>
+      <Type>Task Dependent</Type>
+      <PercentCompleteType>Physical</PercentCompleteType>
+      <PlannedDuration>40</PlannedDuration>
+      <PlannedStartDate>2026-11-16T08:00:00</PlannedStartDate>
+      <PlannedFinishDate>2026-11-20T17:00:00</PlannedFinishDate>
+      <PhysicalPercentComplete>0</PhysicalPercentComplete>
+      <Status>Not Started</Status>
+      <RemainingDuration>40</RemainingDuration>
+      <UDF>
+        <TypeObjectId>9001</TypeObjectId>
+        <TextValue>02.01.0010;02.01.0020;02.01.0030</TextValue>
+      </UDF>
+      <UDF>
+        <TypeObjectId>9002</TypeObjectId>
+        <TextValue>E-CABLETRAY;E-EMLIGHT;E-TRUSS-1;E-TRUSS-2</TextValue>
+      </UDF>
+    </Activity>
+    <Activity>
+      <ObjectId>1060</ObjectId>
+      <Id>A1060</Id>
+      <Name>AV-Technik</Name>
+      <ProjectObjectId>1</ProjectObjectId>
+      <WBSObjectId>111</WBSObjectId>
+      <Type>Task Dependent</Type>
+      <PercentCompleteType>Physical</PercentCompleteType>
+      <PlannedDuration>32</PlannedDuration>
+      <PlannedStartDate>2026-11-19T08:00:00</PlannedStartDate>
+      <PlannedFinishDate>2026-11-24T17:00:00</PlannedFinishDate>
+      <PhysicalPercentComplete>0</PhysicalPercentComplete>
+      <Status>Not Started</Status>
+      <RemainingDuration>32</RemainingDuration>
+      <UDF>
+        <TypeObjectId>9001</TypeObjectId>
+        <TextValue>03.01.0010;03.01.0020</TextValue>
+      </UDF>
+      <UDF>
+        <TypeObjectId>9002</TypeObjectId>
+        <TextValue>E-MIXER;E-PROJECTOR;E-SCREEN;E-SPK-L;E-SPK-R</TextValue>
+      </UDF>
+    </Activity>
+    <Activity>
+      <ObjectId>1065</ObjectId>
+      <Id>A1065</Id>
+      <Name>Bühne</Name>
+      <ProjectObjectId>1</ProjectObjectId>
+      <WBSObjectId>106</WBSObjectId>
+      <Type>Task Dependent</Type>
+      <PercentCompleteType>Physical</PercentCompleteType>
+      <PlannedDuration>40</PlannedDuration>
+      <PlannedStartDate>2026-11-16T08:00:00</PlannedStartDate>
+      <PlannedFinishDate>2026-11-20T17:00:00</PlannedFinishDate>
+      <PhysicalPercentComplete>0</PhysicalPercentComplete>
+      <Status>Not Started</Status>
+      <RemainingDuration>40</RemainingDuration>
+      <UDF>
+        <TypeObjectId>9001</TypeObjectId>
+        <TextValue>01.05.0010;01.05.0020</TextValue>
+      </UDF>
+      <UDF>
+        <TypeObjectId>9002</TypeObjectId>
+        <TextValue>E-CURTAIN;E-LECTERN;E-STAGE;E-STAGE-STAIRS</TextValue>
+      </UDF>
+    </Activity>
+    <Activity>
+      <ObjectId>1070</ObjectId>
+      <Id>A1070</Id>
+      <Name>Malerarbeiten</Name>
+      <ProjectObjectId>1</ProjectObjectId>
+      <WBSObjectId>107</WBSObjectId>
+      <Type>Task Dependent</Type>
+      <PercentCompleteType>Physical</PercentCompleteType>
+      <PlannedDuration>24</PlannedDuration>
+      <PlannedStartDate>2026-11-19T08:00:00</PlannedStartDate>
+      <PlannedFinishDate>2026-11-23T17:00:00</PlannedFinishDate>
+      <PhysicalPercentComplete>0</PhysicalPercentComplete>
+      <Status>Not Started</Status>
+      <RemainingDuration>24</RemainingDuration>
+      <UDF>
+        <TypeObjectId>9001</TypeObjectId>
+        <TextValue>01.04.0010</TextValue>
+      </UDF>
+      <UDF>
+        <TypeObjectId>9002</TypeObjectId>
+        <TextValue>E-WALL-E;E-WALL-N;E-WALL-S;E-WALL-W</TextValue>
+      </UDF>
+    </Activity>
+    <Activity>
+      <ObjectId>1080</ObjectId>
+      <Id>A1080</Id>
+      <Name>Bestuhlung neu</Name>
+      <ProjectObjectId>1</ProjectObjectId>
+      <WBSObjectId>108</WBSObjectId>
+      <Type>Task Dependent</Type>
+      <PercentCompleteType>Physical</PercentCompleteType>
+      <PlannedDuration>32</PlannedDuration>
+      <PlannedStartDate>2026-11-23T08:00:00</PlannedStartDate>
+      <PlannedFinishDate>2026-11-26T17:00:00</PlannedFinishDate>
+      <PhysicalPercentComplete>0</PhysicalPercentComplete>
+      <Status>Not Started</Status>
+      <RemainingDuration>32</RemainingDuration>
+      <UDF>
+        <TypeObjectId>9001</TypeObjectId>
+        <TextValue>01.06.0010</TextValue>
+      </UDF>
+      <UDF>
+        <TypeObjectId>9002</TypeObjectId>
+        <TextValue>E-ROW-A;E-ROW-B;E-ROW-C;E-ROW-D;E-ROW-E;E-ROW-F;E-ROW-G;E-ROW-H</TextValue>
+      </UDF>
+    </Activity>
+    <Activity>
+      <ObjectId>1090</ObjectId>
+      <Id>A1090</Id>
+      <Name>Abnahme</Name>
+      <ProjectObjectId>1</ProjectObjectId>
+      <WBSObjectId>113</WBSObjectId>
+      <Type>Task Dependent</Type>
+      <PercentCompleteType>Physical</PercentCompleteType>
+      <PlannedDuration>8</PlannedDuration>
+      <PlannedStartDate>2026-11-26T08:00:00</PlannedStartDate>
+      <PlannedFinishDate>2026-11-26T17:00:00</PlannedFinishDate>
+      <PhysicalPercentComplete>0</PhysicalPercentComplete>
+      <Status>Not Started</Status>
+      <RemainingDuration>8</RemainingDuration>
+      <UDF>
+        <TypeObjectId>9001</TypeObjectId>
+        <TextValue />
+      </UDF>
+      <UDF>
+        <TypeObjectId>9002</TypeObjectId>
+        <TextValue />
+      </UDF>
+    </Activity>
+    <Relationship>
+      <ObjectId>5001</ObjectId>
+      <PredecessorActivityObjectId>1010</PredecessorActivityObjectId>
+      <SuccessorActivityObjectId>1020</SuccessorActivityObjectId>
+      <Type>Finish to Start</Type>
+      <Lag>0</Lag>
+    </Relationship>
+    <Relationship>
+      <ObjectId>5002</ObjectId>
+      <PredecessorActivityObjectId>1020</PredecessorActivityObjectId>
+      <SuccessorActivityObjectId>1030</SuccessorActivityObjectId>
+      <Type>Finish to Start</Type>
+      <Lag>0</Lag>
+    </Relationship>
+    <Relationship>
+      <ObjectId>5003</ObjectId>
+      <PredecessorActivityObjectId>1020</PredecessorActivityObjectId>
+      <SuccessorActivityObjectId>1040</SuccessorActivityObjectId>
+      <Type>Finish to Start</Type>
+      <Lag>0</Lag>
+    </Relationship>
+    <Relationship>
+      <ObjectId>5004</ObjectId>
+      <PredecessorActivityObjectId>1020</PredecessorActivityObjectId>
+      <SuccessorActivityObjectId>1050</SuccessorActivityObjectId>
+      <Type>Finish to Start</Type>
+      <Lag>0</Lag>
+    </Relationship>
+    <Relationship>
+      <ObjectId>5005</ObjectId>
+      <PredecessorActivityObjectId>1050</PredecessorActivityObjectId>
+      <SuccessorActivityObjectId>1060</SuccessorActivityObjectId>
+      <Type>Finish to Start</Type>
+      <Lag>0</Lag>
+    </Relationship>
+    <Relationship>
+      <ObjectId>5006</ObjectId>
+      <PredecessorActivityObjectId>1020</PredecessorActivityObjectId>
+      <SuccessorActivityObjectId>1065</SuccessorActivityObjectId>
+      <Type>Finish to Start</Type>
+      <Lag>0</Lag>
+    </Relationship>
+    <Relationship>
+      <ObjectId>5007</ObjectId>
+      <PredecessorActivityObjectId>1040</PredecessorActivityObjectId>
+      <SuccessorActivityObjectId>1070</SuccessorActivityObjectId>
+      <Type>Finish to Start</Type>
+      <Lag>0</Lag>
+    </Relationship>
+    <Relationship>
+      <ObjectId>5008</ObjectId>
+      <PredecessorActivityObjectId>1030</PredecessorActivityObjectId>
+      <SuccessorActivityObjectId>1080</SuccessorActivityObjectId>
+      <Type>Finish to Start</Type>
+      <Lag>0</Lag>
+    </Relationship>
+    <Relationship>
+      <ObjectId>5009</ObjectId>
+      <PredecessorActivityObjectId>1070</PredecessorActivityObjectId>
+      <SuccessorActivityObjectId>1080</SuccessorActivityObjectId>
+      <Type>Finish to Start</Type>
+      <Lag>0</Lag>
+    </Relationship>
+    <Relationship>
+      <ObjectId>5010</ObjectId>
+      <PredecessorActivityObjectId>1060</PredecessorActivityObjectId>
+      <SuccessorActivityObjectId>1090</SuccessorActivityObjectId>
+      <Type>Finish to Start</Type>
+      <Lag>0</Lag>
+    </Relationship>
+    <Relationship>
+      <ObjectId>5011</ObjectId>
+      <PredecessorActivityObjectId>1065</PredecessorActivityObjectId>
+      <SuccessorActivityObjectId>1090</SuccessorActivityObjectId>
+      <Type>Finish to Start</Type>
+      <Lag>0</Lag>
+    </Relationship>
+    <Relationship>
+      <ObjectId>5012</ObjectId>
+      <PredecessorActivityObjectId>1080</PredecessorActivityObjectId>
+      <SuccessorActivityObjectId>1090</SuccessorActivityObjectId>
+      <Type>Finish to Start</Type>
+      <Lag>0</Lag>
+    </Relationship>
+  </Project>
+</APIBusinessObjects>

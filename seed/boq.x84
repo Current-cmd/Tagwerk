@@ -1,0 +1,425 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<GAEB xmlns="http://www.gaeb.de/GAEB_DA_XML/DA84/3.3">
+  <GAEBInfo>
+    <Version>3.3</Version>
+    <ProgSystem>Tagwerk</ProgSystem>
+  </GAEBInfo>
+  <Award>
+    <DP>84</DP>
+    <BoQ>
+      <BoQInfo>
+        <Name>Hörsaal Sanierung</Name>
+        <BoQBkdn>
+          <BoQBkdn>
+            <Type>BoQLevel</Type>
+            <Length>2</Length>
+          </BoQBkdn>
+          <BoQBkdn>
+            <Type>BoQLevel</Type>
+            <Length>2</Length>
+          </BoQBkdn>
+          <BoQBkdn>
+            <Type>Item</Type>
+            <Length>4</Length>
+          </BoQBkdn>
+        </BoQBkdn>
+        <Totals>134504.00</Totals>
+      </BoQInfo>
+      <BoQBody>
+        <BoQCtgy RNoPart="01">
+          <LblTx>
+            <p>Ausbau</p>
+          </LblTx>
+          <BoQBody>
+            <BoQCtgy RNoPart="01">
+              <LblTx>
+                <p>Baustelleneinrichtung</p>
+              </LblTx>
+              <BoQBody>
+                <Itemlist>
+                  <Item RNoPart="0010">
+                    <Qty>1.000</Qty>
+                    <QU>psch</QU>
+                    <UP>1800.00</UP>
+                    <IT>1800.00</IT>
+                    <Description>
+                      <CompleteText>
+                        <OutlineText>
+                          <OutlTxt>
+                            <TextOutlTxt>
+                              <span>Baustelleneinrichtung</span>
+                            </TextOutlTxt>
+                          </OutlTxt>
+                        </OutlineText>
+                        <DetailTxt>
+                          <Text>DIN 276: 390 verify</Text>
+                        </DetailTxt>
+                      </CompleteText>
+                    </Description>
+                  </Item>
+                  <Item RNoPart="0020">
+                    <Qty>160.000</Qty>
+                    <QU>Stk</QU>
+                    <UP>18.00</UP>
+                    <IT>2880.00</IT>
+                    <Description>
+                      <CompleteText>
+                        <OutlineText>
+                          <OutlTxt>
+                            <TextOutlTxt>
+                              <span>Bestuhlung demontieren und entsorgen</span>
+                            </TextOutlTxt>
+                          </OutlTxt>
+                        </OutlineText>
+                        <DetailTxt>
+                          <Text>DIN 276: 610 verify</Text>
+                        </DetailTxt>
+                      </CompleteText>
+                    </Description>
+                  </Item>
+                </Itemlist>
+              </BoQBody>
+            </BoQCtgy>
+            <BoQCtgy RNoPart="02">
+              <LblTx>
+                <p>Bodenbelag</p>
+              </LblTx>
+              <BoQBody>
+                <Itemlist>
+                  <Item RNoPart="0010">
+                    <Qty>168.000</Qty>
+                    <QU>m2</QU>
+                    <UP>42.00</UP>
+                    <IT>7056.00</IT>
+                    <Description>
+                      <CompleteText>
+                        <OutlineText>
+                          <OutlTxt>
+                            <TextOutlTxt>
+                              <span>Bodenbelag Saal Nadelvlies verlegen</span>
+                            </TextOutlTxt>
+                          </OutlTxt>
+                        </OutlineText>
+                        <DetailTxt>
+                          <Text>DIN 276: 352 verify</Text>
+                        </DetailTxt>
+                      </CompleteText>
+                    </Description>
+                  </Item>
+                  <Item RNoPart="0020">
+                    <Qty>48.000</Qty>
+                    <QU>m2</QU>
+                    <UP>38.00</UP>
+                    <IT>1824.00</IT>
+                    <Description>
+                      <CompleteText>
+                        <OutlineText>
+                          <OutlTxt>
+                            <TextOutlTxt>
+                              <span>Bühnenboden Hartholz schleifen und versiegeln</span>
+                            </TextOutlTxt>
+                          </OutlTxt>
+                        </OutlineText>
+                        <DetailTxt>
+                          <Text>DIN 276: 352 verify</Text>
+                        </DetailTxt>
+                      </CompleteText>
+                    </Description>
+                  </Item>
+                </Itemlist>
+              </BoQBody>
+            </BoQCtgy>
+            <BoQCtgy RNoPart="03">
+              <LblTx>
+                <p>Akustikpaneele</p>
+              </LblTx>
+              <BoQBody>
+                <Itemlist>
+                  <Item RNoPart="0010">
+                    <Qty>72.000</Qty>
+                    <QU>m2</QU>
+                    <UP>145.00</UP>
+                    <IT>10440.00</IT>
+                    <Description>
+                      <CompleteText>
+                        <OutlineText>
+                          <OutlTxt>
+                            <TextOutlTxt>
+                              <span>Akustikpaneele Wand liefern und montieren</span>
+                            </TextOutlTxt>
+                          </OutlTxt>
+                        </OutlineText>
+                        <DetailTxt>
+                          <Text>DIN 276: 345 verify</Text>
+                        </DetailTxt>
+                      </CompleteText>
+                    </Description>
+                  </Item>
+                  <Item RNoPart="0020">
+                    <Qty>224.000</Qty>
+                    <QU>m2</QU>
+                    <UP>68.00</UP>
+                    <IT>15232.00</IT>
+                    <Description>
+                      <CompleteText>
+                        <OutlineText>
+                          <OutlTxt>
+                            <TextOutlTxt>
+                              <span>Akustikdecke Mineralfaser</span>
+                            </TextOutlTxt>
+                          </OutlTxt>
+                        </OutlineText>
+                        <DetailTxt>
+                          <Text>DIN 276: 353 verify</Text>
+                        </DetailTxt>
+                      </CompleteText>
+                    </Description>
+                  </Item>
+                </Itemlist>
+              </BoQBody>
+            </BoQCtgy>
+            <BoQCtgy RNoPart="04">
+              <LblTx>
+                <p>Wandflächen</p>
+              </LblTx>
+              <BoQBody>
+                <Itemlist>
+                  <Item RNoPart="0010">
+                    <Qty>408.000</Qty>
+                    <QU>m2</QU>
+                    <UP>14.00</UP>
+                    <IT>5712.00</IT>
+                    <Description>
+                      <CompleteText>
+                        <OutlineText>
+                          <OutlTxt>
+                            <TextOutlTxt>
+                              <span>Wandflächen grundieren und streichen</span>
+                            </TextOutlTxt>
+                          </OutlTxt>
+                        </OutlineText>
+                        <DetailTxt>
+                          <Text>DIN 276: 345 verify</Text>
+                        </DetailTxt>
+                      </CompleteText>
+                    </Description>
+                  </Item>
+                </Itemlist>
+              </BoQBody>
+            </BoQCtgy>
+            <BoQCtgy RNoPart="05">
+              <LblTx>
+                <p>Bühne</p>
+              </LblTx>
+              <BoQBody>
+                <Itemlist>
+                  <Item RNoPart="0010">
+                    <Qty>48.000</Qty>
+                    <QU>m2</QU>
+                    <UP>210.00</UP>
+                    <IT>10080.00</IT>
+                    <Description>
+                      <CompleteText>
+                        <OutlineText>
+                          <OutlTxt>
+                            <TextOutlTxt>
+                              <span>Bühne Unterkonstruktion und Beplankung</span>
+                            </TextOutlTxt>
+                          </OutlTxt>
+                        </OutlineText>
+                        <DetailTxt>
+                          <Text>DIN 276: 381 verify</Text>
+                        </DetailTxt>
+                      </CompleteText>
+                    </Description>
+                  </Item>
+                  <Item RNoPart="0020">
+                    <Qty>1.000</Qty>
+                    <QU>psch</QU>
+                    <UP>4200.00</UP>
+                    <IT>4200.00</IT>
+                    <Description>
+                      <CompleteText>
+                        <OutlineText>
+                          <OutlTxt>
+                            <TextOutlTxt>
+                              <span>Bühnentreppe und Vorhang</span>
+                            </TextOutlTxt>
+                          </OutlTxt>
+                        </OutlineText>
+                        <DetailTxt>
+                          <Text>DIN 276: 381 verify</Text>
+                        </DetailTxt>
+                      </CompleteText>
+                    </Description>
+                  </Item>
+                </Itemlist>
+              </BoQBody>
+            </BoQCtgy>
+            <BoQCtgy RNoPart="06">
+              <LblTx>
+                <p>Bestuhlung</p>
+              </LblTx>
+              <BoQBody>
+                <Itemlist>
+                  <Item RNoPart="0010">
+                    <Qty>160.000</Qty>
+                    <QU>Stk</QU>
+                    <UP>265.00</UP>
+                    <IT>42400.00</IT>
+                    <Description>
+                      <CompleteText>
+                        <OutlineText>
+                          <OutlTxt>
+                            <TextOutlTxt>
+                              <span>Bestuhlung neu liefern und montieren</span>
+                            </TextOutlTxt>
+                          </OutlTxt>
+                        </OutlineText>
+                        <DetailTxt>
+                          <Text>DIN 276: 610 verify</Text>
+                        </DetailTxt>
+                      </CompleteText>
+                    </Description>
+                  </Item>
+                </Itemlist>
+              </BoQBody>
+            </BoQCtgy>
+          </BoQBody>
+        </BoQCtgy>
+        <BoQCtgy RNoPart="02">
+          <LblTx>
+            <p>TGA</p>
+          </LblTx>
+          <BoQBody>
+            <BoQCtgy RNoPart="01">
+              <LblTx>
+                <p>Licht-Traverse</p>
+              </LblTx>
+              <BoQBody>
+                <Itemlist>
+                  <Item RNoPart="0010">
+                    <Qty>24.000</Qty>
+                    <QU>m</QU>
+                    <UP>520.00</UP>
+                    <IT>12480.00</IT>
+                    <Description>
+                      <CompleteText>
+                        <OutlineText>
+                          <OutlTxt>
+                            <TextOutlTxt>
+                              <span>Licht-Traverse inkl. Scheinwerfer</span>
+                            </TextOutlTxt>
+                          </OutlTxt>
+                        </OutlineText>
+                        <DetailTxt>
+                          <Text>DIN 276: 445 verify</Text>
+                        </DetailTxt>
+                      </CompleteText>
+                    </Description>
+                  </Item>
+                  <Item RNoPart="0020">
+                    <Qty>8.000</Qty>
+                    <QU>Stk</QU>
+                    <UP>310.00</UP>
+                    <IT>2480.00</IT>
+                    <Description>
+                      <CompleteText>
+                        <OutlineText>
+                          <OutlTxt>
+                            <TextOutlTxt>
+                              <span>Notbeleuchtung</span>
+                            </TextOutlTxt>
+                          </OutlTxt>
+                        </OutlineText>
+                        <DetailTxt>
+                          <Text>DIN 276: 445 verify</Text>
+                        </DetailTxt>
+                      </CompleteText>
+                    </Description>
+                  </Item>
+                  <Item RNoPart="0030">
+                    <Qty>16.000</Qty>
+                    <QU>m</QU>
+                    <UP>45.00</UP>
+                    <IT>720.00</IT>
+                    <Description>
+                      <CompleteText>
+                        <OutlineText>
+                          <OutlTxt>
+                            <TextOutlTxt>
+                              <span>Kabeltrasse</span>
+                            </TextOutlTxt>
+                          </OutlTxt>
+                        </OutlineText>
+                        <DetailTxt>
+                          <Text>DIN 276: 444 verify</Text>
+                        </DetailTxt>
+                      </CompleteText>
+                    </Description>
+                  </Item>
+                </Itemlist>
+              </BoQBody>
+            </BoQCtgy>
+          </BoQBody>
+        </BoQCtgy>
+        <BoQCtgy RNoPart="03">
+          <LblTx>
+            <p>AV</p>
+          </LblTx>
+          <BoQBody>
+            <BoQCtgy RNoPart="01">
+              <LblTx>
+                <p>Projektionsleinwand</p>
+              </LblTx>
+              <BoQBody>
+                <Itemlist>
+                  <Item RNoPart="0010">
+                    <Qty>1.000</Qty>
+                    <QU>psch</QU>
+                    <UP>9800.00</UP>
+                    <IT>9800.00</IT>
+                    <Description>
+                      <CompleteText>
+                        <OutlineText>
+                          <OutlTxt>
+                            <TextOutlTxt>
+                              <span>Projektionsleinwand und Beamer</span>
+                            </TextOutlTxt>
+                          </OutlTxt>
+                        </OutlineText>
+                        <DetailTxt>
+                          <Text>DIN 276: 455 verify</Text>
+                        </DetailTxt>
+                      </CompleteText>
+                    </Description>
+                  </Item>
+                  <Item RNoPart="0020">
+                    <Qty>1.000</Qty>
+                    <QU>psch</QU>
+                    <UP>7400.00</UP>
+                    <IT>7400.00</IT>
+                    <Description>
+                      <CompleteText>
+                        <OutlineText>
+                          <OutlTxt>
+                            <TextOutlTxt>
+                              <span>Beschallung (Lautsprecher und Mischpult)</span>
+                            </TextOutlTxt>
+                          </OutlTxt>
+                        </OutlineText>
+                        <DetailTxt>
+                          <Text>DIN 276: 455 verify</Text>
+                        </DetailTxt>
+                      </CompleteText>
+                    </Description>
+                  </Item>
+                </Itemlist>
+              </BoQBody>
+            </BoQCtgy>
+          </BoQBody>
+        </BoQCtgy>
+      </BoQBody>
+    </BoQ>
+  </Award>
+</GAEB>
