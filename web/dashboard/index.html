@@ -88,6 +88,8 @@
   .legend { display: flex; gap: 14px; font-size: 12px; color: var(--muted); margin-left: auto; }
   .legend i { display: inline-block; width: 12px; height: 12px; border-radius: 3px; vertical-align: -2px; margin-right: 4px; }
   .banner { grid-column: span 12; background: #fdf1f0; color: #a32a20; border: 1px solid #f3c9c4; border-radius: var(--radius); padding: 10px 14px; display: none; }
+  .capture.fresh { animation: fresh 3s ease-out; border-radius: 8px; }
+  @keyframes fresh { 0%, 40% { background: #fff4c2; box-shadow: 0 0 0 6px #fff4c2; } 100% { background: transparent; box-shadow: 0 0 0 6px transparent; } }
 </style>
 </head>
 <body>
@@ -144,6 +146,11 @@ const pct = v => v == null ? '–' : (+v).toLocaleString('de-DE', { maximumFract
 const dmy = s => { if (!s) return '–'; const [y, m, d] = s.slice(0, 10).split('-'); return `${d}.${m}.${y}`; };
 const dm = s => s ? dmy(s).slice(0, 6) : '–';
 const time = s => s && s.length > 11 ? s.slice(11, 16) : '';
+const STATE_DE = { removed: 'demontiert', substructure: 'Unterkonstruktion', installed: 'montiert', checked: 'abgenommen',
+  prepared: 'vorbereitet', primed: 'grundiert', painted: 'gestrichen', done: 'fertig', framed: 'Rahmen', boarded: 'beplankt',
+  finished: 'fertig', mounted: 'montiert', wired: 'verkabelt', tested: 'geprüft', connected: 'angeschlossen',
+  commissioned: 'in Betrieb', stripped: 'entfernt', levelled: 'nivelliert', covered: 'belegt' };
+const de = s => s ? (STATE_DE[s] || s) : 'nicht begonnen';
 const days = n => n == null ? '–' : (n > 0 ? '+' : '') + n + ' AT';
 
 let data = null, elementNames = {}, zoneNames = {};
@@ -170,21 +177,23 @@ function renderKpis(k) {
 function captureCard(c) {
   const zone = zoneNames[c.zone_id] || c.zone_id;
   const changes = (c.changes || []).map(ch => h('span', { class: 'chip ' + ch.action, title: ch.quote || '' },
-    `${elementNames[ch.element_id] || ch.element_id}: ${ch.state}`, ch.action === 'proposed' ? ' (Vorschlag)' : ''));
+    `${elementNames[ch.element_id] || ch.element_id}: ${de(ch.state)}`, ch.action === 'proposed' ? ' (Vorschlag)' : ''));
   const photos = (c.photos || []).map(p => h('a', { href: `/media/${encodeURIComponent(c.capture_id)}/${encodeURIComponent(p)}`, target: '_blank' },
     h('img', { src: `/media/${encodeURIComponent(c.capture_id)}/${encodeURIComponent(p)}`, alt: p, loading: 'lazy', onerror: 'this.parentNode.remove()' })));
-  return h('div', { class: 'capture' },
+  return h('div', { class: 'capture' + (seenCaps && !seenCaps.has(c.capture_id) ? ' fresh' : '') },
     h('div', { class: 'meta' }, `${dmy(c.ts)} ${time(c.ts)} · ${zone}`, c.note ? ` · ${c.note}` : ''),
     (c.quotes || []).map(q => h('blockquote', {}, `„${q}“`)),
     changes.length ? h('div', { class: 'chips' }, changes) : null,
     photos.length ? h('div', { class: 'photos' }, photos) : null);
 }
+let seenCaps = null;
 function renderCaptures(d) {
   const todayIds = new Set(d.today_capture_ids || []);
   const caps = d.captures || [];
   const today = caps.filter(c => todayIds.has(c.capture_id)), earlier = caps.filter(c => !todayIds.has(c.capture_id));
   const box = $('captures');
   box.replaceChildren(today.length ? h('div', {}, today.map(captureCard)) : h('p', { class: 'empty' }, 'Heute noch keine Aufnahmen. No captures today yet.'));
+  seenCaps = new Set(caps.map(c => c.capture_id));
   if (earlier.length) {
     const det = h('details', {}, h('summary', {}, `Frühere Aufnahmen (${earlier.length})`), earlier.map(captureCard));
     box.append(det);
@@ -272,8 +281,8 @@ function renderZones(zones) {
   if (!zones || !zones.length) { box.replaceChildren(h('p', { class: 'empty' }, 'Keine Zonen.')); return; }
   box.replaceChildren(...zones.map(z => h('div', { class: 'zone' },
     h('h3', {}, z.name || z.zone_id),
-    h('div', { class: 'tiles' }, (z.elements || []).map(e => h('div', { class: 'tile', style: `background:${tileColor(e.pct)}${e.pct >= 100 ? ';color:#fff' : ''}`, title: `${e.name}: ${e.state || 'nicht begonnen'} (${e.pct ?? 0} %)` },
-      h('b', {}, e.name), `${e.state || '–'} · ${e.pct ?? 0} %`))))));
+    h('div', { class: 'tiles' }, (z.elements || []).map(e => h('div', { class: 'tile', style: `background:${tileColor(e.pct)}${e.pct >= 100 ? ';color:#fff' : ''}`, title: `${e.name}: ${de(e.state)} (${e.pct ?? 0} %)` },
+      h('b', {}, e.name), `${de(e.state)} · ${e.pct ?? 0}\u00a0%`))))));
 }
 
 function render(d) {
