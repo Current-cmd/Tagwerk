@@ -1,119 +1,197 @@
 # Tagwerk
 
-Site manager walks the site, films and talks. Tagwerk turns that into a live, element-level
-graph tied to the contract (GAEB) and the schedule (Primavera P6 XML), a daily dashboard for
-the Bauleiter, and exports back to Primavera and Outlook.
+The site manager walks the site, films and talks. Tagwerk turns that into:
+- element- and task-level progress tied to the contract (GAEB) and the schedule (Primavera P6 XML)
+- a 3D scan of the walk, with every detected object tagged
+- an automatic daily report (Bautagebuch)
+- a dashboard for the Bauleiter, with a day slider over the whole project
+- exports back to Primavera and Outlook
 
-Full plan: `docs/PLAN.md` (export of the planning doc).
+Voice and typed notes confirm progress; vision alone only proposes it.
+
+![Bauleiter dashboard: KPIs, recordings of the day, Gantt plan vs forecast, events](docs/img/dashboard.jpg)
+
+## What it does
+
+| | |
+|---|---|
+| **Capture** | Upload a video, photos, voice or a typed note from the phone (`/upload`). Whisper transcribes German, English and Dutch. YOLO11s + YOLO-World detect objects and ArUco markers. RelateAnything relates the objects to each other. |
+| **Understand** | Sentences are matched to elements and activities: names, aliases and German plurals, state words ("montiert", "verlegt", "in Betrieb"), absences ("zwei Mann vom Trockenbau sind krank"), deliveries, defects, delays. A Claude path is available with an API key; keyword rules apply otherwise. |
+| **Progress loop** | States only go up. Activity % is BoQ-weighted. The forecast simulates the remaining work day by day, with crew minus absences (a sick report covers 3 working days) and FS/SS successors. |
+| **Scan 3D** | pycolmap SfM on the walk's keyframes. Detections are lifted into 3D and merged into one instance per object, with RelateAnything tags in German ("neben Wand", "unter Fenster"). Items you **name while filming** are highlighted at the moment you say them. |
+| **Report** | Daily report: work done, crew present/absent, scan inventory with relations, events and defects, delays, a 3-day lookahead, photos, signature line. Print-ready A4 (`/export/report.html`). |
+| **Exports** | P6 XML (with progress, or baseline), GAEB DA XML X83/X84, `.ics` with one all-day event per daily report. |
+
+### Live task graph
+GAEB position, P6 activity, place, recording, event or proposal. On projects without a BIM model (the Hörsaal) the graph shows tasks instead of building parts. The day slider drives it; `▶ Abspielen` replays a recorded walk.
+
+![Task graph: GAEB positions, activities with % and delay, places, the day's recordings and events](docs/img/live-graph.jpg)
+
+### Scan 3D with "what was said"
+The point cloud, camera path and labelled objects come from the walk itself. The "Gesagt" list links each spoken phrase to its objects; clicking it jumps the video to that moment and flies the camera there. Things named but not seen are listed separately.
+
+![3D scan of the hackathon venue: objects tagged, spoken items highlighted, video on the right](docs/img/scan-3d.jpg)
+
+### Detections and RelateAnything on real footage
+Boxes from YOLO and YOLO-World, with relations from RelateAnything such as "formwork attached to plywood board" and "hard hat on person". Rendered with `annotate.py` from the cached stage outputs.
+
+![Annotated frame: hard hat, plywood board, door and formwork, with RelateAnything relations](docs/img/relate-frame.jpg)
+
+### BIM model (Schependomlaan)
+The IFC design model is coloured by each element's state on the selected day: 3,504 IFC elements, 2,081 linked to activities. "Bauablauf abspielen" plays the build from the schedule.
+
+![IFC model coloured by state on 24.07.2015](docs/img/bim.jpg)
+
+### Tagesbericht
+![Daily report (Bautagebuch) generated from the day's recordings](docs/img/report.jpg)
+
+### Classic live graph with video replay
+The original element-level view (`/graph`). A replay plays the recording's video next to it, and each item lands on the graph about when it is said.
+
+![Element graph: GAEB, activities, elements coloured by %, zones](docs/img/graph-video.jpg)
 
 ## Architecture
 
-Everything runs on the GPU laptop (Ubuntu 22.04, GTX 1060). The Mac only edits code.
+Everything runs on the GPU laptop (Ubuntu 22.04, GTX 1060 6 GB). The Mac edits code and opens the UI through an SSH tunnel.
 
+```mermaid
+flowchart LR
+  P[Phone / browser<br>/upload · /scan] --> A[API :8080<br>FastAPI]
+  A --> W[GPU worker :8100<br>Whisper · YOLO11s · YOLO-World<br>ArUco · RelateAnything · SfM]
+  A --> C[context<br>weather · candidates]
+  A --> S[structuring<br>rules or Claude]
+  S --> PR[Project state<br>authoritative]
+  PR --> G[(Neo4j :7687<br>projection)]
+  PR --> V2[/api/v2: day snapshot ·<br>task graph · scan3d · report/]
+  V2 --> UI[/app React + shadcn<br>dashboard · graph · 3D · BIM · report/]
+  A -- websocket /events --> UI
+  PR --> X[exports<br>P6 XML · GAEB · .ics · report.html]
 ```
- Chrome upload page (phone/laptop) ──► API :8080 ──► GPU worker :8100 (Whisper int8, ArUco, YOLO11s,
-                                        │   │         YOLO-World, RelateAnything)
-                                        │   └── context (Open-Meteo) · structuring (Claude or rules) · progress loop
-                                        ├── Neo4j :7687 (Docker), browser at :7474
-                                        └── websocket /events ──► /graph (live graph) · /dashboard (Bauleiter) · /site
-```
 
-Port 8000 is taken by Portainer on the laptop, so the API runs on **8080**.
+- **Project state** (`tagwerk/project.py`) is authoritative. It is built from the seed CSVs, `seed/history.json` and every stored capture result, all applied through `apply_structured`, which is idempotent and all-or-nothing. The Neo4j graph is a projection of it (`tagwerk/graph/sync.py`, batched `MERGE`s).
+- **UI v2** (`web-app/` source, built to `web/app/` and committed, so no Node is needed on the laptop):
+  - **API:** `tagwerk/v2.py` rebuilds the state as of any day: `/api/v2/days`, `/api/v2/day`, `/api/v2/taskgraph`, `/api/v2/bim`. Before the first evidence it shows the plan; after the data date, the forecast.
+  - **Specs:** the contract is `docs/UI-V2-CONTRACT.md`.
+- **Scan 3D** (`tagwerk/pipeline/sfm.py`, `mentions.py`):
+  - SfM runs in a subprocess with a time limit and never fails a capture: when reconstruction fails, the objects are kept in 2D.
+  - Long walks get denser, sharper frames.
+- **Caching and replay:** every stage output lands in `cache/<capture_id>/`, including the kept video. `replay_of=<capture_id>` replays a capture with no GPU, network or Claude.
+- **Speech:** faster-whisper, int8. The model is set by `WHISPER_MODEL` (default `small`). Quiet audio is levelled first, and word timestamps are kept.
 
-- **Project state** (`tagwerk/project.py`) is authoritative: seed CSVs + `seed/history.json` + every stored
-  capture result, all applied through one function (`apply_structured`). The graph is a projection of it
-  (`tagwerk/graph/sync.py`, batched idempotent `MERGE`s; every node also carries `:Tw` for a unique id index).
-- **Structuring** (`tagwerk/pipeline/structure.py`): Claude with an enum-restricted tool schema when
-  `ANTHROPIC_API_KEY` is set, otherwise German/English keyword rules (elements by alias and row lists, states
-  by verb, absences, labour, deliveries, defects) plus ArUco marker hits. Voice/note confirms, vision alone proposes.
-- **Forecast**: rate = 100 % / (planned working days × planned crew); remaining work is simulated day by day
-  with crew minus that day's absences; finish-to-start successors shift with it. Labelled "projection from
-  today's evidence". Activity % is BoQ-weighted (qty × unit price × share of each linked position).
-- **Caching / replay**: every stage output lands in `cache/<capture_id>/`. `replay_of=<capture_id>` (or
-  `scripts/replay.py <capture_id>`) replays a processed capture with no GPU, network or Claude.
-
-## Run it (on the laptop)
+## Run it (laptop)
 
 ```bash
-cd ~/Developer/hacka/Tagwerk
+cd ~/Developer/hacka/Tagwerk && export PYTHONPATH=$PWD   # the shell's ROS paths break the venv otherwise
 docker compose up -d neo4j
-~/tw-restart.sh                                  # (re)starts worker :8100 and API :8080 from this checkout
-PYTHONPATH=$PWD .venv/bin/python -m pytest -q    # PYTHONPATH must be set: the shell's ROS paths break the venv
+~/tw-restart.sh                      # worker :8100, Hörsaal API :8080 (Neo4j), Schependomlaan API :8081
+~/tw-scanproject.sh <name>           # API :8082 on a scan project (seed/projects/<name>)
+.venv/bin/python -m pytest -q
 ```
 
-Pages: `/graph` (with the ▶ Abspielen replay picker), `/dashboard`, `/site`, `/upload`, `/scan` (room scan to a new project). Exports: `/export/p6.xml`, `/export/p6-baseline.xml`,
-`/export/day.ics`, `/export/boq.x83`, `/export/boq.x84`. Demo runbook: `docs/DEMO.md`.
+| Port | Project |
+|---|---|
+| 8080 | Hörsaal Sanierung (demo seed, no BIM; 10 activities, 15 GAEB positions) |
+| 8081 | Schependomlaan Nijmegen (real open BIM dataset; 2,082 elements, 100 tasks) |
+| 8082 | a scan project created from a video (`/scan`), e.g. `hackathon` |
+| 8100 | GPU worker |
 
-`.env`: `NEO4J_URI=bolt://localhost:7687`, `GPU_WORKER_URL=http://localhost:8100`, `DATA_DATE=2026-11-26`
-(the forecast's "today"; live captures are stamped with it). `ANTHROPIC_API_KEY` optional.
+Port 8000 is Portainer on the laptop, so the API runs on 8080.
 
-Auth: every endpoint but `/health` and the pages needs `API_TOKEN` (`.env`); the API refuses to start without it
-unless `TAGWERK_DEV=1`. Open a page once as `/graph?token=<API_TOKEN>` (or answer the prompt): the browser keeps it
-and sends it with every request, upload and websocket. curl: `-H "Authorization: Bearer $API_TOKEN"`; the scripts in
-`scripts/` read it from `.env`. `/scan` with "Projekt anlegen" needs `ALLOW_PROJECT_CREATE=1`. Uploads are capped
-at `MAX_UPLOAD_MB` (500) and `MAX_UPLOAD_FILES` (50). Neo4j listens on localhost only and `NEO4J_PASSWORD` is required.
+**Pages:**
+- `/app`: the new UI, with Dashboard, Live-Graph, BIM-Modell, `#/scan/<cid>` and `#/report/<date>`.
+- The classic pages: `/graph`, `/dashboard`, `/site`, `/upload`, `/scan`.
+
+**Exports:** `/export/p6.xml`, `/export/p6-baseline.xml`, `/export/day.ics`, `/export/boq.x83|x84`, `/export/report.html?date=`.
+
+**Demo runbook:** `docs/DEMO.md`. It covers the 3-minute demo, the hackathon walk, replay and reset.
+
+**`.env`** (never commit it):
+- `NEO4J_URI`, `NEO4J_PASSWORD`, `GPU_WORKER_URL=http://localhost:8100`, `DATA_DATE`.
+- Optional: `ANTHROPIC_API_KEY` and `WHISPER_MODEL`.
+- **Auth:** every endpoint but `/health`, the pages and `/vendor/` needs `API_TOKEN` (header, `?token=` or a cookie).
+  - The API refuses to start without one unless `TAGWERK_DEV=1`.
+  - `/scan` with "Projekt anlegen" needs `ALLOW_PROJECT_CREATE=1`.
+  - Uploads are capped by `MAX_UPLOAD_MB` and `MAX_UPLOAD_FILES`.
 
 ## Second project: Schependomlaan (real BIM data)
 
 `seed/projects/schependomlaan/` is generated by `scripts/import_schependomlaan.py` from the open
-[Schependomlaan dataset](https://github.com/openBIMstandards/Archive-DataSetSchependomlaan) (CC BY 4.0, academic use;
-see its `ATTRIBUTION.md`): design IFC (ArchiCAD) + Synchro IFC with the real `IfcTask` schedule, sequences and
-task→element assignments + MS Project XML, joined on the ArchiCAD Unique ID (`Tag`). Result: 2,082 elements,
-100 tasks, 6 storeys as zones, unpriced. History = weekly Synchro 4D snapshots (weeks 26–30). These are planned
-states, not as-built data: a task's elements appear when it starts, so started tasks read 100 %.
-Run it with `PROJECT=schependomlaan` (the laptop serves it on :8081 with an in-memory graph). Dutch notes work:
-"Buitenblad tweede verdieping gecontroleerd" (the snapshots already mark it installed), "twee metselaars ziek",
-"scheur in de vloer".
+[Schependomlaan dataset](https://github.com/openBIMstandards/Archive-DataSetSchependomlaan) (CC BY 4.0, academic use; see `ATTRIBUTION.md`).
+- **Sources:** the design IFC, the Synchro IFC with the real `IfcTask` schedule and the task-to-element links, and the MS Project XML.
+- **The BIM viewer** uses `scripts/ifc_to_bim.py`.
+- **History:** weekly Synchro 4D snapshots, which are planned states rather than as-built data. `scripts/build_plan_history.py` fills the days before the first record from the schedule.
+- **Dutch notes work:** "twee metselaars ziek", "Sporenkap derde verdieping geplaatst".
 
 ## Scan a video into a project
 
-`python scripts/scan_video.py clip.mp4 [--make-project site1]` (or `POST /api/scan`) runs the vision stage and
-groups what was seen into structure, openings, finishes, building services, furniture, equipment and people.
-`--make-project` writes `seed/projects/site1/` (one element per detected instance, one activity per category);
-start the API with `PROJECT=site1`. Later captures of that site propose progress from detections (vision
-proposes, voice confirms).
+`POST /api/scan` (or `/scan`, or `scripts/scan_video.py clip.mp4 --make-project site1`) does three things:
+1. Runs vision, speech terms and SfM.
+2. Groups what was seen by category: structure, openings, finishes, building services, furniture, equipment, people.
+3. With a project name, writes `seed/projects/<name>/`: one element per instance, one activity per category.
+
+Serve it with `~/tw-scanproject.sh <name>`. Later captures of that site update it by voice.
 
 ## Fresh install
 
-API side (any machine; CPU is enough):
+API (any machine, CPU is enough):
 
 ```bash
-cp .env.example .env              # fill in; never commit .env
-docker compose up -d neo4j        # needs NEO4J_PASSWORD; browser at http://localhost:7474 (localhost only)
+cp .env.example .env
+docker compose up -d neo4j
 uv venv --python 3.12 && source .venv/bin/activate
 uv pip install -e ".[dev]"
 ```
 
-GPU worker (Pascal GPUs such as GTX 1060 / 1080 Ti):
+GPU worker (Pascal GPUs such as GTX 1060 or 1080 Ti):
 
 ```bash
 uv pip install -e ".[gpu,dev]" -c constraints-cu126.txt \
     --extra-index-url https://download.pytorch.org/whl/cu126 --index-strategy unsafe-best-match
-uv pip install transformers "git+https://github.com/ultralytics/CLIP.git" ifcopenshell -c constraints-cu126.txt \
+uv pip install transformers "git+https://github.com/ultralytics/CLIP.git" ifcopenshell pycolmap -c constraints-cu126.txt \
     --extra-index-url https://download.pytorch.org/whl/cu126 --index-strategy unsafe-best-match
 uv pip install --no-deps -e ../RelateAnything    # package "relsgg"
 python -c "import torch; print(torch.__version__)"   # must end in +cu126
 python scripts/env_check.py
 ```
 
-Weights: `yolo11s.pt` and `yolov8s-worldv2.pt` in the repo root (gitignored); CLIP ViT-B/32 in `~/.cache/clip/`.
-Pascal rules: torch stays on the cu126 build (never cu128+), fp32 only, no `torch.compile`.
+Frontend (only to change the UI; the build is committed):
+
+```bash
+cd web-app && pnpm install && pnpm build    # writes ../web/app/
+```
+
+- **Weights:** `yolo11s.pt` and `yolov8s-worldv2.pt` go in the repo root (gitignored), and CLIP ViT-B/32 in `~/.cache/clip/`.
+- **Pascal rules:** torch stays on the cu126 build (never cu128+), fp32 only, no `torch.compile`.
+
+## Tests and CI
+
+```bash
+PYTHONPATH=$PWD .venv/bin/python -m pytest -q   # about 235 tests, CPU only, models stubbed
+.venv/bin/ruff check .                          # line length 130
+```
+
+GitHub Actions runs ruff, fixture validation and pytest on a CPU runner. It has no models and no `PYTHONPATH`, so API tests that post captures monkeypatch speech and vision. `~/tw-doubletest.sh` on the laptop is the full end-to-end check against the real models.
 
 ## Layout
 
 | Path | What |
 | --- | --- |
-| `contracts/` | JSON Schemas (capture, transcript, vision, context, structured, graph_event, dashboard) |
-| `fixtures/` | One valid example per contract |
-| `tagwerk/api/` | FastAPI app, upload, websocket |
-| `tagwerk/pipeline/` | Stages: normalize, speech, vision, context, structure, loop, export |
-| `tagwerk/graph/` | Neo4j writer |
+| `contracts/`, `fixtures/` | JSON Schemas per stage, one valid example each |
+| `tagwerk/api/` | FastAPI app, upload, websocket, exports, `/app` |
+| `tagwerk/pipeline/` | normalize, speech, vision, sfm, mentions, context, structure, scan, export |
+| `tagwerk/project.py`, `tagwerk/v2.py`, `tagwerk/report.py` | state and forecast, day snapshots and task graph, daily report |
+| `tagwerk/graph/` | Neo4j / in-memory graph writer |
 | `tagwerk/worker_api.py` | GPU worker service |
-| `seed/` | Ontology (BOT + DiCon + DIN 276 + GAEB terms), constraints, seed data |
-| `web/` | Upload page, live graph (vis-network), dashboard |
-| `scripts/` | Environment check, fixture validation, replay |
+| `seed/`, `seed/projects/` | ontology, Hörsaal seed, Schependomlaan and scan projects |
+| `web-app/` → `web/app/` | React + shadcn UI (source → committed build) |
+| `web/` | classic pages and bundled vendor libraries |
+| `scripts/` | import, scan, replay, reset, IFC→BIM, plan history, checks |
+| `docs/` | `DEMO.md`, `UI-V2-CONTRACT.md`, reviews, release notes |
 
 ## Licences to keep in mind
 
-RelateAnything is AGPL-3.0 (weights under the DINOv3 licence); the Schependomlaan dataset is for
-academic use. Fine for the hackathon; revisit before any commercial use.
+- **RelateAnything:** AGPL-3.0, with weights under the DINOv3 licence.
+- **Schependomlaan dataset:** academic use.
+- **Partner and venue footage:** not for redistribution.
+
+Fine for the hackathon; revisit before any commercial use.
