@@ -1,58 +1,182 @@
 <!doctype html>
-<html lang="en">
+<html lang="de">
 <head>
 <meta charset="utf-8">
-<title>Tagwerk · Live graph</title>
+<title>Tagwerk · Live-Graph</title>
 <script src="https://unpkg.com/vis-network@9.1.9/standalone/umd/vis-network.min.js"></script>
 <style>
   html, body { margin: 0; height: 100%; font-family: system-ui, sans-serif; background: #0d1117; color: #e6edf3; }
-  #bar { padding: 8px 14px; display: flex; gap: 16px; align-items: center; }
-  #dot { width: 10px; height: 10px; border-radius: 50%; background: #f85149; display: inline-block; }
-  #net { position: absolute; top: 40px; bottom: 0; left: 0; right: 0; }
+  #bar { height: 44px; padding: 0 16px; display: flex; gap: 18px; align-items: center; border-bottom: 1px solid #21262d; }
+  #bar b { font-size: 17px; letter-spacing: .3px; }
+  #dot { width: 10px; height: 10px; border-radius: 50%; background: #f85149; display: inline-block; margin-right: 6px; }
+  #step { color: #8b949e; font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex: 1; }
+  #legend { display: flex; gap: 12px; font-size: 12px; color: #8b949e; }
+  #legend i { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 4px; vertical-align: -1px; }
+  label { font-size: 13px; color: #8b949e; cursor: pointer; }
+  a { color: #58a6ff; font-size: 13px; text-decoration: none; }
+  #net { position: absolute; top: 45px; bottom: 0; left: 0; right: 0; }
+  #say { position: absolute; left: 16px; bottom: 16px; max-width: 60%; background: rgba(22,27,34,.92); border: 1px solid #30363d;
+         border-radius: 10px; padding: 10px 14px; font-size: 18px; display: none; }
+  #say small { display: block; color: #8b949e; font-size: 12px; margin-bottom: 4px; }
 </style>
 </head>
 <body>
-<div id="bar"><span><span id="dot"></span> server</span><span id="step"></span></div>
+<div id="bar">
+  <b>Tagwerk</b>
+  <span><span id="dot"></span><span id="srv">Server</span></span>
+  <span id="step">Warte auf Aufnahmen…</span>
+  <span id="legend">
+    <span><i style="background:#d29922"></i>GAEB-Position</span>
+    <span><i style="background:#a371f7"></i>P6-Vorgang</span>
+    <span><i style="background:#6e7681"></i>Bauteil 0 %</span>
+    <span><i style="background:#e3b341"></i>in Arbeit</span>
+    <span><i style="background:#3fb950"></i>fertig</span>
+    <span><i style="background:#1f6feb"></i>Aufnahme</span>
+    <span><i style="background:#f85149"></i>Ereignis</span>
+  </span>
+  <label><input type="checkbox" id="details"> Details</label>
+  <a href="/dashboard">Dashboard →</a>
+</div>
 <div id="net"></div>
+<div id="say"><small id="sayhead"></small><span id="saytext"></span></div>
 <script>
-const COLORS = { Capture: '#1f6feb', Observation: '#8b949e', Element: '#6e7681', Activity: '#a371f7',
-                 BoQPosition: '#d29922', Zone: '#3fb950', Event: '#f85149', WeatherReading: '#58a6ff' };
-const STATE_COLOR = { CONFIRMED: '#3fb950', PROPOSES: '#d29922' };
+const MAIN = new Set(['BoQPosition', 'Activity', 'Element', 'Zone', 'Capture', 'Event', 'Proposal']);
+const SHAPE = { BoQPosition: 'box', Activity: 'ellipse', Zone: 'database', Capture: 'dot', Event: 'triangle',
+                Proposal: 'diamond', Element: 'dot' };
+const BASE = { Capture: '#1f6feb', Observation: '#484f58', Activity: '#a371f7', BoQPosition: '#d29922',
+               Zone: '#238636', Event: '#f85149', Proposal: '#d29922', WeatherReading: '#58a6ff', Note: '#8b949e',
+               Trade: '#8b949e', WBS: '#6e40c9', Marker: '#8b949e', Actor: '#8b949e' };
+const DASHED = new Set(['PROPOSES', 'FOR', 'LIKELY_IS']);
+const SHOW_EDGES = new Set(['SCHEDULED_AS', 'BUILDS', 'CONTAINS_ELEMENT', 'IN_ZONE', 'CONFIRMED', 'PROPOSES', 'FOR',
+                            'RAISED', 'AFFECTS', 'PRECEDES']);
+let all = { nodes: new Map(), edges: new Map() };
 const nodes = new vis.DataSet(), edges = new vis.DataSet();
 const net = new vis.Network(document.getElementById('net'), { nodes, edges }, {
-  nodes: { shape: 'dot', size: 14, font: { color: '#e6edf3' } },
-  edges: { arrows: 'to', color: '#30363d' },
-  physics: { stabilization: false, barnesHut: { springLength: 120 } },
+  nodes: { font: { color: '#e6edf3', size: 13 }, borderWidth: 0 },
+  edges: { arrows: { to: { enabled: true, scaleFactor: .4 } }, color: { color: '#30363d', highlight: '#8b949e' },
+           smooth: { type: 'continuous' } },
+  physics: { stabilization: { iterations: 150 }, barnesHut: { gravitationalConstant: -5000, springLength: 110 } },
+  interaction: { hover: true, tooltipDelay: 120 },
 });
-const label = (n) => (n.props && (n.props.name_de || n.props.label || n.props.name)) || n.id;
-function upsert(n) {
-  nodes.update({ id: n.id, label: label(n), group: n.label, color: COLORS[n.label] || '#8b949e' });
+
+function pctColor(p) {
+  if (!p) return '#6e7681';
+  if (p >= 100) return '#3fb950';
+  const t = p / 100;  // amber -> yellow-green
+  const r = Math.round(227 - 120 * t), g = Math.round(179 + 20 * t), b = Math.round(65 - 10 * t);
+  return `rgb(${r},${g},${b})`;
 }
-// initial snapshot
-fetch('/api/graph').then(r => r.json()).then(g => {
-  g.nodes.forEach(upsert);
-  g.edges.forEach(e => edges.update({ id: e.src + e.rel + e.dst, from: e.src, to: e.dst,
-                                       dashes: e.rel === 'PROPOSES' || e.rel === 'LIKELY_IS' }));
-});
-// live events
+function nodeLabel(n) {
+  const p = n.props || {};
+  if (n.label === 'Element') return `${p.name_de || n.id}${p.pct ? '\n' + p.pct + ' %' + (p.state ? ' · ' + p.state : '') : ''}`;
+  if (n.label === 'Activity') return `${p.name || n.id}\n${(p.pct ?? 0).toFixed ? (+p.pct).toFixed(0) : p.pct} %`;
+  if (n.label === 'BoQPosition') return n.id;
+  if (n.label === 'Capture') return p.name || n.id;
+  return p.name_de || p.name || p.label || p.text || n.id;
+}
+function visNode(n) {
+  const p = n.props || {};
+  let color = BASE[n.label] || '#8b949e', size = 12;
+  if (n.label === 'Element') { color = pctColor(p.pct); size = 14; }
+  if (n.label === 'Activity') { color = (p.delay_d > 0) ? '#f85149' : '#a371f7'; size = 22; }
+  if (n.label === 'Capture') size = 16;
+  if (n.label === 'Zone') size = 20;
+  const title = Object.entries(p).filter(([k, v]) => v !== null && v !== '' && typeof v !== 'object')
+    .map(([k, v]) => `${k}: ${v}`).join('\n');
+  return { id: n.id, label: nodeLabel(n), shape: SHAPE[n.label] || 'dot', size, title: `${n.label} ${n.id}\n${title}`,
+           color: { background: color, border: color, highlight: { background: color, border: '#e6edf3' } },
+           font: { color: n.label === 'BoQPosition' ? '#0d1117' : '#e6edf3' } };
+}
+function visible(n) { return document.getElementById('details').checked || MAIN.has(n.label); }
+function edgeVisible(e) {
+  const a = all.nodes.get(e.src), b = all.nodes.get(e.dst);
+  if (!a || !b || !visible(a) || !visible(b)) return false;
+  return document.getElementById('details').checked || SHOW_EDGES.has(e.rel);
+}
+function putNode(n) {
+  const prev = all.nodes.get(n.id);
+  const merged = prev ? { ...prev, ...n, props: { ...prev.props, ...n.props } } : n;
+  all.nodes.set(n.id, merged);
+  if (visible(merged)) nodes.update(visNode(merged));
+  return merged;
+}
+function putEdge(e) {
+  const id = e.src + '|' + e.rel + '|' + e.dst;
+  all.edges.set(id, e);
+  if (edgeVisible(e)) edges.update({ id, from: e.src, to: e.dst, dashes: DASHED.has(e.rel), title: e.rel,
+    color: e.rel === 'CONFIRMED' ? { color: '#3fb950' } : e.rel === 'PROPOSES' || e.rel === 'FOR' ? { color: '#d29922' } : undefined,
+    width: e.rel === 'CONFIRMED' ? 2 : 1 });
+}
+function redraw() {
+  nodes.clear(); edges.clear();
+  all.nodes.forEach(n => { if (visible(n)) nodes.update(visNode(n)); });
+  all.edges.forEach(putEdge);
+}
+document.getElementById('details').onchange = redraw;
+
+function pulse(id) {
+  const n = nodes.get(id); if (!n) return;
+  nodes.update({ id, size: (n.size || 14) * 2 });
+  setTimeout(() => nodes.update({ id, size: n.size || 14 }), 900);
+  net.focus(id, { scale: 1.0, animation: { duration: 600 } });
+}
+function say(head, text) {
+  const box = document.getElementById('say');
+  document.getElementById('sayhead').textContent = head;
+  document.getElementById('saytext').textContent = text;
+  box.style.display = text ? 'block' : 'none';
+}
+
+async function snapshot() {
+  const g = await fetch('/api/graph').then(r => r.json());
+  all = { nodes: new Map(), edges: new Map() };
+  g.nodes.forEach(n => all.nodes.set(n.id, n));
+  g.edges.forEach(e => all.edges.set(e.src + '|' + e.rel + '|' + e.dst, e));
+  redraw();
+}
+
+const STEPS = { normalized: 'Medien vorbereitet', transcribed: 'Sprache erkannt', vision: 'Bilder analysiert',
+                structured: 'Strukturiert', done: 'fertig' };
+let connectedOnce = false;
 function connect() {
   const ws = new WebSocket((location.protocol === 'https:' ? 'wss://' : 'ws://') + location.host + '/events');
-  ws.onopen = () => document.getElementById('dot').style.background = '#3fb950';
+  ws.onopen = () => { document.getElementById('dot').style.background = '#3fb950';
+                      if (connectedOnce) snapshot(); connectedOnce = true; };
   ws.onclose = () => { document.getElementById('dot').style.background = '#f85149'; setTimeout(connect, 2000); };
   ws.onmessage = (m) => {
     const ev = JSON.parse(m.data);
-    if (ev.type === 'status') { document.getElementById('step').textContent = ev.id + ': ' + ev.props.step; return; }
-    if (ev.type === 'node') {
-      upsert(ev);
-      const cap = ev.id.includes(':') ? ev.id.split(':')[0] : null;  // observation -> its capture
-      if (cap) edges.update({ id: cap + ev.id, from: cap, to: ev.id });
+    if (ev.type === 'status') {
+      const p = ev.props;
+      let txt = `${ev.id}: ${STEPS[p.step] || p.step}`;
+      if (p.detections && Object.keys(p.detections).length)
+        txt += ' · ' + Object.entries(p.detections).map(([k, v]) => `${v}× ${k}`).join(', ');
+      if (p.markers && p.markers.length) txt += ' · Marker ' + p.markers.join(', ');
+      document.getElementById('step').textContent = txt;
+      if (p.step === 'transcribed' && p.text) say('Gesprochen', '„' + p.text + '“');
+      if (p.step === 'done') setTimeout(() => say('', ''), 6000);
+      return;
     }
-    if (ev.type === 'update' && ev.label === 'Element') {
-      nodes.update({ id: ev.id, label: ev.id + ' · ' + ev.props.state, color: STATE_COLOR[ev.props.via] || '#6e7681' });
+    if (ev.type === 'node') {
+      putNode(ev);
+      if (ev.label === 'Capture') pulse(ev.id);
+      if (ev.label === 'Event' && ev.props.capture) putEdge({ src: ev.props.capture, rel: 'RAISED', dst: ev.id });
+      if (ev.label === 'Event' && ev.props.activity_id) putEdge({ src: ev.id, rel: 'AFFECTS', dst: ev.props.activity_id });
+    }
+    if (ev.type === 'edge') {
+      const p = ev.props;
+      if (ev.label === 'PROPOSES') {  // draw capture -> proposal -> element like the stored graph
+        const pid = `${p.src}:proposal:${p.dst}`;
+        putNode({ type: 'node', label: 'Proposal', id: pid, props: { name: `${p.state}?` } });
+        putEdge({ src: p.src, rel: 'PROPOSES', dst: pid }); putEdge({ src: pid, rel: 'FOR', dst: p.dst });
+      } else putEdge({ src: p.src, rel: ev.label, dst: p.dst });
+    }
+    if (ev.type === 'update') {
+      const n = putNode({ label: ev.label, id: ev.id, props: ev.props });
+      if (ev.label === 'Element' || ev.label === 'Activity') pulse(ev.id);
     }
   };
 }
-connect();
+snapshot().then(connect);
 </script>
 </body>
 </html>

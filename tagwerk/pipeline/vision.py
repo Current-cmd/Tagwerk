@@ -273,6 +273,7 @@ def _yolo(model, images: list, conf: float, source: str, device: str) -> list[li
 
 
 def _relations(m: dict, img_bgr: np.ndarray, objects: list[dict]) -> list[dict]:
+    objects = [o for o in objects if o["source"] != "marker"]  # marker-marker relations carry no meaning
     if len(objects) < 2:
         return []
     if m["rel"] is not None:
