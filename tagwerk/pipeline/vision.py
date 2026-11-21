@@ -32,7 +32,8 @@ WORLD_CLASSES = ["stage", "lectern", "projection screen", "projector", "speaker"
                  "stairs", "wall", "window", "ceiling", "floor", "scaffolding", "ladder", "formwork", "rebar",
                  "brick wall", "drywall panel", "concrete column", "steel beam", "pipe", "cable tray", "crane",
                  "excavator", "concrete mixer", "wheelbarrow", "hard hat", "safety vest", "power tool", "pallet",
-                 "insulation", "radiator", "socket", "light fixture"]
+                 "insulation", "radiator", "socket", "light fixture", "robot", "concrete pump",
+                 "construction scaffolding", "gypsum board", "plywood board", "wooden frame"]
 
 MAX_FRAMES = 20
 COCO_CONF = 0.35
