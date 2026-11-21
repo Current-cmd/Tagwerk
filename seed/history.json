@@ -354,6 +354,19 @@
         "evidence": "voice",
         "quote": "Unterkonstruktion Reihe D und E",
         "t": null
+       },
+       {
+        "element_ids": [
+         "E-WALL-N",
+         "E-WALL-E",
+         "E-WALL-W",
+         "E-WALL-S"
+        ],
+        "activity_id": "A1070",
+        "state_proposed": "done",
+        "evidence": "voice",
+        "quote": "Malerarbeiten im Saal fertig",
+        "t": null
        }
       ],
       "special_events": [
@@ -429,6 +442,48 @@
         "state_proposed": "tested",
         "evidence": "voice",
         "quote": "Notbeleuchtung getestet",
+        "t": null
+       },
+       {
+        "element_ids": [
+         "E-FLOOR-STAGE"
+        ],
+        "activity_id": "A1030",
+        "state_proposed": "done",
+        "evidence": "voice",
+        "quote": "Bühnenboden fertig",
+        "t": null
+       },
+       {
+        "element_ids": [
+         "E-STAGE-STAIRS",
+         "E-LECTERN",
+         "E-CURTAIN"
+        ],
+        "activity_id": "A1065",
+        "state_proposed": "checked",
+        "evidence": "voice",
+        "quote": "Treppe, Pult und Vorhang abgenommen",
+        "t": null
+       },
+       {
+        "element_ids": [
+         "E-TRUSS-2"
+        ],
+        "activity_id": "A1050",
+        "state_proposed": "tested",
+        "evidence": "voice",
+        "quote": "Hintere Traverse getestet",
+        "t": null
+       },
+       {
+        "element_ids": [
+         "E-PROJECTOR"
+        ],
+        "activity_id": "A1060",
+        "state_proposed": "connected",
+        "evidence": "voice",
+        "quote": "Beamer angeschlossen",
         "t": null
        }
       ],

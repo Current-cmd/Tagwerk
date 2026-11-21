@@ -316,11 +316,11 @@ class Project:
         return round(sum(self._element_contrib(self.elements[lk["element_id"]], lk) * lk["value"]
                          for lk in links) / total, 1)
 
-    def planned_pct(self, activity_id: str, d: date) -> float:
-        """Linear plan over working days, measured at the end of day d."""
+    def planned_pct(self, activity_id: str, d: date, start_of_day: bool = False) -> float:
+        """Linear plan over working days, measured at the end of day d (or at its start: the morning report)."""
         a = self.activities[activity_id]
         days = workdays(a["planned_start"], a["planned_finish"]) or [a["planned_start"]]
-        done = len([x for x in days if x <= d])
+        done = len([x for x in days if (x < d if start_of_day else x <= d)])
         return round(100.0 * done / len(days), 1)
 
     def absent_on(self, trade_id: str, d: date) -> float:
@@ -401,7 +401,7 @@ class Project:
                     d = next_workday(d)
                     guard += 1
             bac = self.budget(aid)
-            ppct = self.planned_pct(aid, today)
+            ppct = self.planned_pct(aid, today, start_of_day=True)
             out[aid] = {
                 "id": aid, "name": a["name"], "wbs": a["wbs"], "trade": self.trades[a["trade_id"]]["name"],
                 "pct": pct, "planned_pct": ppct,
