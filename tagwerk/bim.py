@@ -31,9 +31,12 @@ def states(d: date) -> dict:
 
     meta = model_file("bim.json")
     if meta is None:
-        return {"available": False, "source": None, "date": d.isoformat(), "elements": []}
+        return {"available": False, "source": None, "date": d.isoformat(), "is_future": False, "elements": []}
     source = json.loads(meta.read_text(encoding="utf-8")).get("source")
-    p = v2.project_as_of(min(d, v2.today()))
+    t = v2.today()
+    is_future = d > t
+    p = v2.project_as_of(min(d, t))
+    fc = p.forecast(t) if is_future else {}
     out = []
     for gid, eid in _global_ids().items():
         el = p.elements.get(eid)
@@ -42,10 +45,16 @@ def states(d: date) -> dict:
         targets = [weight(el["type"], lk["to_state"]) if lk["to_state"] else 100 for lk in p._by_el.get(eid, [])]
         done = el["pct"] > 0 and el["pct"] >= max(targets or [100])  # reached what its activities ask for
         acts = p.activities_of(eid)
+        planned, pct = False, el["pct"]
+        if is_future and not done and acts:  # after the data date: the forecast schedule (as of today) plays on
+            if all(fc[a]["forecast_finish"] < d for a in acts):
+                done, planned, pct = True, True, max(targets or [100])
+            elif any(fc[a]["forecast_start"] <= d for a in acts):
+                planned, pct = True, max(pct, 1)
         aid = acts[0] if acts else None
-        out.append({"gid": gid, "element_id": eid, "name": el["name_de"], "pct": el["pct"], "done": done,
+        out.append({"gid": gid, "element_id": eid, "name": el["name_de"], "pct": pct, "done": done, "planned": planned,
                     "state": el["state"],
                     "state_de": STATE_DE.get(el["state"], el["state"]) if el["state"] else "nicht begonnen",
                     "activity_id": aid, "activity_name": p.activities[aid]["name"] if aid else None,
                     "zone": (p.zones.get(el["zone"]) or {}).get("name_de")})
-    return {"available": True, "source": source, "date": d.isoformat(), "elements": out}
+    return {"available": True, "source": source, "date": d.isoformat(), "is_future": is_future, "elements": out}

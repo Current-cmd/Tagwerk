@@ -22,6 +22,9 @@ def _write_model(d, gids):
 
 
 def test_project_without_model(tmp_path, monkeypatch):
+    import tagwerk.bim as bim
+
+    monkeypatch.setattr(bim, "model_dir", lambda: tmp_path / "no-model")
     with _client(tmp_path, monkeypatch) as c:
         b = c.get("/api/v2/bim").json()
         assert b["available"] is False and b["elements"] == []
@@ -73,3 +76,37 @@ def test_schependomlaan_elements_have_global_ids(tmp_path, monkeypatch):
         done = [e for e in els if e["done"]]
         assert len(done) > 1000 and all(e["pct"] >= 70 for e in done)
         assert not any(e["done"] for e in els if e["pct"] == 0)
+
+
+def test_hoersaal_has_its_model(tmp_path, monkeypatch):
+    with _client(tmp_path, monkeypatch) as c:
+        assert c.get("/api/v2/day").json()["project"]["bim"] is True  # shows the BIM-Modell tab
+        b = c.get("/api/v2/bim").json()
+        assert b["available"] is True and len(b["elements"]) == 32 and b["is_future"] is False
+        assert not any(e["planned"] for e in b["elements"])
+
+
+def test_future_days_play_the_forecast(tmp_path, monkeypatch):
+    """After the data date the slider shows the plan: elements of activities forecast to finish by that day are done
+    (marked planned), started ones are begun."""
+    with _client(tmp_path, monkeypatch) as c:
+        today = {e["gid"]: e for e in c.get("/api/v2/bim").json()["elements"]}
+        fut = c.get("/api/v2/bim", params={"date": "2026-12-31"}).json()
+        assert fut["is_future"] is True
+        els = {e["gid"]: e for e in fut["elements"]}
+        # everything with an activity is forecast to be finished by the end of the year (doors have no activity)
+        assert all(e["done"] for e in els.values() if e["activity_id"])
+        newly = [g for g, e in els.items() if not today[g]["done"] and e["activity_id"]]
+        assert newly and all(els[g]["planned"] for g in newly)
+        assert not any(els[g]["planned"] for g, e in today.items() if e["done"])  # what is built stays actual
+
+
+def test_scan3d_carries_the_kept_video(tmp_path, monkeypatch):
+    with _client(tmp_path, monkeypatch) as c:
+        from tagwerk.config import get_settings
+
+        d = get_settings().cache_dir / "walk-1"
+        (d / "media").mkdir(parents=True)
+        (d / "media" / "walk.mp4").write_bytes(b"\x00" * 16)
+        (d / "sfm.json").write_text(json.dumps({"capture_id": "walk-1", "ok": True, "objects": []}), encoding="utf-8")
+        assert c.get("/api/v2/scan3d/walk-1").json()["video"] == "/media/walk-1/walk.mp4"

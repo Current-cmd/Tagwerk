@@ -256,6 +256,7 @@ export interface Scan3D {
   cameras: ScanCamera[]
   objects: ScanObject[]
   units: string
+  video?: string | null // kept walkthrough video (/media/<cid>/<file>)
 }
 
 // GET /api/v2/report?date=D

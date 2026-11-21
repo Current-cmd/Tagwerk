@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { AlertTriangle, ArrowLeft, Box, Loader2, Route as RouteIcon, Tag, FlipVertical2 } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -46,6 +46,11 @@ export function ScanView({ cid, onBack }: { cid: string; onBack: () => void }) {
     return [...m.entries()].sort((a, b) => a[0].localeCompare(b[0], 'de'))
   }, [scan])
   const sel = scan?.objects.find(o => o.id === selected) ?? null
+  const videoRef = useRef<HTMLVideoElement>(null)
+  useEffect(() => { // jump the walkthrough video to where the selected object was first seen
+    const v = videoRef.current
+    if (v && sel?.first_t != null) { v.currentTime = sel.first_t; v.play().catch(() => {}) }
+  }, [sel])
   const cOf = useCallback(colorOf, [])
 
   return (
@@ -101,6 +106,10 @@ export function ScanView({ cid, onBack }: { cid: string; onBack: () => void }) {
         </Card>
 
         <Card className="flex w-[330px] shrink-0 flex-col gap-0 overflow-hidden py-0">
+          {scan?.video && (
+            <video ref={videoRef} src={scan.video} controls playsInline muted preload="metadata"
+              className="aspect-video w-full shrink-0 bg-black" data-testid="scan-video" />
+          )}
           <CardHeader className="border-b py-3">
             <CardTitle className="text-sm">Objekte nach Kategorie</CardTitle>
           </CardHeader>

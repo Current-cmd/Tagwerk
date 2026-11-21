@@ -127,7 +127,7 @@ export interface BimIndex {
 }
 export interface BimModel { index: BimIndex; buffer: ArrayBuffer }
 export interface BimState {
-  gid: string; element_id: string; name: string; pct: number; done: boolean; state: string | null; state_de: string
+  gid: string; element_id: string; name: string; pct: number; done: boolean; planned: boolean; state: string | null; state_de: string
   activity_id: string | null; activity_name: string | null; zone: string | null
 }
 let bimModel: Promise<BimModel> | null = null
@@ -143,6 +143,6 @@ export function fetchBimModel(): Promise<BimModel> {
   bimModel.catch(() => { bimModel = null })
   return bimModel
 }
-export function fetchBim(date: string): Promise<{ available: boolean; elements: BimState[] }> {
+export function fetchBim(date: string): Promise<{ available: boolean; is_future: boolean; elements: BimState[] }> {
   return getJson(`/api/v2/bim?date=${encodeURIComponent(date)}`)
 }

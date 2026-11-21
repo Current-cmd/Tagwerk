@@ -83,7 +83,7 @@ def test_day_past_uses_history_up_to_that_day(client):
     d24 = client.get("/api/v2/day", params={"date": "2026-11-24"}).json()
     d25 = client.get("/api/v2/day", params={"date": "2026-11-25"}).json()
     assert d24["date"] == "2026-11-24" and d24["today"] == "2026-11-26" and d24["is_future"] is False
-    assert d24["project"] == {"name": "Hörsaal Sanierung", "bim": False}
+    assert d24["project"] == {"name": "Hörsaal Sanierung", "bim": True}  # seed/bim.json (auditorium.ifc)
     assert [r["capture_id"] for r in d24["recordings"]] == ["hist-1124-b", "hist-1124-a"]  # newest first
     starts = [a["planned_start"] for a in d24["activities"]]
     assert starts == sorted(starts) and len(starts) == 10

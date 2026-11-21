@@ -206,7 +206,8 @@ export default function App() {
         )}
         {route.view === 'bim' && date && (
           <Suspense fallback={spinner}>
-            <BimView date={date} onOpenActivity={setActivity} />
+            <BimView date={date} onOpenActivity={setActivity} onSetDate={setDate}
+              workdays={days.days.filter(x => x.workday).map(x => x.date)} />
           </Suspense>
         )}
       </main>

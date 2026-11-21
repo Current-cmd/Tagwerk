@@ -202,7 +202,8 @@ def _cause(p: Project, row: dict, d: date, fc: dict) -> str | None:
 
 
 def _bim(p: Project) -> bool:
-    return bool(p.meta.get("bim", "storeys" in p.meta))
+    """A BIM project: it has a tessellated IFC model (bim.json, scripts/ifc_to_bim.py) or BIM storeys in its meta."""
+    return (Path(seed_dir()) / "bim.json").is_file() or bool(p.meta.get("bim", "storeys" in p.meta))
 
 
 def parse_date(value: str | None) -> date:

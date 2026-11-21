@@ -469,6 +469,7 @@ def v2_scan3d(capture_id: str) -> dict:
     except (OSError, ValueError):
         raise HTTPException(404, "no scan3d for this capture") from None
     drop_person_pairs(data.get("objects") or [])
+    data["video"] = v2._media(capture_id)[0]  # the kept walkthrough video, shown beside the 3D view
     return data
 
 

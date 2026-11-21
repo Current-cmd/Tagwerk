@@ -27,14 +27,18 @@ const LABEL: Record<Bucket, string> = { done: 'fertig', progress: 'begonnen', op
 interface Props {
   date: string
   onOpenActivity: (id: string) => void
+  workdays?: string[] // the slider's working days, for "Bauablauf abspielen"
+  onSetDate?: (d: string) => void
 }
 
-export function BimView({ date, onOpenActivity }: Props) {
+export function BimView({ date, onOpenActivity, workdays = [], onSetDate }: Props) {
   const [model, setModel] = useState<BimModel | null>(null)
   const [states, setStates] = useState<Map<string, BimState> | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [selected, setSelected] = useState<string | null>(null)
   const [hideContext, setHideContext] = useState(false)
+  const [future, setFuture] = useState(false)
+  const [playing, setPlaying] = useState(false)
 
   useEffect(() => {
     let live = true
@@ -43,10 +47,19 @@ export function BimView({ date, onOpenActivity }: Props) {
   }, [])
   useEffect(() => {
     let live = true
-    fetchBim(date).then(b => { if (live) setStates(new Map(b.elements.map(e => [e.gid, e]))) })
+    fetchBim(date).then(b => { if (live) { setStates(new Map(b.elements.map(e => [e.gid, e]))); setFuture(b.is_future) } })
       .catch(e => live && setError((e as Error).message))
     return () => { live = false }
   }, [date])
+
+  // play the schedule: one working day per step until the last day of the slider
+  useEffect(() => {
+    if (!playing || !onSetDate) return
+    const next = workdays.find(d => d > date)
+    if (!next) { setPlaying(false); return }
+    const t = setTimeout(() => onSetDate(next), 650)
+    return () => clearTimeout(t)
+  }, [playing, date, workdays, onSetDate, states])
 
   const counts = useMemo(() => {
     const c = { done: 0, progress: 0, open: 0 }
@@ -83,6 +96,15 @@ export function BimView({ date, onOpenActivity }: Props) {
           <div className="text-xs text-muted-foreground">
             {model ? `${model.index.source} · ${model.index.elements.length} IFC-Bauteile` : '…'} · Stand {fmtLong(date)}
           </div>
+          {future && <Badge variant="outline" className="w-fit border-dashed">Plan (Prognose ab Stichtag)</Badge>}
+          {onSetDate && workdays.length > 0 && (
+            <Button size="sm" variant={playing ? 'secondary' : 'default'} onClick={() => {
+              if (!playing && !workdays.some(d => d > date)) onSetDate(workdays[0])
+              setPlaying(p => !p)
+            }} data-testid="bim-play">
+              {playing ? '❚❚ Anhalten' : '▶ Bauablauf abspielen'}
+            </Button>
+          )}
           <ul className="mt-1 flex flex-col gap-1 text-sm">
             {(['done', 'progress', 'open'] as Bucket[]).map(b => (
               <li key={b} className="flex items-center gap-2">
@@ -91,6 +113,10 @@ export function BimView({ date, onOpenActivity }: Props) {
                 <span className="tabular-nums text-muted-foreground">{counts[b]}</span>
               </li>
             ))}
+            <li className="flex items-center gap-2">
+              <span className="size-3 rounded-sm opacity-45" style={{ background: COLORS.done }} />
+              <span className="flex-1">geplant (Prognose)</span>
+            </li>
             <li className="flex items-center gap-2">
               <span className="size-3 rounded-sm border" style={{ background: COLORS.context }} />
               <span className="flex-1">ohne Vorgang (Kontext)</span>
@@ -151,7 +177,7 @@ function BimScene({ model, states, selected, onSelect, hideContext }: {
     const mk = (c: string, opacity = 1) => new MeshLambertMaterial({ color: new Color(c), transparent: opacity < 1, opacity })
     mats.current = {
       done: mk(COLORS.done), progress: mk(COLORS.progress), open: mk(COLORS.open, 0.85), context: mk(COLORS.context, 0.25),
-      selected: mk(COLORS.selected),
+      selected: mk(COLORS.selected), plan_done: mk(COLORS.done, 0.45), plan_progress: mk(COLORS.progress, 0.45),
     }
     const scene = new Scene()
     scene.background = new Color('#f8fafc')
@@ -224,7 +250,10 @@ function BimScene({ model, states, selected, onSelect, hideContext }: {
   useEffect(() => {
     meshes.current.forEach((m, gid) => {
       const s = states.get(gid)
-      m.material = gid === selected ? mats.current.selected : s ? mats.current[bucketOf(s)] : mats.current.context
+      const b = s ? bucketOf(s) : null
+      m.material = gid === selected ? mats.current.selected
+        : !s || !b ? mats.current.context
+        : s.planned && b !== 'open' ? mats.current[`plan_${b}`] : mats.current[b]
       m.visible = !(hideContext && !s)
     })
   }, [states, selected, hideContext, model])
