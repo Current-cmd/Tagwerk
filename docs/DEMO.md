@@ -39,6 +39,43 @@ use the roof (not started on the data date 24.07.2015) to show movement.
    `curl -X POST localhost:8081/captures -F capture_id=sp-demo-roof -F zone_id=Z-3 -F "note=Sporenkap derde verdieping geplaatst. Twee timmerlieden ziek."`
 Do not replay `sp-live-1` for this: its storey-02 walls are already installed, so nothing moves.
 
+## Room scan demo (:8082): film a room, then talk
+Needs the GPU worker (:8100) and the main API (:8080) running (`~/tw-restart.sh`). Only for the scan project: the
+Hörsaal (:8080) and Schependomlaan (:8081) demos are not touched.
+1. Open `http://100.118.181.69:8080/scan` (or `http://<laptop-ip>:8080/scan`). Pick the room video (or photos),
+   **Projektname** `buero1` (letters/digits, umlauts and spaces are converted: "Büro 1" -> `buero-1`),
+   Zonenname `Raum`, press *Scannen* (about 10-60 s). The page lists what was seen by category and ends with
+   "Projekt erstellt: ... Bauteile, ... Vorgänge". If it says "Keine Bauteile erkannt" no project is created:
+   film again, closer and with more light.
+2. Start the API for that project on 8082: `~/tw-scanproject.sh buero1` (prints `/health` with the project name).
+   It is the same as
+   `PROJECT=buero1 DATA_DIR=./data-scan-buero1 CACHE_DIR=./cache-scan-buero1 NEO4J_URI= .venv/bin/uvicorn tagwerk.api.app:app --host 0.0.0.0 --port 8082`
+   (own data dir, in-memory graph, so the Neo4j Hörsaal graph stays untouched). The script kills only the process
+   in `/tmp/tw-api-scan.pid`, never use `pkill -f`. To start over: `rm -rf data-scan-buero1 cache-scan-buero1`, run it again.
+3. Open `http://100.118.181.69:8082/dashboard`, `/graph` and `/upload` (zone "Raum"). Talk or type a note.
+   Activities are one per category present (Rohbau, Fenster/Türen, TGA, Ausbau, Ausstattung), 5 working days
+   each, one after the other; the forecast "today" is the day of the scan.
+4. Phrases that work (verified on a room with 4 walls, door, 2 windows, ceiling, floor, radiator, 3 sockets,
+   2 lights, TV, 4 chairs, table). Singular or plural both match, and a plural means all instances:
+   - "Die Tür ist eingebaut." / "Die Türen sind eingebaut." / "Beide Fenster sind eingesetzt."
+   - "Der Heizkörper ist montiert und angeschlossen."
+   - "Die Steckdosen sind angeschlossen." (counts as installed) / "Die Steckdose ist installiert."
+   - "Die Leuchten hängen." (mounted) / "Die Leuchte hängt."
+   - "Der Boden ist verlegt." / "Die Wände sind gestrichen." / "Die Decke ist verputzt." (ceiling: started) /
+     "Die Decke ist fertig." (100 %)
+   - "Der Bildschirm ist in Betrieb." / "Die Stühle sind aufgestellt." / "Die Stühle stehen." / "Die Tische stehen."
+   - Absence on the right activity: "Zwei Mann vom Elektriker sind krank." (-> TGA). Trades map to the scan trades:
+     TGA <- Elektriker, Heizung, Sanitär, Lüftung; Ausbau <- Maler, Trockenbau, Bodenleger, Fliesenleger;
+     Rohbau <- Maurer, Zimmerer; Fenster/Türen <- Tischler, Schreiner, Fensterbauer. "Zwei Mann sind krank" alone
+     has no trade (shown as "unbekannt", no activity).
+   - Defect: "Kratzer an der Tür." (event only, no state change).
+   - Combined note: "Die Tür ist eingebaut, die Steckdose ist installiert und der Boden ist verlegt."
+   - Not evidence: "Die Tische werden noch geliefert." (future, logged as material only).
+   Words that change state: eingebaut/installiert/montiert/aufgestellt/aufgebaut/steht/stehen (installed), hängt
+   (mounted, lights), verlegt (floor), gestrichen/verputzt (walls), fertig (100 %), in Betrieb (screens).
+   Only elements the scan found exist: say what is in the project (Wand, Tür, Fenster, Decke, Boden, Steckdose,
+   Leuchte, Heizkörper, Kabel, Bildschirm, Stuhl, Tisch, Sofa, ...). Each element only moves up, a repeat shows "unchanged".
+
 ## Fallbacks
 1. Live upload fails: stay on replay.
 2. GPU worker down: the API runs speech/vision in-process automatically (slower).
