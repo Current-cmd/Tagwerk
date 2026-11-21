@@ -110,6 +110,17 @@ def _hits(text: str, vocab: dict[str, dict]) -> list[dict]:
     return hits
 
 
+def _phrase_time(seg: dict, hit: dict, text: str) -> float | None:
+    """Second the phrase is said: its Whisper word timestamp, else interpolated by its position in the segment text
+    (segments can be 90 s long)."""
+    first = _WORD.findall(hit["phrase"].lower())[:1]
+    for w in seg.get("words") or []:
+        if first and first[0] in _WORD.findall(str(w.get("word", "")).lower()):
+            return round(float(w["start"]), 2)
+    t0, t1 = seg.get("start"), seg.get("end")
+    return round(t0 + (t1 - t0) * hit["pos"] / len(text), 2) if t0 is not None and t1 is not None else t0
+
+
 def link_mentions(sfm: dict, transcript: dict | None, elements: dict[str, dict] | None = None,
                   activity_of: Callable[[str], str | None] | None = None) -> dict:
     elements = elements or {}
@@ -134,8 +145,7 @@ def link_mentions(sfm: dict, transcript: dict | None, elements: dict[str, dict] 
         if not text:
             continue
         for h in sorted(_hits(text, vocab), key=lambda h: h["pos"]):
-            # Whisper segments can be long (45 s): place the phrase by its position in the text
-            t = round(t0 + (t1 - t0) * h["pos"] / len(text), 2) if t0 is not None and t1 is not None else t0
+            t = _phrase_time(seg, h, text)
             inst = by_label.get(h["label"]) if h["label"] else None
             if not inst:  # one entry per name, every time it was said
                 u = next((x for x in unseen if x["name"] == h["name"]), None)

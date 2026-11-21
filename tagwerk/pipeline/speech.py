@@ -118,10 +118,13 @@ def transcribe(capture: dict, derived: dict) -> dict:
         language=None if lang == "auto" else lang,
         vad_filter=True,
         initial_prompt=_glossary(),
+        word_timestamps=True,  # a long walk can come back as one 90 s segment: words keep each item's second
     )
     return {
         "capture_id": capture["capture_id"],
         "lang": info.language,
-        "segments": [{"start": round(s.start, 2), "end": round(s.end, 2), "text": s.text.strip()}
+        "segments": [{"start": round(s.start, 2), "end": round(s.end, 2), "text": s.text.strip(),
+                      "words": [{"start": round(w.start, 2), "end": round(w.end, 2), "word": w.word.strip()}
+                                for w in (getattr(s, "words", None) or [])]}
                      for s in segments],
     }

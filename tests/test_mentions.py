@@ -177,3 +177,14 @@ def test_unseen_items_named_repeatedly_are_one_entry_with_all_times():
     unseen = link_mentions(SFM, tr, {})["unseen_mentions"]
     assert len(unseen) == 1 and unseen[0]["name"] == "Betonfassade" and unseen[0]["t"] < 2.0
     assert len(unseen[0]["times"]) == 2 and unseen[0]["state"] is not None  # state from the later "fertig"
+
+
+def test_word_timestamps_place_the_phrase_exactly():
+    words = [{"start": 50.9, "end": 51.2, "word": "The"}, {"start": 51.2, "end": 51.7, "word": "tables"},
+             {"start": 51.7, "end": 52.0, "word": "over"}, {"start": 52.0, "end": 52.4, "word": "here,"},
+             {"start": 93.5, "end": 93.9, "word": "dustbins"}]
+    sfm = {"capture_id": "c", "ok": True, "objects": [_obj("obj-1", "dining table", "Tisch", 49.0, 55.0)]}
+    seg = {"start": 0.8, "end": 93.9, "text": "The tables over here, dustbins", "words": words}
+    res = link_mentions(sfm, {"segments": [seg]}, {})
+    assert res["mentions"][0]["t"] == 51.2 and res["mentions"][0]["object_ids"] == ["obj-1"]
+    assert res["unseen_mentions"][0]["t"] == 93.5

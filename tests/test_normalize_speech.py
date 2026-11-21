@@ -190,3 +190,35 @@ def test_quiet_voice_is_levelled_before_whisper(tmp_path, monkeypatch):
     if shutil.which("ffmpeg"):
         assert seen[0] > speech.QUIET_DB  # levelled
     assert abs(seen[1] - speech.mean_db(loud.astype(np.float32))) < 0.5  # untouched
+
+
+def test_segments_carry_word_timestamps_and_validate(tmp_path, monkeypatch):
+    """Whisper can merge a long walk into one 90 s segment; the words keep the second each item is named."""
+    import sys
+    import types
+
+    import numpy as np
+
+    W = type("W", (), {})
+
+    def word(s, e, w):
+        x = W()
+        x.start, x.end, x.word = s, e, w
+        return x
+
+    seg = type("S", (), {"start": 0.8, "end": 93.3, "text": " The tables over here.",
+                         "words": [word(50.9, 51.2, " The"), word(51.2, 51.7, " tables"), word(51.7, 52.0, " over"),
+                                   word(52.0, 52.4, " here.")]})()
+    seen = {}
+
+    class Fake:
+        def transcribe(self, audio, **kw):
+            seen.update(kw)
+            return iter([seg]), type("I", (), {"language": "en"})()
+
+    monkeypatch.setattr(speech, "_model", lambda: Fake())
+    monkeypatch.setitem(sys.modules, "faster_whisper", types.ModuleType("faster_whisper"))
+    _write_wav(tmp_path / "a.wav", 0.3 * np.sin(np.arange(16000) / 5))
+    out = validate("transcript", speech.transcribe({"capture_id": "c", "lang": "en"}, {"audio": str(tmp_path / "a.wav")}))
+    assert seen["word_timestamps"] is True
+    assert out["segments"][0]["words"][1] == {"start": 51.2, "end": 51.7, "word": "tables"}
