@@ -1,3 +1,4 @@
+import json
 from datetime import date
 
 from tagwerk.pipeline.scan import inventory, seed_from_scan
@@ -122,3 +123,5 @@ def test_scan_project_name_is_slugged_readably(tmp_path, monkeypatch):
         assert r.status_code == 200, r.text
         assert r.json()["project"]["dir"].endswith("/projects/buero-test-1")
         assert (tmp_path / "seed" / "projects" / "buero-test-1" / "elements.csv").exists()
+        meta = json.loads((tmp_path / "seed" / "projects" / "buero-test-1" / "project.json").read_text(encoding="utf-8"))
+        assert meta["name"] == "Scan: buero-test-1"  # not a frame file name from the thumbnail loop

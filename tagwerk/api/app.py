@@ -269,9 +269,9 @@ async def scan_video(files: list[UploadFile] = File(...), make_project: str | No
     inv["scan_id"] = sid
     for item in inv["items"]:
         best = item.get("best") or {}
-        name = Path(best.get("media_path") or "").name
-        if name and (folder / "derived" / "frames" / name).exists():
-            item["thumb"] = f"/media/{sid}/derived/frames/{name}"
+        frame = Path(best.get("media_path") or "").name  # not `name`: that is the project name
+        if frame and (folder / "derived" / "frames" / frame).exists():
+            item["thumb"] = f"/media/{sid}/derived/frames/{frame}"
     sf = await runner.sfm_stage(capture, get_project())  # 3D reconstruction of the same clip (<= 150 s, never raises)
     if sf is not None:
         inv["scan3d"] = {"ok": sf["ok"], "reason": sf["reason"], "frames_registered": sf["frames_registered"],
