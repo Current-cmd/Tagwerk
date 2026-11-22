@@ -1,0 +1,70 @@
+{
+  "title35": {
+    "file": "vo/title35.wav",
+    "seconds": 3.76
+  },
+  "boxes": {
+    "file": "vo/boxes.wav",
+    "seconds": 7.75
+  },
+  "water": {
+    "file": "vo/water.wav",
+    "seconds": 3.66
+  },
+  "voicenote": {
+    "file": "vo/voicenote.wav",
+    "seconds": 14.64
+  },
+  "facts": {
+    "file": "vo/facts.wav",
+    "seconds": 6.37
+  },
+  "titlebim": {
+    "file": "vo/titlebim.wav",
+    "seconds": 1.85
+  },
+  "nobim": {
+    "file": "vo/nobim.wav",
+    "seconds": 6.26
+  },
+  "withbim": {
+    "file": "vo/withbim.wav",
+    "seconds": 6.97
+  },
+  "mapping": {
+    "file": "vo/mapping.wav",
+    "seconds": 7.31
+  },
+  "notice": {
+    "file": "vo/notice.wav",
+    "seconds": 5.46
+  },
+  "titlelive": {
+    "file": "vo/titlelive.wav",
+    "seconds": 2.4
+  },
+  "dash": {
+    "file": "vo/dash.wav",
+    "seconds": 4.56
+  },
+  "graph": {
+    "file": "vo/graph.wav",
+    "seconds": 3.6
+  },
+  "report": {
+    "file": "vo/report.wav",
+    "seconds": 3.01
+  },
+  "scan": {
+    "file": "vo/scan.wav",
+    "seconds": 3.9
+  },
+  "close": {
+    "file": "vo/close.wav",
+    "seconds": 4.46
+  },
+  "end": {
+    "file": "vo/end.wav",
+    "seconds": 2.77
+  }
+}

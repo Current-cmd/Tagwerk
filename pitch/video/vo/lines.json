@@ -1,0 +1,19 @@
+[
+  {"id": "title35", "voice": "Daniel", "text": "Thirty-five seconds of site video. What did Tagwerk make of it?"},
+  {"id": "boxes", "voice": "Daniel", "text": "Every second, Tagwerk looks at a frame: equipment and people, the building elements in the contract, and one thing that shouldn't be there."},
+  {"id": "water", "voice": "Daniel", "text": "Water on the pile wall. The camera sees it, but can't judge it."},
+  {"id": "voicenote", "voice": "Anna", "rate": 165, "text": "Baugrube Abschnitt drei. Aushub dritte Lage unter der zweiten Steifenlage zur Hälfte fertig, zwei Bagger, ein Traktor mit Mulde. Gerüst an Achse zwölf umgesetzt. An der Bohrpfahlwand Nord steht Wasser, die Wasserhaltung reicht nicht."},
+  {"id": "facts", "voice": "Daniel", "text": "Each sentence confirms something the camera saw. The piling rigs got no sentence, so they stay a proposal."},
+  {"id": "titlebim", "voice": "Daniel", "text": "With a BIM model, or without one."},
+  {"id": "nobim", "voice": "Daniel", "text": "No BIM model? Drop in the schedule and the bill of quantities. Activities, positions and the baseline are ready."},
+  {"id": "withbim", "voice": "Daniel", "text": "With a BIM model, every element carries its own state. Here: a real open dataset, two thousand and eighty-two elements."},
+  {"id": "mapping", "voice": "Daniel", "text": "Every fact lands on an element, a schedule activity and a contract position. The water lands on dewatering, and the slab moves."},
+  {"id": "notice", "voice": "Daniel", "text": "The delay that needs a notice gets a draft, with the video attached. The site manager decides."},
+  {"id": "titlelive", "voice": "Daniel", "text": "This runs today, in the demo project."},
+  {"id": "dash", "voice": "Daniel", "text": "Plan versus actual, S P I and the forecast, from today's evidence."},
+  {"id": "graph", "voice": "Daniel", "text": "Every recording linked to positions, activities and zones."},
+  {"id": "report", "voice": "Daniel", "text": "The daily report writes itself, delays included."},
+  {"id": "scan", "voice": "Daniel", "text": "And from a walk-through video, a 3D scan with what was said, where."},
+  {"id": "close", "voice": "Daniel", "text": "The only thing was the water. Now it's in the site diary, the schedule and the notice."},
+  {"id": "end", "voice": "Daniel", "text": "Tagwerk. The day's work, documented."}
+]
