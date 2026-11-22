@@ -45,7 +45,7 @@ export function Scan({ toast }: { toast: (m: string, err?: boolean) => void }) {
 
   const open3d = () => {
     const { server, token } = settings();
-    WebBrowser.openBrowserAsync(`${server}/app/${token ? `?token=${encodeURIComponent(token)}` : ""}#/scan/${result!.scan_id}`);
+    WebBrowser.openBrowserAsync(`${server}/app/${token ? `?token=${encodeURIComponent(token)}` : ""}#/scan/${encodeURIComponent(result!.scan_id)}`);
   };
   const groups: Record<string, ScanResult["items"]> = {};
   (result?.items ?? []).forEach((i) => (groups[i.category_de] ??= []).push(i));

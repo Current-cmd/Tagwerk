@@ -40,10 +40,10 @@ const buttonVariants = cva(
         link: '',
       },
       size: {
-        default: cn('h-10 px-4 py-2 sm:h-9', Platform.select({ web: 'has-[>svg]:px-3' })),
+        default: cn('h-11 px-4 py-2', Platform.select({ web: 'has-[>svg]:px-3' })), // Tagwerk: 44 pt minimum
         sm: cn('h-9 gap-1.5 rounded-md px-3 sm:h-8', Platform.select({ web: 'has-[>svg]:px-2.5' })),
         lg: cn('h-11 rounded-md px-6 sm:h-10', Platform.select({ web: 'has-[>svg]:px-4' })),
-        icon: 'h-10 w-10 sm:h-9 sm:w-9',
+        icon: 'h-11 w-11',
         // Tagwerk: glove-friendly targets on site
         xl: 'h-14 rounded-lg px-6',
         hero: 'h-20 rounded-xl px-6',

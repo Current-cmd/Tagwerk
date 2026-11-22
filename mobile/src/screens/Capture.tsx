@@ -1,4 +1,5 @@
 // "Erfassen": zone, then video with commentary / photo / voice note / typed note. Everything goes through the queue.
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Icon } from "@/components/ui/icon";
@@ -7,7 +8,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { cn } from "@/lib/utils";
 import { RecordingPresets, requestRecordingPermissionsAsync, setAudioModeAsync, useAudioRecorder, useAudioRecorderState } from "expo-audio";
 import * as ImagePicker from "expo-image-picker";
-import { Camera, Images, Mic, Send, Square, Video, X } from "lucide-react-native";
+import { Camera, Images, Mic, Send, Square, Video, WifiOff, X } from "lucide-react-native";
 import React, { useState } from "react";
 import { Pressable, ScrollView, View } from "react-native";
 import { MediaFile, Zone } from "../api";
@@ -17,8 +18,9 @@ import { SectionLabel } from "../ui";
 
 type Draft = MediaFile & { label: string; icon: any };
 
-export function Capture({ zones, jobs, names, toast }: {
+export function Capture({ zones, jobs, names, toast, online, openSettings }: {
   zones: Zone[]; jobs: Job[]; names: Record<string, string>; toast: (m: string, err?: boolean) => void;
+  online: boolean; openSettings: () => void;
 }) {
   const [zone, setZone] = useState<string | null>(null);
   const [note, setNote] = useState("");
@@ -26,6 +28,7 @@ export function Capture({ zones, jobs, names, toast }: {
   const recorder = useAudioRecorder(RecordingPresets.HIGH_QUALITY);
   const rec = useAudioRecorderState(recorder, 250);
   const zoneId = zone && zones.some((z) => z.id === zone) ? zone : zones[0]?.id ?? null;
+  const zoneName = zones.find((z) => z.id === zoneId)?.name.split(" / ")[0] ?? zoneId ?? "";
 
   const add = (assets: ImagePicker.ImagePickerAsset[]) => setDraft((d) => [...d, ...assets.map((a, i) => {
     const video = a.type === "video";
@@ -34,28 +37,37 @@ export function Capture({ zones, jobs, names, toast }: {
       label: video ? `Video${a.duration ? ` · ${Math.round(a.duration / 1000)} s` : ""}` : "Foto", icon: video ? Video : Camera };
   })]);
 
+  const fail = (what: string, e: any) => toast(`${what}: ${e?.message ?? e}`, true);
   const shoot = async (kind: "videos" | "images") => {
-    const perm = await ImagePicker.requestCameraPermissionsAsync();
-    if (!perm.granted) return toast("Kamera nicht erlaubt (Einstellungen)", true);
-    const r = await ImagePicker.launchCameraAsync({ mediaTypes: [kind], videoMaxDuration: 180, quality: 0.7 });
-    if (!r.canceled) add(r.assets);
+    try {
+      const perm = await ImagePicker.requestCameraPermissionsAsync();
+      if (!perm.granted) return toast("Kamera nicht erlaubt (Einstellungen)", true);
+      const r = await ImagePicker.launchCameraAsync({ mediaTypes: [kind], videoMaxDuration: 180, quality: 0.7 });
+      if (!r.canceled) add(r.assets);
+    } catch (e) { fail("Kamera", e); }
   };
   const gallery = async () => {
-    const r = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ["videos", "images"], allowsMultipleSelection: true, quality: 0.7 });
-    if (!r.canceled) add(r.assets);
+    try {
+      const r = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ["videos", "images"], allowsMultipleSelection: true, quality: 0.7 });
+      if (!r.canceled) add(r.assets);
+    } catch (e) { fail("Galerie", e); }
   };
   const voice = async () => {
-    if (rec.isRecording) {
-      await recorder.stop();
-      const uri = recorder.uri;
-      if (uri) setDraft((d) => [...d, { uri, type: "audio/m4a", name: `sprache_${Date.now()}.m4a`, label: `Sprachnotiz · ${Math.round(rec.durationMillis / 1000)} s`, icon: Mic }]);
-      return;
-    }
-    const perm = await requestRecordingPermissionsAsync();
-    if (!perm.granted) return toast("Mikrofon nicht erlaubt (Einstellungen)", true);
-    await setAudioModeAsync({ allowsRecording: true, playsInSilentMode: true });
-    await recorder.prepareToRecordAsync();
-    recorder.record();
+    try {
+      if (rec.isRecording) {
+        const secs = Math.round(rec.durationMillis / 1000); // read before stop resets it
+        await recorder.stop();
+        await setAudioModeAsync({ allowsRecording: false, playsInSilentMode: true });
+        const uri = recorder.uri;
+        if (uri) setDraft((d) => [...d, { uri, type: "audio/mp4", name: `sprache_${Date.now()}.m4a`, label: `Sprachnotiz · ${secs} s`, icon: Mic }]);
+        return;
+      }
+      const perm = await requestRecordingPermissionsAsync();
+      if (!perm.granted) return toast("Mikrofon nicht erlaubt (Einstellungen)", true);
+      await setAudioModeAsync({ allowsRecording: true, playsInSilentMode: true });
+      await recorder.prepareToRecordAsync();
+      recorder.record();
+    } catch (e) { fail("Mikrofon", e); }
   };
 
   const send = async () => {
@@ -63,20 +75,30 @@ export function Capture({ zones, jobs, names, toast }: {
     if (!draft.length && !note.trim()) return toast("Erst aufnehmen oder Notiz schreiben", true);
     const kind = draft.some((d) => d.type.startsWith("video")) ? "Video" : draft.some((d) => d.type.startsWith("image")) ? "Foto"
       : draft.length ? "Sprachnotiz" : "Notiz";
-    await enqueue({ id: newId(), zone_id: zoneId, zone_name: zones.find((z) => z.id === zoneId)?.name.split(" / ")[0] ?? zoneId,
-      note: note.trim() || undefined, kind, files: draft.map(({ label, icon, ...f }) => f) });
+    try {
+      await enqueue({ id: newId(), zone_id: zoneId, zone_name: zoneName, note: note.trim() || undefined, kind,
+        files: draft.map(({ label, icon, ...f }) => f) });
+    } catch (e) { return fail("Speichern fehlgeschlagen", e); }
     setDraft([]); setNote("");
-    toast("In der Warteschlange · wird gesendet");
+    toast(online ? `Wird gesendet · ${zoneName}` : `Gespeichert · wird gesendet, sobald Netz da ist`);
   };
 
   return (
     <ScrollView contentContainerClassName="p-4 pb-10" keyboardShouldPersistTaps="handled">
-      <SectionLabel className="mt-1">Zone</SectionLabel>
+      {!online && (
+        <Alert icon={WifiOff} className="mb-2">
+          <AlertTitle>Kein Server erreichbar</AlertTitle>
+          <AlertDescription>{zones.length ? "Aufnehmen geht trotzdem: Aufnahmen warten und werden später gesendet." : "Einmal verbinden, damit die Zonen geladen sind."}</AlertDescription>
+          <Button variant="outline" className="mt-2 self-start" onPress={openSettings}><Text>Einstellungen öffnen</Text></Button>
+        </Alert>
+      )}
+      <SectionLabel className="mt-1">Zone · gilt für diese Aufnahme</SectionLabel>
       <View className="flex-row flex-wrap gap-2">
         {zones.map((z) => {
           const on = z.id === zoneId;
           return (
-            <Pressable key={z.id} onPress={() => setZone(z.id)} className={cn(
+            <Pressable key={z.id} onPress={() => setZone(z.id)} accessibilityRole="radio" accessibilityState={{ selected: on }}
+              accessibilityLabel={`Zone ${z.name}`} className={cn(
               "h-11 justify-center rounded-full border px-4", on ? "border-primary bg-primary" : "border-border bg-background active:bg-accent")}>
               <Text className={cn("text-sm", on ? "text-primary-foreground font-semibold" : "text-foreground")}>{z.name.split(" / ")[0]}</Text>
             </Pressable>
@@ -107,13 +129,15 @@ export function Capture({ zones, jobs, names, toast }: {
         placeholder="Notiz (optional), z. B. „Estrich Saal fertig, 2 Mann krank“" />
 
       {draft.length > 0 && (
-        <Card className="mt-3 py-2">
+        <Card className="border-warning/60 mt-3 py-2">
           <CardContent className="px-4">
+            <Text className="text-warning-foreground py-1 text-sm font-semibold">Noch nicht gesendet: unten auf „Senden“ tippen.</Text>
             {draft.map((d, i) => (
               <View key={d.uri} className="min-h-11 flex-row items-center gap-3">
                 <Icon as={d.icon} className="text-muted-foreground size-5" />
                 <Text className="flex-1">{d.label}</Text>
-                <Button size="icon" variant="ghost" onPress={() => setDraft((x) => x.filter((_, j) => j !== i))}>
+                <Button size="icon" variant="ghost" accessibilityLabel={`${d.label} entfernen`} hitSlop={8}
+                  onPress={() => setDraft((x) => x.filter((_, j) => j !== i))}>
                   <Icon as={X} className="text-destructive size-5" />
                 </Button>
               </View>
@@ -122,7 +146,7 @@ export function Capture({ zones, jobs, names, toast }: {
         </Card>
       )}
       <Button size="xl" className="mt-3" onPress={send} disabled={rec.isRecording || (!draft.length && !note.trim())}>
-        <Icon as={Send} className="text-primary-foreground size-5" /><Text>Senden{draft.length ? ` (${draft.length})` : ""}</Text>
+        <Icon as={Send} className="text-primary-foreground size-5" /><Text>Senden an {zoneName}{draft.length ? ` (${draft.length})` : ""}</Text>
       </Button>
 
       {jobs.length > 0 && <SectionLabel>Gesendet</SectionLabel>}

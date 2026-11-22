@@ -9,6 +9,7 @@ import { cn } from "@/lib/utils";
 import { Check, Eye, WifiOff } from "lucide-react-native";
 import React, { useState } from "react";
 import { Modal, Pressable, RefreshControl, ScrollView, View } from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Element, Overview, postJson } from "../api";
 import { Kpi, PlanBar, SectionLabel, de, pct } from "../ui";
 
@@ -20,6 +21,7 @@ export function Today({ data, error, reload, refreshing, toast }: {
   const [sheet, setSheet] = useState<El | null>(null);
   const [busy, setBusy] = useState(false);
   const [allProps, setAllProps] = useState(false);
+  const insets = useSafeAreaInsets();
   const els: Record<string, El> = {};
   (data?.zones ?? []).forEach((z) => z.elements.forEach((e) => (els[e.id] = { ...e, zone: z.name })));
 
@@ -54,8 +56,9 @@ export function Today({ data, error, reload, refreshing, toast }: {
       {k && (
         <View className="mb-1 flex-row gap-2">
           <Kpi label={`Ist (Soll ${pct(k.pct_planned)})`} value={pct(k.pct_actual)} />
-          <Kpi label="SPI" value={k.spi.toFixed(2)} tone={k.spi < 0.95 ? "destructive" : "success"} />
-          <Kpi label="Verzug" value={`${k.delay_d} AT`} tone={k.delay_d > 0 ? "destructive" : "success"} />
+          <Kpi label="Termintreue (SPI)" value={k.spi == null ? "–" : k.spi.toFixed(2)}
+            tone={k.spi == null ? undefined : k.spi < 0.95 ? "destructive" : "success"} />
+          <Kpi label="Verzug (Arbeitstage)" value={`${k.delay_d} AT`} tone={k.delay_d > 0 ? "destructive" : "success"} />
         </View>
       )}
 
@@ -98,7 +101,7 @@ export function Today({ data, error, reload, refreshing, toast }: {
             {!!a.cause && (a.delay_d ?? 0) > 0 && <Text className="text-muted-foreground mb-3 text-sm">{a.cause}</Text>}
             <View className="flex-row flex-wrap gap-2">
               {a.elements.map((id) => els[id]).filter(Boolean).map((e) => (
-                <Pressable key={e.id} onPress={() => setSheet(e)} className={cn(
+                <Pressable key={e.id} onPress={() => setSheet(e)} accessibilityRole="button" accessibilityLabel={`${e.name}, ${de(e.state)}, ${pct(e.pct)}`} className={cn(
                   "bg-background border-border active:bg-accent min-h-[52px] min-w-[47%] flex-grow justify-center rounded-lg border border-l-4 px-3 py-2",
                   !e.pct ? "border-l-border" : e.pct >= 100 ? "border-l-success" : "border-l-warning")}>
                   <Text className="text-sm font-semibold">{e.name}</Text>
@@ -113,21 +116,24 @@ export function Today({ data, error, reload, refreshing, toast }: {
       <Modal visible={!!sheet} transparent animationType="slide" onRequestClose={() => setSheet(null)}>
         <Pressable className="flex-1 bg-black/40" onPress={() => setSheet(null)} />
         {sheet && (
-          <View className="bg-background rounded-t-2xl p-5 pb-9">
+          <View className="bg-background rounded-t-2xl p-5" style={{ paddingBottom: 20 + insets.bottom }}>
             <Text className="text-xl font-semibold">{sheet.name}</Text>
             <Text className="text-muted-foreground mb-4 text-sm">{sheet.zone} · jetzt: {de(sheet.state)} ({pct(sheet.pct)})</Text>
             {sheet.states.map((st, i) => {
               const cur = sheet.states.indexOf(sheet.state);
               return (
-                <Pressable key={st} disabled={busy} onPress={() => confirm(sheet.id, st)} className={cn(
-                  "active:bg-accent mb-2 min-h-14 flex-row items-center justify-between rounded-lg border px-4",
-                  i === cur ? "border-success bg-success/10" : "border-border")}>
+                // states only go up: reached states are shown, not tappable
+                <Pressable key={st} disabled={busy || i <= cur} onPress={() => confirm(sheet.id, st)}
+                  accessibilityRole="button" accessibilityState={{ disabled: i <= cur, selected: i === cur }}
+                  accessibilityLabel={`${sheet.name}: ${de(st)}${i <= cur ? " (erreicht)" : ""}`} className={cn(
+                  "mb-2 min-h-14 flex-row items-center justify-between rounded-lg border px-4",
+                  i === cur ? "border-success bg-success/10" : i < cur ? "border-border bg-muted opacity-60" : "border-border active:bg-accent")}>
                   <Text className={cn("text-base", i === cur && "font-semibold", i < cur && "text-muted-foreground")}>{de(st)}</Text>
                   {i <= cur && <Icon as={Check} className="text-success size-5" />}
                 </Pressable>
               );
             })}
-            <Text className="text-muted-foreground my-2 text-xs">Zustände gehen nur nach oben. Ein Tipp zählt wie eine Sprachnotiz.</Text>
+            <Text className="text-muted-foreground my-2 text-xs">Erreichte Zustände lassen sich nicht zurücksetzen. Ein Tipp zählt wie eine Sprachnotiz.</Text>
             <Button size="xl" variant="outline" onPress={() => setSheet(null)}><Text>Abbrechen</Text></Button>
           </View>
         )}
