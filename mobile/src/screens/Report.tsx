@@ -5,7 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Icon } from "@/components/ui/icon";
 import { Text } from "@/components/ui/text";
 import * as WebBrowser from "expo-web-browser";
-import { AlertTriangle, CheckCheck, FileText, LayoutDashboard, Thermometer, Users } from "lucide-react-native";
+import { AlertTriangle, FileText, LayoutDashboard, Thermometer, Users } from "lucide-react-native";
 import React from "react";
 import { RefreshControl, ScrollView, View } from "react-native";
 import { Report as R, pageUrl } from "../api";
@@ -29,12 +29,13 @@ export function Report({ data, reload, refreshing, toast }: {
           <CardDescription>{data.project.name} · aus {data.recordings.length} Aufnahme(n) geschrieben</CardDescription>
         </CardHeader>
         <CardContent className="flex-row gap-2 px-4">
-          <Button size="xl" className="flex-1" onPress={() => toast("Tagesbericht freigegeben")}>
-            <Icon as={CheckCheck} className="text-primary-foreground size-5" /><Text>Freigeben</Text>
+          {/* no release endpoint yet: the site manager checks the report here, the Bauleitung signs it */}
+          <Button size="xl" className="flex-1" onPress={() => WebBrowser.openBrowserAsync(pageUrl(`/export/report.html?date=${encodeURIComponent(data.date)}`))}>
+            <Icon as={FileText} className="text-primary-foreground size-5" /><Text>Als PDF öffnen</Text>
           </Button>
-          <Button size="xl" variant="outline" onPress={() => WebBrowser.openBrowserAsync(pageUrl(`/export/report.html?date=${data.date}`))}>
-            <Icon as={FileText} className="size-5" /><Text>PDF</Text>
-          </Button>
+        </CardContent>
+        <CardContent className="px-4 pt-0">
+          <Text className="text-muted-foreground text-xs">Prüfen und bei Fehlern per Sprachnotiz korrigieren. Freigabe durch die Bauleitung im Dashboard.</Text>
         </CardContent>
       </Card>
 

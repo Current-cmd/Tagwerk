@@ -8,8 +8,8 @@ import { Text } from "@/components/ui/text";
 import { cn } from "@/lib/utils";
 import { CameraView, useCameraPermissions } from "expo-camera";
 import { CheckCircle2, Plug, QrCode, XCircle } from "lucide-react-native";
-import React, { useState } from "react";
-import { Modal, ScrollView, View } from "react-native";
+import React, { useRef, useState } from "react";
+import { Alert, Modal, ScrollView, View } from "react-native";
 import { DEFAULT_SERVER, Health, getJson, parseConnect, saveSettings, settings } from "../api";
 
 export function Settings({ onClose, onSaved }: { onClose: () => void; onSaved: () => void }) {
@@ -19,6 +19,7 @@ export function Settings({ onClose, onSaved }: { onClose: () => void; onSaved: (
   const [busy, setBusy] = useState(false);
   const [scanning, setScanning] = useState(false);
   const [perm, requestPerm] = useCameraPermissions();
+  const handled = useRef(false); // onBarcodeScanned fires on every frame until the modal closes
 
   const test = async (srv = server, tok = token) => {
     setBusy(true); setStatus(null);
@@ -39,6 +40,7 @@ export function Settings({ onClose, onSaved }: { onClose: () => void; onSaved: (
 
   const scan = async () => {
     if (!perm?.granted && !(await requestPerm()).granted) return;
+    handled.current = false;
     setScanning(true);
   };
 
@@ -84,9 +86,16 @@ export function Settings({ onClose, onSaved }: { onClose: () => void; onSaved: (
         <View className="flex-1 bg-black">
           <CameraView style={{ flex: 1 }} facing="back" barcodeScannerSettings={{ barcodeTypes: ["qr"] }}
             onBarcodeScanned={({ data }) => {
+              if (handled.current) return;
               const c = parseConnect(data);
               if (!c) return;
-              setScanning(false); setServer(c.server); setToken(c.token); test(c.server, c.token);
+              handled.current = true;
+              setScanning(false);
+              // a QR code can point anywhere: recordings would go there, so the user confirms the address
+              Alert.alert("Mit diesem Server verbinden?", `${c.server}${c.token ? "\n(mit Token)" : ""}`, [
+                { text: "Abbrechen", style: "cancel" },
+                { text: "Verbinden", onPress: () => { setServer(c.server); setToken(c.token); test(c.server, c.token); } },
+              ]);
             }} />
           <View className="absolute bottom-10 left-0 right-0 gap-3 p-4">
             <Text className="text-center text-base text-white">QR-Code vom Laptop scannen</Text>

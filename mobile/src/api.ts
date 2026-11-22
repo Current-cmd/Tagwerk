@@ -31,7 +31,7 @@ export function parseConnect(text: string): Settings | null {
   return /^https?:\/\//.test(t) ? { server: t, token: "" } : null;
 }
 
-const headers = (): Record<string, string> => (current.token ? { Authorization: `Bearer ${current.token}` } : {});
+const headers = (token = current.token): Record<string, string> => (token ? { Authorization: `Bearer ${token}` } : {});
 
 /** A page URL to open in the browser (pages read the token from `?token=`). */
 export function pageUrl(path: string): string {
@@ -39,16 +39,16 @@ export function pageUrl(path: string): string {
   return current.token ? `${u}${u.includes("?") ? "&" : "?"}token=${encodeURIComponent(current.token)}` : u;
 }
 
-export async function getJson<T>(path: string, timeoutMs = 10000, server = current.server): Promise<T> {
+export async function getJson<T>(path: string, timeoutMs = 10000, server = current.server, token = current.token): Promise<T> {
   const ctl = new AbortController();
   const timer = setTimeout(() => ctl.abort(), timeoutMs);
   try {
-    const r = await fetch(`${server}${path}`, { headers: headers(), signal: ctl.signal });
+    const r = await fetch(`${server}${path}`, { headers: headers(token), signal: ctl.signal });
     const body = await r.json().catch(() => ({}));
-    if (!r.ok) throw new Error(body.detail || `HTTP ${r.status}`);
+    if (!r.ok) throw Object.assign(new Error(body.detail || `HTTP ${r.status}`), { status: r.status });
     return body as T;
   } catch (e: any) {
-    if (e?.name === "AbortError") throw new Error("Server antwortet nicht (Tailscale an?)");
+    if (e?.name === "AbortError") throw new Error("Keine Verbindung: Server antwortet nicht (Tailscale an?)");
     throw e;
   } finally {
     clearTimeout(timer);
@@ -70,7 +70,8 @@ export type MediaFile = { uri: string; name: string; type: string };
  * server starts processing; the promise resolves with the server's answer. */
 export async function postForm<T>(
   path: string, fields: Record<string, string | undefined>, files: MediaFile[],
-  onProgress?: (fraction: number) => void, onUploaded?: () => void, server = current.server,
+  onProgress?: (fraction: number) => void, onUploaded?: () => void, server = current.server, token = current.token,
+  timeoutMs = 15 * 60 * 1000, // upload + GPU processing of a long video; a dead connection must not hang the queue
 ): Promise<T> {
   const form = new FormData();
   for (const [k, v] of Object.entries(fields)) if (v !== undefined && v !== "") form.append(k, v);
@@ -81,7 +82,8 @@ export async function postForm<T>(
   return new Promise<T>((resolve, reject) => {
     const xhr = new XMLHttpRequest();
     xhr.open("POST", `${server}${path}`);
-    for (const [k, v] of Object.entries(headers())) xhr.setRequestHeader(k, v);
+    for (const [k, v] of Object.entries(headers(token))) xhr.setRequestHeader(k, v);
+    xhr.timeout = timeoutMs;
     xhr.upload.onprogress = (e) => e.lengthComputable && onProgress?.(e.loaded / e.total);
     xhr.upload.onload = () => { onProgress?.(1); onUploaded?.(); };
     xhr.onload = () => {
@@ -91,6 +93,8 @@ export async function postForm<T>(
       else reject(new Error(body.detail || `HTTP ${xhr.status}`));
     };
     xhr.onerror = () => reject(new Error("Keine Verbindung zum Server"));
+    xhr.ontimeout = () => reject(new Error("Keine Verbindung: Zeitüberschreitung"));
+    xhr.onabort = () => reject(new Error("Keine Verbindung: abgebrochen"));
     xhr.send(form);
   });
 }
@@ -98,15 +102,17 @@ export async function postForm<T>(
 /** Live pipeline steps from the API's websocket (`/events`). Returns a function that closes it. */
 export function listen(onMessage: (m: any) => void): () => void {
   let ws: WebSocket | null = null, closed = false, backoff = 1000;
+  let timer: ReturnType<typeof setTimeout> | null = null;
   const open = () => {
+    if (closed) return;
     const base = current.server.replace(/^http/, "ws");
     ws = new WebSocket(`${base}/events${current.token ? `?token=${encodeURIComponent(current.token)}` : ""}`);
     ws.onmessage = (ev) => { try { onMessage(JSON.parse(String(ev.data))); } catch { /* ignore */ } };
     ws.onopen = () => { backoff = 1000; };
-    ws.onclose = () => { if (!closed) setTimeout(open, backoff); backoff = Math.min(backoff * 2, 15000); };
+    ws.onclose = () => { if (!closed) timer = setTimeout(open, backoff); backoff = Math.min(backoff * 2, 15000); };
   };
   open();
-  return () => { closed = true; ws?.close(); };
+  return () => { closed = true; if (timer) clearTimeout(timer); ws?.close(); };
 }
 
 // ---------- response shapes (only the fields the app reads) ----------
@@ -120,7 +126,7 @@ export type Activity = {
 export type Change = { element_id: string; action: string; state: string; pct?: number; quote?: string; evidence?: string; activity_id?: string };
 export type Overview = {
   date: string;
-  kpi: { pct_actual: number; pct_planned: number; spi: number; delay_d: number; forecast_finish: string; open_defects?: number };
+  kpi: { pct_actual: number; pct_planned: number; spi: number | null; delay_d: number; forecast_finish: string | null; open_defects?: number };
   activities: Activity[];
   zones: { zone_id: string; name: string; elements: Element[] }[];
   proposals: { element_id: string; state: string; name?: string; quote?: string; capture_id?: string }[];
