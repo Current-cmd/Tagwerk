@@ -1,0 +1,12 @@
+{
+ "seconds": 8.07,
+ "fps": 30,
+ "width": 750,
+ "height": 1624,
+ "marks": {
+  "tap_heute": 0.7,
+  "proposal_visible": 0.87,
+  "tap_bestaetigen": 3.67,
+  "bar_moved": 3.86
+ }
+}

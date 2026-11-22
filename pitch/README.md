@@ -33,6 +33,20 @@ node scripts/make-vo.mjs --measure-only # after dropping real recordings (e.g. E
 
 Scene lengths stretch to fit each voice-over clip (`src/vo.json`).
 
+## 2-minute submission video
+
+Composition `Submission` (`video/src/Submission.tsx`), contract in `STORYBOARD-2min.md`. Shot times are fixed in
+`video/src/submission-timeline.json`; per-shot cuts, zooms and highlight boxes are in `REC` in `Submission.tsx`.
+
+```sh
+cd pitch/video
+npm run render:submission               # lists public/rec/*.mp4 into src/rec-manifest.json, then -> out/tagwerk-submission.mp4
+node scripts/make-submission-vo.mjs     # placeholder voice-over from vo/submission-lines.json (macOS `say`)
+node scripts/make-submission-vo.mjs --measure-only   # after dropping real clips into public/vo/sub-<id>.wav
+```
+
+A recording missing from `public/rec/` renders as a labelled placeholder. Script for ElevenLabs: `video/vo/SUBMISSION-ELEVENLABS.md`.
+
 ## Deck
 
 ```sh

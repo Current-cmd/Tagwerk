@@ -1,0 +1,15 @@
+{
+  "P1": "A construction site changes every hour. What happens is written into a site diary, from memory.",
+  "P2": "Diary, P6 schedule, GAEB bill of quantities and claims live in separate tools, with no shared key. An observation never reaches the schedule or the contract.",
+  "P3": "Tagwerk. Capture once on site, and it is linked to the schedule and the contract.",
+  "D1": "The site manager picks the zone and sends one note. Speech goes through Whisper; typed, as here, counts the same.",
+  "D2": "Tagwerk reads three facts: row A installed, two drywall workers sick, one defect.",
+  "D3": "On the dashboard the capture arrives live. Progress is confirmed, the absence lands on its activity, and the forecast moves the finish two working days.",
+  "D4": "Why? One click shows the cause, the contract position, and the recording behind it. Every percent traces back to a sentence.",
+  "D5": "Underneath is one graph. Contract position, activity, place, recording, event. Each observation is linked at the moment it is captured, in Neo4j.",
+  "D6": "One slider: past, today, forecast. Remaining work is re-simulated with the crews actually present.",
+  "D7": "The camera alone only proposes. A tap or a sentence confirms. States only go up.",
+  "D8": "The daily report writes itself, delays and causes included. The office gets exports for Primavera, GAEB and the calendar.",
+  "D9": "With a BIM model, the same loop runs on over two thousand elements.",
+  "T1": "Speech, vision and 3D run on one six-gigabyte GPU laptop. One project state, one graph, open exports. Tagwerk."
+}

@@ -4,7 +4,11 @@
   "scripts": {
     "studio": "remotion studio",
     "render": "remotion render TagwerkDemo out/tagwerk-demo.mp4",
-    "still": "remotion still TagwerkDemo out/still.png"
+    "still": "remotion still TagwerkDemo out/still.png",
+    "rec:manifest": "node scripts/make-rec-manifest.mjs",
+    "vo:submission": "node scripts/make-submission-vo.mjs",
+    "render:submission": "node scripts/make-rec-manifest.mjs && remotion render Submission out/tagwerk-submission.mp4",
+    "still:submission": "node scripts/make-rec-manifest.mjs && remotion still Submission"
   },
   "dependencies": {
     "@remotion/cli": "^4.0.545",

@@ -34,7 +34,7 @@ def test_seed_is_consistent(p):
 def test_history_rollup(p):
     assert p.activity_pct("A1020") == 100.0  # all rows removed
     assert p.activity_pct("A1010") == 100.0  # manual
-    assert 0 < p.activity_pct("A1080") < 50
+    assert 50 <= p.activity_pct("A1080") < 100  # three of six planned days done, on plan
 
 
 def test_budget_matches_hand_calculation(p):
@@ -74,7 +74,8 @@ def test_dashboard_contract(p):
     validate("dashboard", p.dashboard(TODAY))
     ov = p.overview(TODAY)
     assert ov["kpi"]["spi"] is not None and ov["kpi"]["delay_d"] >= 0
-    assert ov["curve"][-1]["ev"] is not None
+    assert next(c for c in ov["curve"] if c["date"] == TODAY.isoformat())["ev"] is not None
+    assert ov["curve"][-1]["ev"] is None  # the baseline ends after the data date: no earned value in the future
 
 
 def test_p6_and_gaeb_export_parse(p):
@@ -100,7 +101,12 @@ def test_history_has_only_valid_changes(p):
 def test_finished_activity_keeps_its_real_finish(p):
     fc = p.forecast(TODAY)
     assert fc["A1020"]["pct"] == 100 and fc["A1020"]["delay_d"] == 0  # initial snapshot = on plan
-    assert fc["A1040"]["pct"] == 100 and fc["A1040"]["forecast_finish"].isoformat() == "2026-11-24"
+    assert fc["A1040"]["pct"] == 100 and fc["A1040"]["forecast_finish"] == fc["A1040"]["baseline_finish"]
+    av = ["E-SCREEN", "E-PROJECTOR", "E-SPK-L", "E-SPK-R", "E-MIXER"]  # recorded finish: a day before the baseline
+    p.apply_structured(*_cap("c-av", [{"element_ids": av, "activity_id": "A1060", "state_proposed": "commissioned",
+                                       "evidence": "voice", "quote": "AV-Technik in Betrieb", "t": None}]))
+    done = p.forecast(TODAY)["A1060"]
+    assert done["pct"] == 100 and done["forecast_finish"].isoformat() == "2026-11-26" and done["delay_d"] == -1
 
 
 def test_repeated_absence_reports_do_not_add_up(p):

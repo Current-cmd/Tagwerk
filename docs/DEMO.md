@@ -2,6 +2,12 @@
 
 All commands in `~/Developer/hacka/Tagwerk`, with `export PYTHONPATH=$PWD`.
 
+## Seeded state (Hörsaal, data date 26.11.2026)
+The seed is on plan so that one sentence flips it: Ist 81.7 % / Soll 80 %, SPI 1.02, forecast = baseline 01.12.2026,
+no activity late. Bestuhlung neu (A1080) runs 23.-30.11., AV-Technik (A1060) 20.-27.11., Abnahme (A1090) on 01.12.
+"Stuhlreihe A ist montiert. Zwei Mann vom Trockenbau sind krank. Kratzer an der Bühne." gives: A1080 52.3 -> 57.8 %,
+finish 30.11. -> 02.12., Abnahme 01.12. -> 03.12. (+2 AT), cause "2 of 3 Trockenbau absent today", 2 open defects.
+
 ## Before the slot
 1. Plug in, disable suspend (a resume can break CUDA: `cuInit 999`; fix = stop gnome-remote-desktop,
    `sudo rmmod nvidia_uvm && sudo modprobe nvidia_uvm`).

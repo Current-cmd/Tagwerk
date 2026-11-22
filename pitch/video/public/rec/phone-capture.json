@@ -1,0 +1,14 @@
+{
+ "seconds": 10.2,
+ "fps": 30,
+ "width": 750,
+ "height": 1624,
+ "marks": {
+  "tap_zone": 0.9,
+  "tap_note": 1.77,
+  "type_start": 2.35,
+  "type_end": 7.78,
+  "tap_senden": 8.58,
+  "processed": 9.09
+ }
+}
