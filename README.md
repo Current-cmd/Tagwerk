@@ -1,3 +1,8 @@
+
+
+https://github.com/user-attachments/assets/f13b0387-5525-46e4-8874-902b3f160982
+
+[Tagwerk-Pitch.pptx](https://github.com/user-attachments/files/35236461/Tagwerk-Pitch.pptx)
 # Tagwerk
 
 The site manager walks the site, films and talks. Tagwerk turns that into:
