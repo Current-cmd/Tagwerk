@@ -67,10 +67,7 @@ The IFC design model is coloured by each element's state on the selected day: 3,
 ### Tagesbericht
 ![Daily report (Bautagebuch) generated from the day's recordings](docs/img/report.jpg)
 
-### Classic live graph with video replay
-The original element-level view (`/graph`). A replay plays the recording's video next to it, and each item lands on the graph about when it is said.
 
-![Element graph: GAEB, activities, elements coloured by %, zones](docs/img/graph-video.jpg)
 
 ## Architecture
 
@@ -115,9 +112,9 @@ docker compose up -d neo4j
 | 8080 | Hörsaal Sanierung (demo seed, no BIM; 10 activities, 15 GAEB positions) |
 | 8081 | Schependomlaan Nijmegen (real open BIM dataset; 2,082 elements, 100 tasks) |
 | 8082 | a scan project created from a video (`/scan`), e.g. `hackathon` |
-| 8100 | GPU worker |
 
-Port 8000 is Portainer on the laptop, so the API runs on 8080.
+
+
 
 **Pages:**
 - `/app`: the new UI, with Dashboard, Live-Graph, BIM-Modell, `#/scan/<cid>` and `#/report/<date>`.
@@ -210,10 +207,9 @@ GitHub Actions runs ruff, fixture validation and pytest on a CPU runner. It has 
 | `scripts/` | import, scan, replay, reset, IFC→BIM, plan history, checks |
 | `docs/` | `DEMO.md`, `UI-V2-CONTRACT.md`, reviews, release notes |
 
-## Licences to keep in mind
+## Licences
 
 - **RelateAnything:** AGPL-3.0, with weights under the DINOv3 licence.
 - **Schependomlaan dataset:** academic use.
 - **Partner and venue footage:** not for redistribution.
 
-Fine for the hackathon; revisit before any commercial use.
