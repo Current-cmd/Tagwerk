@@ -1,0 +1,12 @@
+{
+ "seconds": 10.17,
+ "fps": 30,
+ "width": 750,
+ "height": 1624,
+ "marks": {
+  "tap_bericht": 0.6,
+  "report_visible": 0.72,
+  "scroll_1": 3.32,
+  "scroll_2": 6.65
+ }
+}

@@ -1,0 +1,67 @@
+{
+  "P1": {
+    "file": "vo/sub-P1.wav",
+    "seconds": 6.21,
+    "words": 16
+  },
+  "P2": {
+    "file": "vo/sub-P2.wav",
+    "seconds": 11.99,
+    "words": 26
+  },
+  "P3": {
+    "file": "vo/sub-P3.wav",
+    "seconds": 5.14,
+    "words": 15
+  },
+  "D1": {
+    "file": "vo/sub-D1.wav",
+    "seconds": 7.28,
+    "words": 20
+  },
+  "D2": {
+    "file": "vo/sub-D2.wav",
+    "seconds": 6.44,
+    "words": 13
+  },
+  "D3": {
+    "file": "vo/sub-D3.wav",
+    "seconds": 9.26,
+    "words": 25
+  },
+  "D4": {
+    "file": "vo/sub-D4.wav",
+    "seconds": 8.04,
+    "words": 21
+  },
+  "D5": {
+    "file": "vo/sub-D5.wav",
+    "seconds": 10.72,
+    "words": 22
+  },
+  "D6": {
+    "file": "vo/sub-D6.wav",
+    "seconds": 7.48,
+    "words": 14
+  },
+  "D7": {
+    "file": "vo/sub-D7.wav",
+    "seconds": 6.72,
+    "words": 15
+  },
+  "D8": {
+    "file": "vo/sub-D8.wav",
+    "seconds": 8.52,
+    "words": 19
+  },
+  "D9": {
+    "file": "vo/sub-D9.wav",
+    "seconds": 3.87,
+    "words": 13
+  },
+  "T1": {
+    "file": "vo/sub-T1.wav",
+    "seconds": 9.61,
+    "words": 18
+  }
+}

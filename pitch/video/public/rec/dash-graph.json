@@ -1,0 +1,20 @@
+{
+ "seconds": 18.47,
+ "marks": {
+  "hover_recording": 2.63,
+  "click_recording": 3.63,
+  "hover_event_absence": 6.33,
+  "hover_event_defect": 8.2,
+  "hover_activity": 10.61,
+  "hover_gaeb": 13.13,
+  "click_activity": 16.05,
+  "sheet_open": 16.59
+ },
+ "capture": {
+  "captured_frames": 364,
+  "distinct_frames_in_output": 197,
+  "capture_fps_avg": 21.9,
+  "fps_while_changing": 60,
+  "longest_still_s": 1.51
+ }
+}

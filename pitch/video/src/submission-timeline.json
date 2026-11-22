@@ -1,0 +1,19 @@
+{
+  "fps": 30,
+  "voLead": 0.2,
+  "shots": [
+    {"id": "P1", "start": 0, "end": 8.5, "rec": null, "title": "Problem: a site changes every hour"},
+    {"id": "P2", "start": 8.5, "end": 21.5, "rec": null, "title": "Problem: four tools, no shared key"},
+    {"id": "P3", "start": 21.5, "end": 28.5, "rec": null, "title": "Tagwerk in one line"},
+    {"id": "D1", "start": 28.5, "end": 38, "rec": "phone-capture", "title": "Phone: capture"},
+    {"id": "D2", "start": 38, "end": 45, "rec": "phone-result", "title": "Phone: result card"},
+    {"id": "D3", "start": 45, "end": 57, "rec": "dash-flip", "title": "Dashboard: capture arrives, forecast flips"},
+    {"id": "D4", "start": 57, "end": 67, "rec": "dash-trace", "title": "Dashboard: trace the delay"},
+    {"id": "D5", "start": 67, "end": 79, "rec": "dash-graph", "title": "Live graph: ontology"},
+    {"id": "D6", "start": 79, "end": 87, "rec": "dash-forecast", "title": "Day slider: forecast"},
+    {"id": "D7", "start": 87, "end": 95, "rec": "phone-confirm", "title": "Phone: confirm proposal"},
+    {"id": "D8", "start": 95, "end": 104, "rec": "dash-report", "title": "Daily report and exports"},
+    {"id": "D9", "start": 104, "end": 109, "rec": "dash-bim", "title": "BIM model"},
+    {"id": "T1", "start": 109, "end": 120, "rec": null, "title": "Architecture and close"}
+  ]
+}

@@ -89,7 +89,7 @@ def test_day_past_uses_history_up_to_that_day(client):
     assert starts == sorted(starts) and len(starts) == 10
     a24 = {a["id"]: a for a in d24["activities"]}
     a25 = {a["id"]: a for a in d25["activities"]}
-    assert a24["A1080"]["pct"] < a25["A1080"]["pct"]  # rows D/E substructure only on the 25th
+    assert a24["A1080"]["pct"] < a25["A1080"]["pct"]  # rows D/E installed, B-D checked only on the 25th
     assert all(e["date"] <= "2026-11-24" for e in d24["events"])
     assert not any("Reihe F" in e["text"] for e in d24["events"])
     assert any("Reihe F" in e["text"] for e in d25["events"])
@@ -104,8 +104,8 @@ def test_day_past_uses_history_up_to_that_day(client):
     assert rec["capture_id"] == "hist-1125-a" and rec["time"] == "08:20" and rec["zone_name"] == "Zuschauerraum"
     ch = next(c for c in rec["changes"] if c["element_id"] == "E-ROW-D")
     assert ch == {"element_id": "E-ROW-D", "element_name": ch["element_name"], "action": "confirmed",
-                  "state": "substructure", "activity_id": "A1080", "activity_name": "Bestuhlung neu",
-                  "quote": "Unterkonstruktion Reihe D und E", "evidence": "voice"}
+                  "state": "installed", "activity_id": "A1080", "activity_name": "Bestuhlung neu",
+                  "quote": "Reihe D und E montiert", "evidence": "voice"}
 
 
 def test_day_today_after_typed_note(client):

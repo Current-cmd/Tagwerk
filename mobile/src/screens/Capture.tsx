@@ -10,7 +10,7 @@ import { RecordingPresets, requestRecordingPermissionsAsync, setAudioModeAsync, 
 import * as ImagePicker from "expo-image-picker";
 import { Camera, Images, Mic, Send, Square, Video, WifiOff, X } from "lucide-react-native";
 import React, { useState } from "react";
-import { Pressable, ScrollView, View } from "react-native";
+import { Platform, Pressable, ScrollView, View } from "react-native";
 import { MediaFile, Zone } from "../api";
 import { JobCard } from "../JobCard";
 import { Job, enqueue, newId } from "../queue";
@@ -125,7 +125,8 @@ export function Capture({ zones, jobs, names, toast, online, openSettings }: {
         <Icon as={Images} className="size-4" /><Text>Aus Galerie wählen</Text>
       </Button>
 
-      <Textarea value={note} onChangeText={setNote} className="mt-2 text-base"
+      {/* web: the field grows with the text like on the phone (Tailwind 3 has no field-sizing class) */}
+      <Textarea value={note} onChangeText={setNote} className="mt-2 text-base" style={Platform.OS === "web" ? ({ fieldSizing: "content" } as any) : undefined}
         placeholder="Notiz (optional), z. B. „Estrich Saal fertig, 2 Mann krank“" />
 
       {draft.length > 0 && (

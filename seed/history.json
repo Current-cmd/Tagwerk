@@ -10,23 +10,24 @@
    "E-ROW-F": "removed",
    "E-ROW-G": "removed",
    "E-ROW-H": "removed",
-   "E-FLOOR-AUD": "covered",
-   "E-FLOOR-STAGE": "levelled",
-   "E-PANELS-E": "installed",
-   "E-PANELS-W": "installed",
-   "E-CEILING": "installed",
-   "E-TRUSS-1": "wired",
-   "E-TRUSS-2": "mounted",
-   "E-EMLIGHT": "wired",
+   "E-FLOOR-AUD": "done",
+   "E-FLOOR-STAGE": "done",
+   "E-PANELS-E": "checked",
+   "E-PANELS-W": "checked",
+   "E-CEILING": "checked",
+   "E-TRUSS-1": "tested",
+   "E-TRUSS-2": "tested",
+   "E-EMLIGHT": "tested",
    "E-CABLETRAY": "checked",
-   "E-STAGE": "boarded",
-   "E-STAGE-STAIRS": "installed",
-   "E-CURTAIN": "started",
-   "E-LECTERN": "installed",
-   "E-WALL-N": "primed",
-   "E-WALL-E": "primed",
-   "E-WALL-W": "prepared",
-   "E-WALL-S": "prepared"
+   "E-STAGE": "finished",
+   "E-STAGE-STAIRS": "checked",
+   "E-CURTAIN": "checked",
+   "E-LECTERN": "checked",
+   "E-WALL-N": "done",
+   "E-WALL-E": "done",
+   "E-WALL-W": "done",
+   "E-WALL-S": "done",
+   "E-SCREEN": "mounted"
   },
   "manual_pct": {
    "A1010": 100
@@ -477,10 +478,6 @@
        {
         "trade": "Trockenbau",
         "count": 3
-       },
-       {
-        "trade": "Maler",
-        "count": 2
        }
       ],
       "absences": [],
@@ -488,24 +485,15 @@
       "work_done": [
        {
         "element_ids": [
-         "E-PANELS-E",
-         "E-PANELS-W"
-        ],
-        "activity_id": "A1040",
-        "state_proposed": "checked",
-        "evidence": "voice",
-        "quote": "Akustikpaneele links und rechts abgenommen",
-        "t": null
-       },
-       {
-        "element_ids": [
          "E-ROW-A",
-         "E-ROW-B"
+         "E-ROW-B",
+         "E-ROW-C",
+         "E-ROW-D"
         ],
         "activity_id": "A1080",
         "state_proposed": "substructure",
         "evidence": "voice",
-        "quote": "Unterkonstruktion Reihe A und B steht",
+        "quote": "Unterkonstruktion Reihe A bis D steht",
         "t": null
        }
       ],
@@ -522,10 +510,6 @@
      "structured": {
       "labour_present": [
        {
-        "trade": "Elektro",
-        "count": 2
-       },
-       {
         "trade": "AV-Technik",
         "count": 2
        }
@@ -535,32 +519,12 @@
       "work_done": [
        {
         "element_ids": [
-         "E-WALL-N"
-        ],
-        "activity_id": "A1070",
-        "state_proposed": "painted",
-        "evidence": "voice",
-        "quote": "Bühnenwand gestrichen",
-        "t": null
-       },
-       {
-        "element_ids": [
-         "E-TRUSS-2"
-        ],
-        "activity_id": "A1050",
-        "state_proposed": "wired",
-        "evidence": "voice",
-        "quote": "Hintere Traverse verkabelt",
-        "t": null
-       },
-       {
-        "element_ids": [
-         "E-SCREEN"
+         "E-PROJECTOR"
         ],
         "activity_id": "A1060",
         "state_proposed": "mounted",
         "evidence": "voice",
-        "quote": "Leinwand hängt",
+        "quote": "Beamer montiert",
         "t": null
        }
       ],
@@ -584,14 +548,6 @@
        {
         "trade": "Trockenbau",
         "count": 3
-       },
-       {
-        "trade": "Maler",
-        "count": 2
-       },
-       {
-        "trade": "Bodenleger",
-        "count": 1
        }
       ],
       "absences": [],
@@ -605,63 +561,23 @@
       "work_done": [
        {
         "element_ids": [
-         "E-WALL-E"
-        ],
-        "activity_id": "A1070",
-        "state_proposed": "painted",
-        "evidence": "voice",
-        "quote": "Ostwand fertig gestrichen",
-        "t": null
-       },
-       {
-        "element_ids": [
-         "E-WALL-W",
-         "E-WALL-S"
-        ],
-        "activity_id": "A1070",
-        "state_proposed": "primed",
-        "evidence": "voice",
-        "quote": "West- und Rückwand grundiert",
-        "t": null
-       },
-       {
-        "element_ids": [
-         "E-CEILING"
-        ],
-        "activity_id": "A1040",
-        "state_proposed": "checked",
-        "evidence": "voice",
-        "quote": "Decke abgenommen",
-        "t": null
-       },
-       {
-        "element_ids": [
-         "E-FLOOR-AUD"
-        ],
-        "activity_id": "A1030",
-        "state_proposed": "done",
-        "evidence": "voice",
-        "quote": "Teppich im Saal fertig",
-        "t": null
-       },
-       {
-        "element_ids": [
-         "E-ROW-B"
+         "E-ROW-B",
+         "E-ROW-C"
         ],
         "activity_id": "A1080",
         "state_proposed": "installed",
         "evidence": "voice",
-        "quote": "Reihe B montiert",
+        "quote": "Reihe B und C montiert",
         "t": null
        },
        {
         "element_ids": [
-         "E-ROW-C"
+         "E-ROW-E"
         ],
         "activity_id": "A1080",
         "state_proposed": "substructure",
         "evidence": "voice",
-        "quote": "Reihe C Unterkonstruktion",
+        "quote": "Reihe E Unterkonstruktion",
         "t": null
        }
       ],
@@ -678,14 +594,6 @@
      "structured": {
       "labour_present": [
        {
-        "trade": "Tischler",
-        "count": 2
-       },
-       {
-        "trade": "Elektro",
-        "count": 2
-       },
-       {
         "trade": "AV-Technik",
         "count": 2
        }
@@ -695,42 +603,23 @@
       "work_done": [
        {
         "element_ids": [
-         "E-STAGE"
+         "E-SCREEN"
         ],
-        "activity_id": "A1065",
-        "state_proposed": "finished",
+        "activity_id": "A1060",
+        "state_proposed": "connected",
         "evidence": "voice",
-        "quote": "Bühne fertig",
+        "quote": "Leinwand angeschlossen",
         "t": null
        },
        {
         "element_ids": [
-         "E-FLOOR-STAGE"
-        ],
-        "activity_id": "A1030",
-        "state_proposed": "covered",
-        "evidence": "voice",
-        "quote": "Bühnenboden versiegelt",
-        "t": null
-       },
-       {
-        "element_ids": [
-         "E-TRUSS-1"
-        ],
-        "activity_id": "A1050",
-        "state_proposed": "tested",
-        "evidence": "voice",
-        "quote": "Vordere Traverse getestet",
-        "t": null
-       },
-       {
-        "element_ids": [
-         "E-PROJECTOR"
+         "E-SPK-L",
+         "E-SPK-R"
         ],
         "activity_id": "A1060",
         "state_proposed": "mounted",
         "evidence": "voice",
-        "quote": "Beamer montiert",
+        "quote": "Lautsprecher links und rechts hängen",
         "t": null
        }
       ],
@@ -754,10 +643,6 @@
        {
         "trade": "Trockenbau",
         "count": 3
-       },
-       {
-        "trade": "Maler",
-        "count": 2
        }
       ],
       "absences": [],
@@ -765,38 +650,36 @@
       "work_done": [
        {
         "element_ids": [
-         "E-WALL-W",
-         "E-WALL-S"
-        ],
-        "activity_id": "A1070",
-        "state_proposed": "painted",
-        "evidence": "voice",
-        "quote": "Westwand und Rückwand gestrichen",
-        "t": null
-       },
-       {
-        "element_ids": [
          "E-ROW-D",
          "E-ROW-E"
         ],
         "activity_id": "A1080",
-        "state_proposed": "substructure",
+        "state_proposed": "installed",
         "evidence": "voice",
-        "quote": "Unterkonstruktion Reihe D und E",
+        "quote": "Reihe D und E montiert",
         "t": null
        },
        {
         "element_ids": [
-         "E-WALL-N",
-         "E-WALL-E",
-         "E-WALL-W",
-         "E-WALL-S"
+         "E-ROW-B",
+         "E-ROW-C",
+         "E-ROW-D"
         ],
-        "activity_id": "A1070",
-        "state_proposed": "done",
+        "activity_id": "A1080",
+        "state_proposed": "checked",
         "evidence": "voice",
-        "quote": "Malerarbeiten im Saal fertig",
+        "quote": "Reihen B bis D abgenommen",
         "t": null
+       },
+       {
+        "element_ids": [
+         "E-ROW-F"
+        ],
+        "activity_id": "A1080",
+        "state_proposed": "substructure",
+        "evidence": "vision",
+        "quote": "Kamera: Unterkonstruktion Reihe F im Bild",
+        "t": 12.0
        }
       ],
       "special_events": [
@@ -824,88 +707,11 @@
        {
         "trade": "Elektro",
         "count": 1
-       },
-       {
-        "trade": "Tischler",
-        "count": 1
        }
       ],
       "absences": [],
       "material_delivered": [],
       "work_done": [
-       {
-        "element_ids": [
-         "E-SCREEN"
-        ],
-        "activity_id": "A1060",
-        "state_proposed": "connected",
-        "evidence": "voice",
-        "quote": "Leinwand angeschlossen",
-        "t": null
-       },
-       {
-        "element_ids": [
-         "E-SPK-L",
-         "E-SPK-R"
-        ],
-        "activity_id": "A1060",
-        "state_proposed": "mounted",
-        "evidence": "voice",
-        "quote": "Lautsprecher links und rechts hängen",
-        "t": null
-       },
-       {
-        "element_ids": [
-         "E-CURTAIN"
-        ],
-        "activity_id": "A1065",
-        "state_proposed": "installed",
-        "evidence": "voice",
-        "quote": "Vorhang montiert",
-        "t": null
-       },
-       {
-        "element_ids": [
-         "E-EMLIGHT"
-        ],
-        "activity_id": "A1050",
-        "state_proposed": "tested",
-        "evidence": "voice",
-        "quote": "Notbeleuchtung getestet",
-        "t": null
-       },
-       {
-        "element_ids": [
-         "E-FLOOR-STAGE"
-        ],
-        "activity_id": "A1030",
-        "state_proposed": "done",
-        "evidence": "voice",
-        "quote": "Bühnenboden fertig",
-        "t": null
-       },
-       {
-        "element_ids": [
-         "E-STAGE-STAIRS",
-         "E-LECTERN",
-         "E-CURTAIN"
-        ],
-        "activity_id": "A1065",
-        "state_proposed": "checked",
-        "evidence": "voice",
-        "quote": "Treppe, Pult und Vorhang abgenommen",
-        "t": null
-       },
-       {
-        "element_ids": [
-         "E-TRUSS-2"
-        ],
-        "activity_id": "A1050",
-        "state_proposed": "tested",
-        "evidence": "voice",
-        "quote": "Hintere Traverse getestet",
-        "t": null
-       },
        {
         "element_ids": [
          "E-PROJECTOR"
@@ -914,6 +720,16 @@
         "state_proposed": "connected",
         "evidence": "voice",
         "quote": "Beamer angeschlossen",
+        "t": null
+       },
+       {
+        "element_ids": [
+         "E-MIXER"
+        ],
+        "activity_id": "A1060",
+        "state_proposed": "mounted",
+        "evidence": "voice",
+        "quote": "Mischpult montiert",
         "t": null
        }
       ],

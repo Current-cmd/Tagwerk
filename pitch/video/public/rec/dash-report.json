@@ -1,0 +1,22 @@
+{
+ "seconds": 20.67,
+ "marks": {
+  "click_report": 1.86,
+  "report_open": 2.67,
+  "cursor_labour": 4.68,
+  "scrolled_work_done": 7.78,
+  "cursor_work_done": 8.5,
+  "scrolled_bottom": 11.71,
+  "cursor_incidents": 12.53,
+  "cursor_delays": 14.55,
+  "scrolled_top": 17.68,
+  "cursor_print": 18.7
+ },
+ "capture": {
+  "captured_frames": 504,
+  "distinct_frames_in_output": 280,
+  "capture_fps_avg": 27,
+  "fps_while_changing": 60,
+  "longest_still_s": 1.87
+ }
+}

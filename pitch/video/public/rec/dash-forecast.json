@@ -1,0 +1,20 @@
+{
+ "seconds": 18.43,
+ "marks": {
+  "back_1": 2.05,
+  "back_2": 2.98,
+  "back_3": 3.9,
+  "drag_start": 6.34,
+  "past_today": 7.5,
+  "at_forecast": 9.2,
+  "forward_1": 12.39,
+  "click_heute": 15.44
+ },
+ "capture": {
+  "captured_frames": 630,
+  "distinct_frames_in_output": 322,
+  "capture_fps_avg": 37.1,
+  "fps_while_changing": 60,
+  "longest_still_s": 1.77
+ }
+}

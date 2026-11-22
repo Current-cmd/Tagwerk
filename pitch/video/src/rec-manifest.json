@@ -1,0 +1,137 @@
+{
+  "phone-capture": {
+    "exists": true,
+    "seconds": 10.2,
+    "width": 750,
+    "height": 1624,
+    "marks": {
+      "tap_zone": 0.9,
+      "tap_note": 1.77,
+      "type_start": 2.35,
+      "type_end": 7.78,
+      "tap_senden": 8.58,
+      "processed": 9.09
+    }
+  },
+  "phone-result": {
+    "exists": true,
+    "seconds": 7.37,
+    "width": 750,
+    "height": 1624,
+    "marks": {
+      "swipe": 0.35,
+      "result_visible": 1.75
+    }
+  },
+  "phone-confirm": {
+    "exists": true,
+    "seconds": 8.07,
+    "width": 750,
+    "height": 1624,
+    "marks": {
+      "tap_heute": 0.7,
+      "proposal_visible": 0.87,
+      "tap_bestaetigen": 3.67,
+      "bar_moved": 3.86
+    }
+  },
+  "dash-flip": {
+    "exists": true,
+    "seconds": 18.53,
+    "width": 1920,
+    "height": 1080,
+    "marks": {
+      "capture_posted": 2.88,
+      "kpi_red": 3.35,
+      "cursor_kpi": 5.76,
+      "cursor_gantt_bestuhlung": 8.06,
+      "cursor_gantt_abnahme": 11,
+      "cursor_event_absence": 12.71,
+      "cursor_event_defect": 14.53,
+      "cursor_recording": 16.75
+    }
+  },
+  "dash-trace": {
+    "exists": true,
+    "seconds": 16.53,
+    "width": 1920,
+    "height": 1080,
+    "marks": {
+      "click_activity": 2.02,
+      "sheet_open": 2.59,
+      "cursor_delay": 3.7,
+      "cursor_cause": 5.12,
+      "cursor_gaeb": 7.35,
+      "cursor_recording": 10.23,
+      "click_recording": 11.03,
+      "recording_open": 11.82
+    }
+  },
+  "dash-graph": {
+    "exists": true,
+    "seconds": 18.47,
+    "width": 1920,
+    "height": 1080,
+    "marks": {
+      "hover_recording": 2.63,
+      "click_recording": 3.63,
+      "hover_event_absence": 6.33,
+      "hover_event_defect": 8.2,
+      "hover_activity": 10.61,
+      "hover_gaeb": 13.13,
+      "click_activity": 16.05,
+      "sheet_open": 16.59
+    }
+  },
+  "dash-forecast": {
+    "exists": true,
+    "seconds": 18.43,
+    "width": 1920,
+    "height": 1080,
+    "marks": {
+      "back_1": 2.05,
+      "back_2": 2.98,
+      "back_3": 3.9,
+      "drag_start": 6.34,
+      "past_today": 7.5,
+      "at_forecast": 9.2,
+      "forward_1": 12.39,
+      "click_heute": 15.44
+    }
+  },
+  "dash-report": {
+    "exists": true,
+    "seconds": 20.67,
+    "width": 1920,
+    "height": 1080,
+    "marks": {
+      "click_report": 1.86,
+      "report_open": 2.67,
+      "cursor_labour": 4.68,
+      "scrolled_work_done": 7.78,
+      "cursor_work_done": 8.5,
+      "scrolled_bottom": 11.71,
+      "cursor_incidents": 12.53,
+      "cursor_delays": 14.55,
+      "scrolled_top": 17.68,
+      "cursor_print": 18.7
+    }
+  },
+  "dash-bim": {
+    "exists": true,
+    "seconds": 97.13,
+    "width": 1920,
+    "height": 1080,
+    "marks": {
+      "play_pressed": 2.27,
+      "date_2015-02-23": 4.09,
+      "date_2015-03-02": 7.97,
+      "date_2015-04-01": 26.27,
+      "date_2015-05-01": 44.33,
+      "date_2015-06-01": 61.74,
+      "date_2015-07-01": 80.21,
+      "date_2015-07-24": 94.34,
+      "paused": 95.14
+    }
+  }
+}

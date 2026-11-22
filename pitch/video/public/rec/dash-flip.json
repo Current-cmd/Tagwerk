@@ -1,0 +1,19 @@
+{
+ "seconds": 18.53,
+ "marks": {
+  "capture_posted": 2.88,
+  "kpi_red": 3.35,
+  "cursor_kpi": 5.76,
+  "cursor_gantt_bestuhlung": 8.06,
+  "cursor_gantt_abnahme": 11,
+  "cursor_event_absence": 12.71,
+  "cursor_event_defect": 14.53,
+  "cursor_recording": 16.75
+ },
+ "capture": {
+  "captured_frames": 373,
+  "distinct_frames_in_output": 201,
+  "capture_fps_avg": 22.1,
+  "longest_gap_s": 1.43
+ }
+}

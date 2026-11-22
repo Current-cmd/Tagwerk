@@ -1,0 +1,361 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Tagwerk: capture once, linked to schedule and contract</title>
+<style>
+@font-face { font-family: Geist; src: url(fonts/geist-latin.woff2) format("woff2"); font-weight: 100 900;
+  unicode-range: U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD; }
+@font-face { font-family: Geist; src: url(fonts/geist-latin-ext.woff2) format("woff2"); font-weight: 100 900;
+  unicode-range: U+0100-02BA, U+02BD-02C5, U+02C7-02CC, U+02CE-02D7, U+02DD-02FF, U+1E00-1E9F, U+1EF2-1EFF, U+2020, U+20A0-20AB, U+20AD-20C0, U+2113, U+2C60-2C7F, U+A720-A7FF; }
+@page { size: 1920px 1080px; margin: 0; }
+:root {
+  --ink: #0A0A0A; --text: #262626; --muted: #525252; --faint: #737373; --line: #E5E5E5; --soft: #F5F5F5;
+  --blue: #2563EB; --green: #16A34A; --amber: #F59E0B; --red: #DC2626;
+  --blue-bg: #EFF6FF; --green-bg: #F0FDF4; --amber-bg: #FFFBEB; --red-bg: #FEF2F2;
+  --amber-ink: #92400E; --mono: "SF Mono", Menlo, monospace;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { background: #fff; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+body { font-family: Geist, "Helvetica Neue", Arial, sans-serif; color: var(--text); font-size: 28px; line-height: 1.35; }
+.slide { width: 1920px; height: 1080px; padding: 84px 96px 0; position: relative; overflow: hidden; break-after: page; background: #fff; }
+.slide:last-child { break-after: auto; }
+.kicker { display: flex; align-items: center; gap: 14px; font-size: 22px; font-weight: 600; color: var(--blue); letter-spacing: .06em; text-transform: uppercase; }
+.kicker svg { width: 34px; height: 34px; }
+h1 { font-size: 60px; line-height: 1.1; font-weight: 700; color: var(--ink); letter-spacing: -.02em; margin-top: 22px; }
+.lead { font-size: 30px; color: var(--muted); margin-top: 18px; max-width: 1500px; }
+.foot { position: absolute; left: 96px; right: 96px; bottom: 34px; display: flex; justify-content: space-between; font-size: 20px; color: var(--faint); }
+.card { border: 1px solid var(--line); border-radius: 10px; background: #fff; padding: 24px 26px; }
+.card h3 { font-size: 30px; line-height: 1.2; color: var(--ink); font-weight: 650; }
+.card p, .card li { font-size: 25px; color: var(--muted); }
+.small { font-size: 22px; color: var(--faint); }
+.mono { font-family: var(--mono); font-size: .88em; }
+b { color: var(--ink); font-weight: 650; }
+.g { color: var(--green); } .r { color: var(--red); } .a { color: var(--amber-ink); } .bl { color: var(--blue); }
+ul.plain { list-style: none; }
+ul.dots { list-style: none; }
+ul.dots li { position: relative; padding-left: 30px; margin-top: 14px; }
+ul.dots li::before { content: ""; position: absolute; left: 4px; top: .55em; width: 10px; height: 10px; border-radius: 50%; background: var(--ink); }
+.shot { border: 1px solid #D4D4D4; border-radius: 10px; overflow: hidden; background: #fff; }
+.shot img { display: block; width: 100%; height: auto; }
+.missing { display: flex; align-items: center; justify-content: center; text-align: center; border: 2px dashed #A3A3A3; color: var(--faint); font-size: 20px; font-family: var(--mono); background: var(--soft); width: 100%; height: 100%; padding: 12px; }
+.pill { display: inline-block; border-radius: 999px; padding: 4px 16px; font-size: 22px; font-weight: 600; }
+.pill.g { background: var(--green-bg); border: 1px solid #86EFAC; color: #166534; }
+.pill.a { background: var(--amber-bg); border: 1px solid #FCD34D; color: var(--amber-ink); }
+.pill.r { background: var(--red-bg); border: 1px solid #FCA5A5; color: #991B1B; }
+.pill.b { background: var(--blue-bg); border: 1px solid #93C5FD; color: #1E40AF; }
+
+/* 1 problem */
+.s1 .cols { display: grid; grid-template-columns: 1fr 470px; gap: 72px; }
+.s1 .photo { position: absolute; right: 96px; top: 84px; width: 470px; height: 836px; border-radius: 10px; overflow: hidden; }
+.s1 .photo img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.s1 .photo span { position: absolute; left: 0; right: 0; bottom: 0; padding: 60px 20px 16px; color: #fff; font-size: 22px; background: linear-gradient(transparent, rgba(0,0,0,.75)); }
+.s1 .left { width: 1186px; }
+.tools { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0; margin-top: 44px; align-items: stretch; }
+.tool { border: 1px solid var(--line); border-radius: 10px; padding: 20px 22px; margin-right: 44px; position: relative; background: #fff; }
+.tool:last-child { margin-right: 0; }
+.tool h3 { font-size: 28px; color: var(--ink); font-weight: 650; }
+.tool p { font-size: 22px; color: var(--muted); margin-top: 6px; line-height: 1.3; }
+.tool .key { margin-top: 12px; font-family: var(--mono); font-size: 20px; color: var(--ink); background: var(--soft); border-radius: 6px; padding: 4px 10px; display: inline-block; }
+.tool:not(:last-child)::after { content: "×"; position: absolute; right: -35px; top: 50%; transform: translateY(-50%); color: var(--red); font-size: 34px; font-weight: 700; }
+.nokey { margin-top: 26px; border-left: 6px solid var(--red); background: var(--red-bg); padding: 16px 24px; font-size: 28px; color: var(--ink); border-radius: 0 10px 10px 0; }
+
+/* 2 solution */
+.loop { display: grid; grid-template-columns: repeat(5, 1fr); gap: 46px; margin-top: 36px; }
+.step { border: 1px solid var(--line); border-radius: 10px; padding: 20px 22px 22px; position: relative; }
+.step .n { font-size: 20px; font-weight: 700; color: #fff; background: var(--ink); width: 36px; height: 36px; border-radius: 50%; display: flex; align-items: center; justify-content: center; }
+.step h3 { font-size: 32px; color: var(--ink); margin-top: 14px; font-weight: 650; }
+.step p { font-size: 23px; color: var(--muted); margin-top: 8px; line-height: 1.32; }
+.step:not(:last-child)::after { content: ""; position: absolute; right: -38px; top: 50%; width: 28px; height: 28px; transform: translateY(-50%);
+  background: no-repeat center/contain url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%230A0A0A' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M4 12h16M14 6l6 6-6 6'/%3E%3C/svg%3E"); }
+.step.first { border-color: var(--blue); border-width: 2px; }
+.back { margin-top: 0; height: 64px; position: relative; }
+.back svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+.back span { position: absolute; left: 50%; top: 40px; transform: translate(-50%, -50%); background: #fff; padding: 0 18px; font-size: 23px; color: var(--muted); white-space: nowrap; }
+.story { margin-top: 26px; display: grid; grid-template-columns: 560px 1fr; gap: 40px; align-items: stretch; }
+.quote { background: var(--ink); color: #fff; border-radius: 10px; padding: 28px 32px; font-size: 34px; line-height: 1.32; font-weight: 500; }
+.quote small { display: block; font-size: 21px; color: #A3A3A3; font-weight: 400; margin-bottom: 10px; letter-spacing: .04em; text-transform: uppercase; }
+.results { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+.res { border-radius: 10px; padding: 16px 22px; font-size: 25px; line-height: 1.3; border: 1px solid var(--line); border-left-width: 8px; color: var(--text); }
+.res b { display: block; font-size: 27px; }
+.res.g { border-left-color: var(--green); } .res.a { border-left-color: var(--amber); } .res.r { border-left-color: var(--red); }
+
+/* 3 ontology */
+.chain { position: relative; width: 1728px; height: 462px; margin-top: 34px; }
+.chain svg { position: absolute; inset: 0; }
+.node { position: absolute; width: 240px; border: 2px solid var(--ink); border-radius: 10px; background: #fff; padding: 12px 16px 14px; font-size: 22px; line-height: 1.25; color: var(--text); }
+.node .t { font-size: 17px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; color: var(--faint); display: block; margin-bottom: 4px; }
+.node b { font-size: 24px; display: block; }
+.node.red { border-color: var(--red); background: var(--red-bg); }
+.node.green { border-color: var(--green); background: var(--green-bg); }
+.node.blue { border-color: var(--blue); background: var(--blue-bg); }
+.node.amber { border-color: var(--amber); background: var(--amber-bg); }
+.node.prop { border-color: var(--amber); border-style: dashed; }
+.node.grey { border-color: #A3A3A3; }
+.elabel { position: absolute; font-size: 17px; font-weight: 600; color: var(--muted); background: #fff; padding: 0 5px; white-space: nowrap; transform: translate(-50%, -50%); }
+.facts { display: grid; grid-template-columns: repeat(3, 1fr); gap: 28px; margin-top: 26px; }
+.facts .card { padding: 18px 24px; }
+.facts .card p { font-size: 24px; line-height: 1.32; }
+
+/* 4 product */
+.prod { display: grid; grid-template-columns: 794px 876px; gap: 58px; margin-top: 34px; }
+.phones { display: grid; grid-template-columns: repeat(3, 250px); gap: 22px; }
+.phone { width: 250px; height: 541px; border: 5px solid var(--ink); border-radius: 30px; overflow: hidden; background: #fff; }
+.phone img { width: 100%; height: 100%; object-fit: cover; object-position: top; display: block; }
+.cap { font-size: 22px; color: var(--muted); margin-top: 12px; line-height: 1.3; }
+.cap b { display: block; font-size: 24px; }
+.crops { display: grid; grid-template-columns: 375px 485px; gap: 16px; margin-top: 14px; }
+.role { font-size: 22px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; color: var(--faint); margin-bottom: 12px; }
+
+/* 5 architecture */
+.flow { display: grid; grid-template-columns: repeat(5, 1fr); gap: 44px; margin-top: 48px; }
+.box { border: 1px solid var(--line); border-radius: 10px; padding: 18px 20px 20px; position: relative; background: #fff; }
+.box .t { font-size: 18px; font-weight: 700; letter-spacing: .07em; text-transform: uppercase; color: var(--faint); }
+.box h3 { font-size: 29px; color: var(--ink); font-weight: 650; margin-top: 2px; line-height: 1.2; }
+.box ul { list-style: none; margin-top: 10px; }
+.box li { font-size: 22px; color: var(--muted); line-height: 1.3; margin-top: 5px; }
+.flow .box:not(:last-child)::after { content: ""; position: absolute; right: -37px; top: 50%; width: 28px; height: 28px; transform: translateY(-50%);
+  background: no-repeat center/contain url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%230A0A0A' stroke-width='2.4' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M4 12h16M14 6l6 6-6 6'/%3E%3C/svg%3E"); }
+.box.gpu { border: 2px solid var(--ink); }
+.box.state { border: 2px solid var(--blue); background: var(--blue-bg); }
+.fan { height: 56px; position: relative; }
+.fan svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+.outs { display: grid; grid-template-columns: repeat(4, 1fr); gap: 28px; }
+.outs .box { padding: 14px 20px 16px; }
+.outs .box h3 { font-size: 27px; }
+.strip { display: grid; grid-template-columns: repeat(4, 1fr); gap: 28px; margin-top: 44px; border-top: 1px solid var(--line); padding-top: 30px; }
+.strip div { font-size: 24px; color: var(--muted); line-height: 1.3; }
+.strip b { display: block; font-size: 30px; }
+
+/* 6 difference */
+.diff { display: grid; grid-template-columns: 1060px 1fr; gap: 48px; margin-top: 44px; }
+.four { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+.four .card { padding: 26px 28px 30px; border-top: 6px solid var(--ink); }
+.four .card h3 { font-size: 33px; }
+.four .card p { margin-top: 14px; font-size: 27px; line-height: 1.36; }
+.fit { border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
+.fit .hd { background: var(--ink); color: #fff; font-size: 24px; font-weight: 600; padding: 14px 24px; }
+.fit .row { padding: 22px 24px 24px; border-top: 1px solid var(--line); }
+.fit .row:first-of-type { border-top: 0; }
+.fit .row b { font-size: 30px; display: block; }
+.fit .row p { font-size: 25px; color: var(--muted); line-height: 1.32; margin-top: 4px; }
+
+/* 7 status */
+.status { display: grid; grid-template-columns: repeat(3, 1fr); gap: 28px; margin-top: 40px; }
+.status .card { padding: 22px 26px 24px; }
+.status .card h3 { display: flex; align-items: center; gap: 12px; }
+.status .dot { width: 16px; height: 16px; border-radius: 50%; flex: none; }
+.status li { font-size: 26px; line-height: 1.3; margin-top: 15px; padding-left: 26px; position: relative; color: var(--text); }
+.status li::before { content: ""; position: absolute; left: 2px; top: .5em; width: 9px; height: 9px; border-radius: 50%; background: #A3A3A3; }
+.close { margin-top: 26px; display: flex; justify-content: space-between; align-items: center; background: var(--ink); color: #fff; border-radius: 10px; padding: 20px 30px; }
+.close .l { font-size: 30px; font-weight: 600; }
+.close .rr { font-size: 22px; color: #D4D4D4; text-align: right; line-height: 1.35; }
+</style>
+</head>
+<body>
+
+<!-- ============ 1 PROBLEM ============ -->
+<section class="slide s1">
+  <div class="left">
+    <div class="kicker"><svg viewBox="0 0 32 32"><rect width="32" height="32" rx="7" fill="#171717"/><path d="M8 10h16M16 10v13" stroke="#fff" stroke-width="3.2" stroke-linecap="round"/></svg>Tagwerk · The problem</div>
+    <h1>A site changes every hour. Its record is written from memory at night.</h1>
+    <p class="lead">The site manager sees what happened. Four tools need to know, and none of them shares a key with the others.</p>
+    <div class="tools">
+      <div class="tool"><h3>Site diary</h3><p>Bautagebuch, typed in the evening</p><span class="key">free text</span></div>
+      <div class="tool"><h3>Schedule</h3><p>Primavera P6, kept in the office</p><span class="key">activity ID</span></div>
+      <div class="tool"><h3>Contract</h3><p>GAEB bill of quantities</p><span class="key">position no.</span></div>
+      <div class="tool"><h3>Claims</h3><p>Notices and letters, written later</p><span class="key">date + prose</span></div>
+    </div>
+    <div class="nokey"><b>No shared key.</b> “Row A is installed” names no activity and no contract position, so it never reaches the schedule or the contract.</div>
+    <ul class="dots" style="margin-top:22px">
+      <li>Progress in the schedule is an estimate, entered later in the office.</li>
+      <li>The forecast does not move when two men are off sick. The delay shows up at handover.</li>
+      <li>For a delay notice, the evidence has to be rebuilt from photos and memory.</li>
+    </ul>
+  </div>
+  <div class="photo"><img src="img/site-pit.jpg" alt=""><span>Frame from the host’s site footage: excavation pit with struts</span></div>
+  <div class="foot"><span>Tagwerk · Challenge B: AI Site Manager Assistant for Documentation, Daily Reports and Claims</span><span>1 / 7</span></div>
+</section>
+
+<!-- ============ 2 SOLUTION ============ -->
+<section class="slide s2">
+  <div class="kicker"><svg viewBox="0 0 32 32"><rect width="32" height="32" rx="7" fill="#171717"/><path d="M8 10h16M16 10v13" stroke="#fff" stroke-width="3.2" stroke-linecap="round"/></svg>The solution</div>
+  <h1>Record once on the phone. Tagwerk links it to schedule and contract.</h1>
+  <div class="loop">
+    <div class="step first"><div class="n">1</div><h3>Capture</h3><p>Video with commentary, photo, voice note or typed note. Pick the zone, send.</p></div>
+    <div class="step"><div class="n">2</div><h3>Understand</h3><p>Speech to text; objects and markers in the frames. Sentences become states and events.</p></div>
+    <div class="step"><div class="n">3</div><h3>Link</h3><p>Each statement is tied to an element, its P6 activity and its GAEB position.</p></div>
+    <div class="step"><div class="n">4</div><h3>Forecast</h3><p>Remaining work is re-simulated day by day: crew minus absences, then successors.</p></div>
+    <div class="step"><div class="n">5</div><h3>Deliver</h3><p>Dashboard, daily report, P6 XML, GAEB X83/X84 and .ics exports.</p></div>
+  </div>
+  <div class="back">
+    <svg viewBox="0 0 1728 64" preserveAspectRatio="none"><path d="M1575 4 V40 H153 V10" fill="none" stroke="#A3A3A3" stroke-width="2.5" stroke-dasharray="7 7"/><path d="M144 20 L153 6 L162 20" fill="none" stroke="#A3A3A3" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    <span>The next recording starts from the updated state. Camera proposals wait for one tap.</span>
+  </div>
+  <div class="story">
+    <div class="quote"><small>One note · Zuschauerraum · 26.11.2026</small>“Stuhlreihe A ist montiert. Zwei Mann vom Trockenbau sind krank. Kratzer an der Bühne.”</div>
+    <div class="results">
+      <div class="res g"><b>Stuhlreihe A: 50 → 85 %, confirmed</b>Seat row A, quoted sentence stored as evidence</div>
+      <div class="res a"><b>Absence: 2× Trockenbau</b>Attached to activity A1080 Bestuhlung neu</div>
+      <div class="res r"><b>Defect logged</b>Scratch on the stage, open in the report</div>
+      <div class="res r"><b>Abnahme 01.12. → 03.12.</b>+2 working days, cause: 2 of 3 Trockenbau absent</div>
+    </div>
+  </div>
+  <div class="foot"><span>Demo project Hörsaal Sanierung (lecture hall refurbishment, seed data). Before the note: 81.7 % done / 80 % planned, SPI 1.02, finish 01.12.</span><span>2 / 7</span></div>
+</section>
+
+<!-- ============ 3 ONTOLOGY ============ -->
+<section class="slide s3">
+  <div class="kicker"><svg viewBox="0 0 32 32"><rect width="32" height="32" rx="7" fill="#171717"/><path d="M8 10h16M16 10v13" stroke="#fff" stroke-width="3.2" stroke-linecap="round"/></svg>How it links · the ontology layer</div>
+  <h1>One graph ties each sentence to a contract line.</h1>
+  <p class="lead">GAEB position → P6 activity → element / zone → capture → event / proposal. The chain below is the real one from the demo note.</p>
+  <div class="chain">
+    <svg viewBox="0 0 1728 462" width="1728" height="462" fill="none" stroke="#0A0A0A" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+      <defs><marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse"><path d="M1 1 L9 5 L1 9" fill="none" stroke="context-stroke" stroke-width="1.8"/></marker></defs>
+      <path d="M240 162 H369" marker-end="url(#ah)"/>
+      <path d="M612 162 H741" marker-end="url(#ah)"/>
+      <path d="M1116 162 H987" stroke="#16A34A" marker-end="url(#ah)"/>
+      <path d="M1356 130 H1485" marker-end="url(#ah)"/>
+      <path d="M1356 196 C1425 196 1415 262 1485 262" marker-end="url(#ah)"/>
+      <path d="M1608 76 V22 H492 V72" stroke="#DC2626" stroke-dasharray="8 7" marker-end="url(#ah)"/>
+      <path d="M492 252 V306" stroke="#DC2626" marker-end="url(#ah)"/>
+      <path d="M864 310 V256" stroke="#A3A3A3" marker-end="url(#ah)"/>
+      <path d="M1236 252 C1236 340 1100 352 987 352" stroke="#A3A3A3" marker-end="url(#ah)"/>
+    </svg>
+    <div class="node" style="left:0;top:76px"><span class="t">GAEB position</span><b class="mono">01.06.0010</b>Bestuhlung neu liefern und montieren<br>160 Stk × €265 = <b style="display:inline">€42,400</b></div>
+    <div class="node red" style="left:372px;top:76px;height:176px"><span class="t">P6 activity</span><b>A1080 Bestuhlung neu</b>52.3 → 57.8 %<br>end 30.11. → <b style="display:inline;color:var(--red)">02.12.</b></div>
+    <div class="node red" style="left:372px;top:310px"><span class="t">P6 activity</span><b>A1090 Abnahme</b>01.12. → <b style="display:inline;color:var(--red)">03.12.</b><br>+2 working days</div>
+    <div class="node green" style="left:744px;top:76px;height:176px"><span class="t">Element</span><b>Stuhlreihe A</b>50 → 85 %<br>“montiert”, confirmed</div>
+    <div class="node grey" style="left:744px;top:310px"><span class="t">Zone</span><b>Zuschauerraum</b></div>
+    <div class="node blue" style="left:1116px;top:76px;height:176px"><span class="t">Capture · note</span><b>26.11.2026</b>“Stuhlreihe A ist montiert. …”</div>
+    <div class="node amber" style="left:1488px;top:76px;padding-bottom:10px"><span class="t">Event · absence</span><b>2× Trockenbau krank</b></div>
+    <div class="node grey" style="left:1488px;top:206px;padding-bottom:10px"><span class="t">Event · defect</span><b>Kratzer an der Bühne</b></div>
+    <div class="node prop" style="left:1488px;top:336px;padding-bottom:10px"><span class="t">Proposal · camera</span><b>Stuhlreihe F</b>waits for a tap</div>
+    <span class="elabel" style="left:306px;top:140px">scheduled as</span>
+    <span class="elabel" style="left:678px;top:140px">builds</span>
+    <span class="elabel g" style="left:1050px;top:140px">confirmed</span>
+    <span class="elabel" style="left:1422px;top:108px">raised</span>
+    <span class="elabel r" style="left:1050px;top:22px">affects</span>
+    <span class="elabel r" style="left:550px;top:280px">precedes</span>
+    <span class="elabel" style="left:1150px;top:346px">in zone</span>
+  </div>
+  <div class="facts">
+    <div class="card"><p><b>Defined once.</b> <span class="mono">seed/ontology.yaml</span>: 19 node types, 28 relationship types. Terms reuse BOT, DiCon, GAEB DA XML and DIN 276.</p></div>
+    <div class="card"><p><b>Linked at capture time.</b> Element and activity IDs come from the project’s own lists, never from free text.</p></div>
+    <div class="card"><p><b>Neo4j is a projection.</b> The project state is authoritative; every graph write is an idempotent MERGE keyed by <span class="mono">capture_id</span>.</p></div>
+  </div>
+  <div class="foot"><span>Tagwerk · Position value from seed/boq.csv; dates and percentages from the seeded demo state (docs/DEMO.md)</span><span>3 / 7</span></div>
+</section>
+
+<!-- ============ 4 PRODUCT ============ -->
+<section class="slide s4">
+  <div class="kicker"><svg viewBox="0 0 32 32"><rect width="32" height="32" rx="7" fill="#171717"/><path d="M8 10h16M16 10v13" stroke="#fff" stroke-width="3.2" stroke-linecap="round"/></svg>The product</div>
+  <h1>A phone app on site. A dashboard in the office.</h1>
+  <div class="prod">
+    <div>
+      <div class="role">Site manager · phone app</div>
+      <div class="phones">
+        <div><div class="phone"><img src="img/phone-capture.png" alt=""></div><p class="cap"><b>1 · Erfassen</b>Zone, note or recording, send</p></div>
+        <div><div class="phone"><img src="img/phone-result.png" alt=""></div><p class="cap"><b>2 · Result</b>What Tagwerk understood</p></div>
+        <div><div class="phone"><img src="img/phone-confirm.png" alt=""></div><p class="cap"><b>3 · Heute</b>One tap confirms a camera proposal</p></div>
+      </div>
+    </div>
+    <div>
+      <div class="role">Bauleiter · dashboard, same moment</div>
+      <div class="shot"><img src="img/dashboard-red.png" alt=""></div>
+      <div class="crops">
+        <div class="shot"><img src="img/activity-cause.png" alt=""></div>
+        <div class="shot"><img src="img/report-delays.png" alt=""></div>
+      </div>
+      <p class="cap">Plan vs forecast with the delay in red, events on the right. Below: the activity’s cause and GAEB position, and section 5 of the daily report.</p>
+    </div>
+  </div>
+  <div class="foot"><span>Screenshots of the running prototype after the demo note (UI in German). No mock-ups.</span><span>4 / 7</span></div>
+</section>
+
+<!-- ============ 5 ARCHITECTURE ============ -->
+<section class="slide s5">
+  <div class="kicker"><svg viewBox="0 0 32 32"><rect width="32" height="32" rx="7" fill="#171717"/><path d="M8 10h16M16 10v13" stroke="#fff" stroke-width="3.2" stroke-linecap="round"/></svg>Tech stack and architecture</div>
+  <h1>One pipeline, on one laptop with a 6 GB GPU.</h1>
+  <div class="flow">
+    <div class="box"><span class="t">Capture</span><h3>Phone app</h3><ul><li>Expo / React Native</li><li>Video, photo, voice, note</li><li>Offline queue; resend keeps the same <span class="mono">capture_id</span></li></ul></div>
+    <div class="box"><span class="t">Entry</span><h3>API</h3><ul><li>FastAPI, bearer token</li><li>ffmpeg, weather context</li><li>Websocket pushes each change to the UI</li></ul></div>
+    <div class="box gpu"><span class="t">Perception</span><h3>GPU worker</h3><ul><li>faster-whisper (int8)</li><li>YOLO11s + YOLO-World</li><li>ArUco markers</li><li>RelateAnything</li><li>pycolmap SfM (3D scan)</li></ul></div>
+    <div class="box"><span class="t">Meaning</span><h3>Structuring</h3><ul><li>Keyword rules (German, English, Dutch)</li><li>or Claude with a JSON schema whose IDs are enums</li></ul></div>
+    <div class="box state"><span class="t">Truth</span><h3>Project state</h3><ul><li>Idempotent, all-or-nothing</li><li>States only go up</li><li>BoQ-weighted progress</li><li>Day-by-day forecast: absences, FS/SS links</li></ul></div>
+  </div>
+  <div class="fan">
+    <svg viewBox="0 0 1728 56" preserveAspectRatio="none" fill="none" stroke="#2563EB" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M1568 0 V26 H205 V50 M644 26 V50 M1083 26 V50 M1522 26 V50"/>
+      <path d="M197 42 L205 52 L213 42 M636 42 L644 52 L652 42 M1075 42 L1083 52 L1091 42 M1514 42 L1522 52 L1530 42"/>
+    </svg>
+  </div>
+  <div class="outs">
+    <div class="box"><span class="t">Graph</span><h3>Neo4j</h3><ul><li>Projection of the state, batched MERGE</li></ul></div>
+    <div class="box"><span class="t">Office UI</span><h3>React dashboard</h3><ul><li>Vite, shadcn, three.js: Gantt, live graph, BIM, 3D scan</li></ul></div>
+    <div class="box"><span class="t">Document</span><h3>Daily report</h3><ul><li>Bautagebuch as print-ready A4 HTML</li></ul></div>
+    <div class="box"><span class="t">Back to the tools</span><h3>Exports</h3><ul><li>P6 XML, GAEB X83/X84, .ics</li></ul></div>
+  </div>
+  <div class="strip">
+    <div><b>238 tests pass</b>pytest on CPU with fixtures, no GPU needed</div>
+    <div><b>JSON contract per stage</b>Shapes in contracts/, fixtures validated in the tests</div>
+    <div><b>Replay from cache</b>Any capture re-runs without GPU, network or Claude</div>
+    <div><b>On-prem hardware</b>GTX 1060 6 GB, Ubuntu 22.04; speech, vision and 3D run locally</div>
+  </div>
+  <div class="foot"><span>Tagwerk · Python 3.12 backend; the Claude path is optional and needs an API key</span><span>5 / 7</span></div>
+</section>
+
+<!-- ============ 6 DIFFERENCE ============ -->
+<section class="slide s6">
+  <div class="kicker"><svg viewBox="0 0 32 32"><rect width="32" height="32" rx="7" fill="#171717"/><path d="M8 10h16M16 10v13" stroke="#fff" stroke-width="3.2" stroke-linecap="round"/></svg>Why it is different · fit to Challenge B</div>
+  <h1>The site manager stays in control. Every percent has a source.</h1>
+  <div class="diff">
+    <div class="four">
+      <div class="card" style="border-top-color:var(--green)"><h3>Voice or a tap confirms. The camera only proposes.</h3><p>Vision alone never changes a state; it creates a proposal. States only go up.</p></div>
+      <div class="card" style="border-top-color:var(--blue)"><h3>Every percent traces to a sentence and a contract line.</h3><p>Quote, recording, element, activity and GAEB position are one click apart.</p></div>
+      <div class="card"><h3>No scanner. No BIM required.</h3><p>A phone is enough. When a model exists it is used: Schependomlaan, an open BIM dataset with 2,082 elements and 100 tasks.</p></div>
+      <div class="card"><h3>Runs on-prem on one laptop.</h3><p>Speech, vision and 3D on a 6 GB GPU. Site footage does not need to go to a cloud.</p></div>
+    </div>
+    <div class="fit">
+      <div class="hd">Challenge B, point by point</div>
+      <div class="row"><b>Documentation</b><p>Every recording is filed with zone, time, weather, transcript and what it changed.</p></div>
+      <div class="row"><b>Daily reports</b><p>The Bautagebuch for the day is written from the recordings: work done, crew present and absent, events, delays, 3-day lookahead.</p></div>
+      <div class="row"><b>Claims</b><p>Each delay carries its cause, activity and GAEB position: the basis for a delay notice under VOB/B §6. Drafting support only, not legal advice.</p></div>
+    </div>
+  </div>
+  <div class="foot"><span>Tagwerk · Schependomlaan dataset: CC BY 4.0, academic use, see ATTRIBUTION.md</span><span>6 / 7</span></div>
+</section>
+
+<!-- ============ 7 STATUS ============ -->
+<section class="slide s7">
+  <div class="kicker"><svg viewBox="0 0 32 32"><rect width="32" height="32" rx="7" fill="#171717"/><path d="M8 10h16M16 10v13" stroke="#fff" stroke-width="3.2" stroke-linecap="round"/></svg>Status and next</div>
+  <h1>What works today, and what is still open.</h1>
+  <div class="status">
+    <div class="card" style="border-top:6px solid var(--green)"><h3><span class="dot" style="background:var(--green)"></span>Works today</h3><ul class="plain">
+      <li>Capture pipeline end to end on the GPU laptop: video, photo, voice or note to graph and dashboard</li>
+      <li>Dashboard with Gantt, live graph, BIM view, 3D scan and daily report</li>
+      <li>Phone app (Expo, Android via Expo Go) with offline queue</li>
+      <li>P6 XML, GAEB X83/X84 and .ics exports</li>
+      <li>Two projects served: Hörsaal (seed) and Schependomlaan (open BIM data)</li>
+    </ul></div>
+    <div class="card" style="border-top:6px solid var(--amber)"><h3><span class="dot" style="background:var(--amber)"></span>Open, stated plainly</h3><ul class="plain">
+      <li>Vision misses large surfaces and has false positives. That is why it only proposes</li>
+      <li>Keyword rules cannot resolve pronouns; the Claude path is tested with a fake client only</li>
+      <li>The Hörsaal project is placeholder seed data, not a measured site</li>
+      <li>The P6 XML has not been imported into a real Primavera yet</li>
+      <li>The delay notice itself is not generated yet; the report holds its facts</li>
+    </ul></div>
+    <div class="card" style="border-top:6px solid var(--blue)"><h3><span class="dot" style="background:var(--blue)"></span>Next</h3><ul class="plain">
+      <li>Rehearsal on a real site, with the crew’s own words in a project glossary</li>
+      <li>Delay notice draft (Behinderungsanzeige), reviewed by someone who signs them</li>
+      <li>Standalone Android build, HTTPS, users and roles</li>
+      <li>Project setup from the UI instead of seed files</li>
+      <li>Hosting off the laptop: a GPU box in the office</li>
+    </ul></div>
+  </div>
+  <div class="close"><span class="l">Tagwerk: capture once, linked everywhere.</span><span class="rr">Team Tagwerk · github.com/Current-cmd/Tagwerk<br>Challenge B · AI Site Manager Assistant</span></div>
+  <div class="foot"><span>Tagwerk · Sources: docs/RELEASE-NOTES.md (known limitations), docs/USER-JOURNEY.md (ready checklist)</span><span>7 / 7</span></div>
+</section>
+
+</body>
+</html>

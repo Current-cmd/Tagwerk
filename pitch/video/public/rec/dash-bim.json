@@ -1,0 +1,21 @@
+{
+ "seconds": 97.13,
+ "marks": {
+  "play_pressed": 2.27,
+  "date_2015-02-23": 4.09,
+  "date_2015-03-02": 7.97,
+  "date_2015-04-01": 26.27,
+  "date_2015-05-01": 44.33,
+  "date_2015-06-01": 61.74,
+  "date_2015-07-01": 80.21,
+  "date_2015-07-24": 94.34,
+  "paused": 95.14
+ },
+ "capture": {
+  "captured_frames": 5097,
+  "distinct_frames_in_output": 2621,
+  "capture_fps_avg": 52.5,
+  "fps_while_changing": 60,
+  "longest_still_s": 0.3
+ }
+}
