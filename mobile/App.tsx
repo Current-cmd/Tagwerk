@@ -8,7 +8,8 @@ import { PortalHost } from "@rn-primitives/portal";
 import { StatusBar } from "expo-status-bar";
 import { CircleDot, FileText, PlusCircle, ScanLine, Settings as Gear, X } from "lucide-react-native";
 import React, { useCallback, useEffect, useRef, useState } from "react";
-import { Animated, Pressable, View } from "react-native";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { Animated, BackHandler, Pressable, View } from "react-native";
 import { SafeAreaProvider, SafeAreaView } from "react-native-safe-area-context";
 import { Health, Overview, Report as ReportData, Zone, getJson, listen, loadSettings } from "./src/api";
 import { Job, initQueue, setStep, subscribe } from "./src/queue";
@@ -19,6 +20,7 @@ import { Settings } from "./src/screens/Settings";
 import { Today } from "./src/screens/Today";
 
 type Tab = "today" | "capture" | "scan" | "report";
+const ZONES_KEY = "tw.zones";
 const TABS: [Tab, any, string][] = [["today", CircleDot, "Heute"], ["capture", PlusCircle, "Erfassen"], ["scan", ScanLine, "Scan"], ["report", FileText, "Bericht"]];
 
 export default function App() {
@@ -46,10 +48,13 @@ export default function App() {
   const load = useCallback(async () => {
     setRefreshing(true);
     try {
-      const [h, z, o, r] = await Promise.all([
-        getJson<Health>("/health"), getJson<Zone[]>("/zones"), getJson<Overview>("/api/overview"), getJson<ReportData>("/api/v2/report"),
-      ]);
-      setHealth(h); setZones(z); setOverview(o); setReport(r); setError(null);
+      // health and zones decide "connected"; a failing report or overview must not take the rest down
+      const [h, z] = await Promise.all([getJson<Health>("/health"), getJson<Zone[]>("/zones")]);
+      setHealth(h); setZones(z); setError(null);
+      AsyncStorage.setItem(ZONES_KEY, JSON.stringify(z)); // so recording works offline later
+      const [o, r] = await Promise.allSettled([getJson<Overview>("/api/overview"), getJson<ReportData>("/api/v2/report")]);
+      if (o.status === "fulfilled") setOverview(o.value);
+      if (r.status === "fulfilled") setReport(r.value);
     } catch (e: any) {
       setError(e.message); setHealth(null);
     } finally {
@@ -58,7 +63,12 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    (async () => { await loadSettings(); setReady(true); await initQueue(); load(); })();
+    (async () => {
+      await loadSettings();
+      const cached = await AsyncStorage.getItem(ZONES_KEY);
+      if (cached) setZones(JSON.parse(cached));
+      setReady(true); await initQueue(); load();
+    })();
     return subscribe(setJobs);
   }, [load]);
 
@@ -72,6 +82,16 @@ export default function App() {
     });
     return () => { stop(); if (t) clearTimeout(t); };
   }, [ready, health?.project, load]);
+
+  // Android back: close settings, else go to the capture tab, else leave the app
+  useEffect(() => {
+    const sub = BackHandler.addEventListener("hardwareBackPress", () => {
+      if (showSettings) { setShowSettings(false); return true; }
+      if (tab !== "capture") { setTab("capture"); return true; }
+      return false;
+    });
+    return () => sub.remove();
+  }, [showSettings, tab]);
 
   const names: Record<string, string> = {};
   (overview?.zones ?? []).forEach((z) => z.elements.forEach((e) => (names[e.id] = e.name)));
@@ -100,12 +120,12 @@ export default function App() {
         <View className="flex-1">
           {!ready ? null : showSettings ? <Settings onClose={() => setShowSettings(false)} onSaved={load} />
             : tab === "today" ? <Today data={overview} error={error} reload={load} refreshing={refreshing} toast={toast} />
-            : tab === "capture" ? <Capture zones={zones} jobs={jobs} names={names} toast={toast} />
+            : tab === "capture" ? <Capture zones={zones} jobs={jobs} names={names} toast={toast} online={!!health} openSettings={() => setShowSettings(true)} />
             : tab === "scan" ? <Scan toast={toast} />
             : <Report data={report} reload={load} refreshing={refreshing} toast={toast} />}
         </View>
 
-        <Animated.View pointerEvents="none" style={{ position: "absolute", left: 16, right: 16, bottom: 96, opacity: fade, alignItems: "center" }}>
+        <Animated.View pointerEvents="none" accessibilityLiveRegion="polite" style={{ position: "absolute", left: 16, right: 16, bottom: 96, opacity: fade, alignItems: "center" }}>
           {msg && (
             <View className={cn("rounded-lg px-4 py-3 shadow-lg", msg.err ? "bg-destructive" : "bg-primary")}>
               <Text className="text-sm font-medium text-white">{msg.text}</Text>
