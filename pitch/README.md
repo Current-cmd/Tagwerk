@@ -1,5 +1,7 @@
 # Pitch and demo video
 
+**Next step:** `../docs/tasks/HANDOFF-pitch.md` (bring the mobile app into the deck and the video).
+
 Everything for the Challenge B pitch: the deck, the demo video, and the material they are built from.
 The product side lives in the app (`../mobile/`), the dashboard (`/app` on the laptop API) and
 `../docs/USER-JOURNEY.md` (roles, journey, ready checklist).
@@ -43,7 +45,7 @@ PPTX_SKILL=<path to the pptx skill> NODE_PATH=$PWD/node_modules node build2.js  
 
 ## Open points
 
-- Voice-over is a macOS placeholder voice; real narration (ElevenLabs script in the session notes) still to record.
+- Voice-over is a macOS placeholder voice; the ElevenLabs script is `video/vo/ELEVENLABS.md`.
 - No music yet.
 - The Behinderungsanzeige (notice) scene is a mock; the excavation schedule IDs and BoQ positions are examples.
 - The video and deck predate the mobile app: add the app (capture → result on the phone → dashboard) to the demo.
