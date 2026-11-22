@@ -18,7 +18,9 @@ The product side lives in the app (`../mobile/`), the dashboard (`/app` on the l
 | Demo video project (Remotion 4) | `video/` (scenes in `video/src/Video.tsx`, timeline in `SCENES` at the bottom) |
 | Voice-over script and clips | `video/vo/lines.json`, `video/public/vo/*.wav`, `video/scripts/make-vo.mjs` |
 
-The rendered video (`Tagwerk-Demo.mp4`, about 75 MB) is not in git. Render it from `video/`.
+The 2-minute submission video is committed, compressed, as `../docs/media/tagwerk-submission.mp4` (poster
+`tagwerk-submission-poster.jpg`) and linked from the top-level README. The older long demo (`Tagwerk-Demo.mp4`,
+about 75 MB) is not in git. Render either from `video/`.
 
 ## Video
 
