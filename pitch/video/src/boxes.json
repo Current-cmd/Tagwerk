@@ -1,0 +1,24 @@
+{
+  "_note": "Hand-corrected boxes, pixel coords [x1,y1,x2,y2] on the 960x1708 frames the GPU worker analysed (1 fps, frame N = t N-1 s). Colour: violet = equipment/people, green = building element, red = deviation.",
+  "WA0000_t5": {"src_time_s": 5, "boxes": [
+    {"label": "Turmdrehkran", "bbox": [440, 0, 745, 1090], "kind": "equipment"},
+    {"label": "Bohrpfahlwand", "bbox": [0, 1095, 960, 1275], "kind": "element"},
+    {"label": "Baucontainer", "bbox": [430, 1195, 590, 1300], "kind": "equipment"},
+    {"label": "Arbeitsbühne", "bbox": [690, 1130, 960, 1262], "kind": "equipment"}]},
+  "WA0000_t10": {"src_time_s": 10, "boxes": [
+    {"label": "Gerüst am Haken", "bbox": [15, 560, 140, 875], "kind": "equipment"},
+    {"label": "Bohrgerät ×2", "bbox": [330, 860, 515, 1200], "kind": "equipment"},
+    {"label": "Person · Weste, Helm", "bbox": [330, 1170, 540, 1708], "kind": "equipment"},
+    {"label": "stehendes Wasser", "bbox": [530, 1335, 765, 1525], "kind": "deviation"}]},
+  "WA0003_t2": {"src_time_s": 2, "boxes": [
+    {"label": "Rohrsteifen", "bbox": [0, 0, 960, 770], "kind": "element"},
+    {"label": "Bagger", "bbox": [260, 810, 565, 1000], "kind": "equipment"},
+    {"label": "Bagger", "bbox": [736, 810, 960, 1330], "kind": "equipment"},
+    {"label": "Traktor", "bbox": [50, 895, 225, 995], "kind": "equipment"}]},
+  "WA0003_t8": {"src_time_s": 8, "boxes": [
+    {"label": "Rohrsteifen", "bbox": [0, 0, 960, 770], "kind": "element"},
+    {"label": "Schlitzwand", "bbox": [630, 720, 960, 1000], "kind": "element"},
+    {"label": "Bagger", "bbox": [400, 815, 640, 1000], "kind": "equipment"},
+    {"label": "Traktor mit Mulde", "bbox": [150, 900, 400, 1000], "kind": "equipment"},
+    {"label": "Aushub", "bbox": [320, 1005, 960, 1300], "kind": "element"}]}
+}

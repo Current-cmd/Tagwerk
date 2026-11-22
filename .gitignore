@@ -27,3 +27,8 @@ web-app/node_modules/
 web-app/.vite/
 web-app/node_modules/.tmp/
 web-app/*.tsbuildinfo
+
+# rendered pitch video (re-render from pitch/video)
+docs/design-brief/Tagwerk-Demo.mp4
+pitch/video/out/
+pitch/*/node_modules/
