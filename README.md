@@ -15,7 +15,9 @@ Voice and typed notes confirm progress; vision alone only proposes it.
 
 Challenge B: AI Site Manager Assistant for Documentation, Daily Reports and Claims.
 
-[![2-minute submission video: phone capture, dashboard, live graph, forecast, daily report, BIM](docs/media/tagwerk-submission-poster.jpg)](docs/media/tagwerk-submission.mp4)
+[![Preview of the submission video: problem, phone capture, the dashboard turning red, the daily report](docs/media/tagwerk-submission-preview.gif)](docs/media/tagwerk-submission.mp4)
+
+*Preview (37 s, no sound). Click it or open [the full 2-minute video with narration](docs/media/tagwerk-submission.mp4) (GitHub offers it as a download; it plays in any browser or player).*
 
 | | |
 |---|---|
