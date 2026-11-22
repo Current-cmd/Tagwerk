@@ -16,6 +16,23 @@ Voice and typed notes confirm progress; vision alone only proposes it.
 
 ![Bauleiter dashboard: KPIs, recordings of the day, Gantt plan vs forecast, events](docs/img/dashboard.jpg)
 
+## Pitch: video and deck
+
+Challenge B: AI Site Manager Assistant for Documentation, Daily Reports and Claims.
+
+[![Preview of the submission video: problem, phone capture, the dashboard turning red, the daily report](docs/media/tagwerk-submission-preview.gif)](docs/media/tagwerk-submission.mp4)
+
+*Preview (37 s, no sound). Click it or open [the full 2-minute video with narration](docs/media/tagwerk-submission.mp4) (GitHub offers it as a download; it plays in any browser or player).*
+
+| | |
+|---|---|
+| **Video (2 min)** | [`docs/media/tagwerk-submission.mp4`](docs/media/tagwerk-submission.mp4): real site footage and the problem (four tools, no shared key), then one typed note on the phone ("Stuhlreihe A ist montiert. Zwei Mann vom Trockenbau sind krank. Kratzer an der Bühne.") turning into progress, an absence, a defect and a 2-day delay on the dashboard; the trace to the GAEB position, the live graph, the forecast slider, a camera proposal confirmed with one tap, the daily report and BIM playback. Real screen recordings of the prototype, ElevenLabs narration. Storyboard: [`pitch/STORYBOARD-2min.md`](pitch/STORYBOARD-2min.md). |
+| **Deck (7 slides)** | [`docs/design-brief/Tagwerk-Pitch-7.pdf`](docs/design-brief/Tagwerk-Pitch-7.pdf): problem, solution, ontology layer, product, architecture, why it is different, status and next. |
+| Long deck (13 slides) | [`Tagwerk-Pitch.pdf`](docs/design-brief/Tagwerk-Pitch.pdf) / [`.pptx`](docs/design-brief/Tagwerk-Pitch.pptx) |
+| Sources | Video: Remotion project in [`pitch/video/`](pitch/video/) (`npm run render:submission`). Deck: [`pitch/deck/deck7/`](pitch/deck/deck7/). See [`pitch/README.md`](pitch/README.md). |
+
+**Tagwerk: capture once, linked everywhere.**
+
 ## What it does
 
 | | |
